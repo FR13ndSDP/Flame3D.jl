@@ -3,8 +3,8 @@ using JLD2
 using WriteVTK
 
 const NG::Int64 = 4
-const Nx::Int64 = 1024
-const Ny::Int64 = 256
+const Nx::Int64 = 512
+const Ny::Int64 = 128
 const Nz::Int64 = 16
 const Lx::Float64 = 1
 const Ly::Float64 = 0.1
@@ -30,7 +30,7 @@ end
     z[i, j, k] = 2*z[NG+1, j, k] - z[2*NG+2-i, j, k]
 end
 
-@inbounds for k ∈ NG+1:Nz+NG, j ∈ NG+1:Ny+NG, i ∈ Nx+NG+1:Nx+2*NG
+@inbounds for k ∈ NG+1:Nz+NG, j ∈ NG+1:Ny+NG, i ∈ Nx+NG+1:Nx_tot
     x[i, j, k] = 2*x[Nx+NG, j, k] - x[2*NG+2*Nx-i, j, k]
     y[i, j, k] = 2*y[Nx+NG, j, k] - y[2*NG+2*Nx-i, j, k]
     z[i, j, k] = 2*z[Nx+NG, j, k] - z[2*NG+2*Nx-i, j, k]
@@ -42,14 +42,14 @@ end
     z[i, j, k] = 2*z[i, NG+1, k] - z[i, 2*NG+2-j, k]
 end
 
-@inbounds for k ∈ NG+1:Nz+NG, j ∈ Ny+NG+1:Ny+2*NG, i ∈ NG+1:Nx+NG
+@inbounds for k ∈ NG+1:Nz+NG, j ∈ Ny+NG+1:Ny_tot, i ∈ NG+1:Nx+NG
     x[i, j, k] = 2*x[i, Ny+NG, k] - x[i, 2*NG+2*Ny-j, k]
     y[i, j, k] = 2*y[i, Ny+NG, k] - y[i, 2*NG+2*Ny-j, k]
     z[i, j, k] = 2*z[i, Ny+NG, k] - z[i, 2*NG+2*Ny-j, k]
 end
 
 #corner ghost
-@inbounds for k ∈ NG+1:Nz+NG, j ∈ Ny+NG+1:Ny+2*NG, i ∈ 1:NG
+@inbounds for k ∈ NG+1:Nz+NG, j ∈ Ny+NG+1:Ny_tot, i ∈ 1:NG
     x[i, j, k] = x[i, Ny+NG, k] + x[NG+1, j, k] - x[NG+1, Ny+NG, k]
     y[i, j, k] = y[i, Ny+NG, k] + y[NG+1, j, k] - y[NG+1, Ny+NG, k]
     z[i, j, k] = z[i, Ny+NG, k] + z[NG+1, j, k] - z[NG+1, Ny+NG, k]
@@ -61,13 +61,13 @@ end
     z[i, j, k] = z[i, NG+1, k] + z[NG+1, j, k] - z[NG+1, NG+1, k]
 end
 
-@inbounds for k ∈ NG+1:Nz+NG, j ∈ Ny+NG+1:Ny+2*NG, i ∈ Nx+NG+1:Nx+2*NG
+@inbounds for k ∈ NG+1:Nz+NG, j ∈ Ny+NG+1:Ny_tot, i ∈ Nx+NG+1:Nx_tot
     x[i, j, k] = x[i, Ny+NG, k] + x[Nx+NG, j, k] - x[Nx+NG, Ny+NG, k]
     y[i, j, k] = y[i, Ny+NG, k] + y[Nx+NG, j, k] - y[Nx+NG, Ny+NG, k]
     z[i, j, k] = z[i, Ny+NG, k] + z[Nx+NG, j, k] - z[Nx+NG, Ny+NG, k]
 end
 
-@inbounds for k ∈ NG+1:Nz+NG, j ∈ 1:NG, i ∈ Nx+NG+1:Nx+2*NG
+@inbounds for k ∈ NG+1:Nz+NG, j ∈ 1:NG, i ∈ Nx+NG+1:Nx_tot
     x[i, j, k] = x[i, NG+1, k] + x[Nx+NG, j, k] - x[Nx+NG, NG+1, k]
     y[i, j, k] = y[i, NG+1, k] + y[Nx+NG, j, k] - y[Nx+NG, NG+1, k]
     z[i, j, k] = z[i, NG+1, k] + z[Nx+NG, j, k] - z[Nx+NG, NG+1, k]
@@ -79,7 +79,7 @@ end
     z[i, j, k] = 2*z[i, j, NG+1] - z[i, j, 2*NG+2-k]
 end
 
-@inbounds for k ∈ Nz+NG+1:Nz+2*NG, j ∈ 1:Ny_tot, i ∈ 1:Nx_tot
+@inbounds for k ∈ Nz+NG+1:Nz_tot, j ∈ 1:Ny_tot, i ∈ 1:Nx_tot
     x[i, j, k] = 2*x[i, j, Nz+NG] - x[i, j, 2*NG+2*Nz-k]
     y[i, j, k] = 2*y[i, j, Nz+NG] - y[i, j, 2*NG+2*Nz-k]
     z[i, j, k] = 2*z[i, j, Nz+NG] - z[i, j, 2*NG+2*Nz-k]
@@ -160,7 +160,7 @@ end
     dzdη[i, j, k] = CD2_L(z[i, j:j+2, k])
 end
 
-@inbounds for k ∈ 1:Nz_tot, j ∈ Ny-2:Ny+2*NG, i ∈ 1:Nx+2*NG
+@inbounds for k ∈ 1:Nz_tot, j ∈ Ny_tot-2:Ny_tot, i ∈ 1:Nx_tot
     dxdη[i, j, k] = CD2_R(x[i, j-2:j, k])
     dydη[i, j, k] = CD2_R(y[i, j-2:j, k])
     dzdη[i, j, k] = CD2_R(z[i, j-2:j, k])
@@ -172,7 +172,7 @@ end
     dzdζ[i, j, k] = CD2_L(z[i, j, k:k+2])
 end
 
-@inbounds for k ∈ Nz-2:Nz+2*NG, j ∈ 1:Ny_tot, i ∈ 1:Nx_tot
+@inbounds for k ∈ Nz_tot-2:Nz_tot, j ∈ 1:Ny_tot, i ∈ 1:Nx_tot
     dxdζ[i, j, k] = CD2_R(x[i, j, k-2:k])
     dydζ[i, j, k] = CD2_R(y[i, j, k-2:k])
     dzdζ[i, j, k] = CD2_R(z[i, j, k-2:k])

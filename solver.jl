@@ -45,20 +45,20 @@ function flowAdvance(U, ρi, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz
     C_s::Float64 = 1.458e-6
     T_s::Float64 = 110.4
 
-    @cuda threads=nthreads blocks=nblock c2Prim(U, Q, Nx, Ny, Nz, NG, 1.4, 287)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, Nx, Ny, Nz, NG, 1.4, 287)
 
-    @cuda threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz)
-    @cuda maxregs=32 threads=nthreads blocks=nblock WENO_x(Fx, Fp, Fm, NG, Nx, Ny, Nz, Ncons)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_x(Fx, Fp, Fm, NG, Nx, Ny, Nz, Ncons)
 
-    @cuda threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, dηdx, dηdy, dηdz)
-    @cuda maxregs=32 threads=nthreads blocks=nblock WENO_y(Fy, Fp, Fm, NG, Nx, Ny, Nz, Ncons)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, dηdx, dηdy, dηdz)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_y(Fy, Fp, Fm, NG, Nx, Ny, Nz, Ncons)
 
-    @cuda threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, dζdx, dζdy, dζdz)
-    @cuda maxregs=32 threads=nthreads blocks=nblock WENO_z(Fz, Fp, Fm, NG, Nx, Ny, Nz, Ncons)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, dζdx, dζdy, dζdz)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_z(Fz, Fp, Fm, NG, Nx, Ny, Nz, Ncons)
 
-    @cuda threads=nthreads blocks=nblock viscousFlux(Fv_x, Fv_y, Fv_z, Q, NG, Nx, Ny, Nz, Pr, Cp, C_s, T_s, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock viscousFlux(Fv_x, Fv_y, Fv_z, Q, NG, Nx, Ny, Nz, Pr, Cp, C_s, T_s, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
-    @cuda threads=nthreads blocks=nblock div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, NG, Nx, Ny, Nz, J)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, NG, Nx, Ny, Nz, J)
 
 end
 
@@ -111,7 +111,7 @@ function time_step(U, ρi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζd
               cld((Nz+2*NG), 4))
 
     for tt ∈ 1:ceil(Int, Time/dt)
-        if tt % 100 == 0
+        if tt % 10 == 0
             printstyled("Step: ", color=:cyan)
             print("$tt")
             printstyled("\tTime: ", color=:blue)
