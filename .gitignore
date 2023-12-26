@@ -1,0 +1,6 @@
+*.vts
+*.log
+*.jld2
+*.txt
+*.h5
+.vscode/**
