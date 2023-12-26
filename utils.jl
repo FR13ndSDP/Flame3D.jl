@@ -43,7 +43,7 @@ function copyOld(Un, U, Nx, Ny, Nz, NG, NV)
     return
 end
 
-function linComb(U, Un, Nx, Ny, NG, NV, a::Float64, b::Float64)
+function linComb(U, Un, Nx, Ny, Nz, NG, NV, a::Float64, b::Float64)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z

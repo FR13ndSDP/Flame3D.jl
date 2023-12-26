@@ -1,7 +1,6 @@
 using WriteVTK
 using CUDA
 using JLD2, JSON
-using Lux, LuxCUDA
 
 CUDA.allowscalar(false)
 include("split.jl")
@@ -139,8 +138,8 @@ function time_step(U, ρi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζd
 
         flowAdvance(U, ρi, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt)
 
-        @cuda threads=nthreads blocks=nblock linComb(U, Un, Nx, Ny, NG, Ncons, 0.25, 0.75)
-        # @cuda threads=nthreads blocks=nblock linComb(ρi, ρn, Nx, Ny, NG, Nspecs, 0.25, 0.75)
+        @cuda threads=nthreads blocks=nblock linComb(U, Un, Nx, Ny, Nz, NG, Ncons, 0.25, 0.75)
+        # @cuda threads=nthreads blocks=nblock linComb(ρi, ρn, Nx, Ny, Nz, NG, Nspecs, 0.25, 0.75)
         # @cuda threads=nthreads blocks=nblock fillSpec(ρi, U, NG, Nx, Ny, Nz)
         @cuda threads=nthreads blocks=nblock fillGhost(U, NG, Nx, Ny, Nz)
 
@@ -149,8 +148,8 @@ function time_step(U, ρi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζd
 
         flowAdvance(U, ρi, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt)
 
-        @cuda threads=nthreads blocks=nblock linComb(U, Un, Nx, Ny, NG, Ncons, 2/3, 1/3)
-        # @cuda threads=nthreads blocks=nblock linComb(ρi, ρn, Nx, Ny, NG, Nspecs, 2/3, 1/3)
+        @cuda threads=nthreads blocks=nblock linComb(U, Un, Nx, Ny, Nz, NG, Ncons, 2/3, 1/3)
+        # @cuda threads=nthreads blocks=nblock linComb(ρi, ρn, Nx, Ny, Nz, NG, Nspecs, 2/3, 1/3)
         # @cuda threads=nthreads blocks=nblock fillSpec(ρi, U, NG, Nx, Ny, Nz)
         @cuda threads=nthreads blocks=nblock fillGhost(U, NG, Nx, Ny, Nz)
         # @cuda threads=nthreads blocks=nblock correction(U, ρi, NG, Nx, Ny, Nz)
