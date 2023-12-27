@@ -19,7 +19,7 @@ function viscousFlux(Fv_x, Fv_y, Fv_z, Q, NG, Nx, Ny, Nz, Pr, Cp, C_s, T_s, dξd
     @inbounds ∂ζ∂z = dζdz[i, j, k]
 
     @inbounds Jac = J[i, j, k]
-    @inbounds T = Q[i, j, k, 5]
+    @inbounds T = Q[i, j, k, 6]
     μ = C_s * T * CUDA.sqrt(T)/(T + T_s)
     κ = Cp*μ/Pr
 
@@ -63,12 +63,12 @@ function viscousFlux(Fv_x, Fv_y, Fv_z, Q, NG, Nx, Ny, Nz, Pr, Cp, C_s, T_s, dξd
 
     div = dudx + dvdy + dwdz
 
-    τ11 = μ*(2*dudx - 2/3*div)
+    τ11 = μ*(2*dudx - c2*div)
     τ12 = μ*(dudy + dvdx)
     τ13 = μ*(dudz + dwdx)
-    τ22 = μ*(2*dvdy - 2/3*div)
+    τ22 = μ*(2*dvdy - c2*div)
     τ23 = μ*(dwdy + dvdz)
-    τ33 = μ*(2*dwdz - 2/3*div)
+    τ33 = μ*(2*dwdz - c2*div)
 
     E1 = u * τ11 + v * τ12 + w * τ13 + κ * dTdx
     E2 = u * τ12 + v * τ22 + w * τ23 + κ * dTdy

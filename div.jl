@@ -61,21 +61,3 @@ function div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, NG, Nx, Ny, Nz, J)
     @inbounds U[i, j, k, 5] += (dV14dξ + dV24dη + dV34dζ) * dt * Jac
     return
 end
-
-#Range: 2+NG -> N+NG-1
-function divSpecs(U, Fx, Fy, Fz, dt, NG, Nx, Ny, Nz, J)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
-    if i > Nx+NG-1 || i < 2+NG || j > Ny+NG-1 || j < 2+NG || k > Nz+NG-1 || k < 2+NG
-        return
-    end
-
-    @inbounds Jac = J[i, j, k]
-    for n = 1:Nspecs
-        @inbounds U[i, j, k, n] +=  (Fx[i-1-NG, j-1-NG, k-1-NG, n] - Fx[i-NG, j-1-NG, k-1-NG, n] 
-                                   + Fy[i-1-NG, j-1-NG, k-1-NG, n] - Fy[i-1-NG, j-NG, k-1-NG, n]
-                                   + Fz[i-1-NG, j-1-NG, k-1-NG, n] - Fz[i-1-NG, j-1-NG, k-NG, n]) * dt * Jac
-    end
-    return
-end
