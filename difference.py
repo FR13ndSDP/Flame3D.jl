@@ -25,5 +25,8 @@ def fluxCoeff(N, k):
         F_coeff[i] = F_coeff[i-1] - coef[i]
     return F_coeff
 
-a = coeff(5, 0, 1)
-print(a)
+# Mixing CD6(0.3), UP5(0.7)
+a = fluxCoeff(7, -3)
+b = fluxCoeff(6, -3)
+b = np.append(b, 0)
+print(b*0.7+0.3*a)

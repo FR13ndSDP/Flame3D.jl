@@ -11,7 +11,7 @@ function fillGhost(U, NG, Nx, Ny, Nz)
     T_wall::Float64 = 5323
     Rg::Float64 = 287
 
-    noise::Float64 = rand() * 0.01 * 3757.810529345963
+    noise::Float64 = rand() * 0.02 * 3757.810529345963
     # Mach 10 inlet
     if i <= 10
         @inbounds U[i, j, k, 1] = 0.035651512619407424

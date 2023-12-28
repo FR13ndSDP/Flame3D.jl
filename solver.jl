@@ -10,7 +10,7 @@ include("boundary.jl")
 include("utils.jl")
 include("div.jl")
 
-function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt)
+function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
     nthreads = (8, 8, 4)
     nblock = (cld((Nx+2*NG), 8), 
               cld((Ny+2*NG), 8),
@@ -30,13 +30,13 @@ function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG,
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, Nx, Ny, Nz, NG, 1.4, 287)
 
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_x(Fx, Fp, Fm, NG, Nx, Ny, Nz, Ncons)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_x(Fx, Q, Fp, Fm, NG, Nx, Ny, Nz, Ncons, ϕ)
 
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, dηdx, dηdy, dηdz)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_y(Fy, Fp, Fm, NG, Nx, Ny, Nz, Ncons)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_y(Fy, Q, Fp, Fm, NG, Nx, Ny, Nz, Ncons, ϕ)
 
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, dζdx, dζdy, dζdz)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_z(Fz, Fp, Fm, NG, Nx, Ny, Nz, Ncons)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_z(Fz, Q, Fp, Fm, NG, Nx, Ny, Nz, Ncons, ϕ)
 
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock viscousFlux(Fv_x, Fv_y, Fv_z, Q, NG, Nx, Ny, Nz, Pr, Cp, C_s, T_s, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
@@ -44,7 +44,7 @@ function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG,
 
 end
 
-function time_step(U, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, Nx, Ny, Nz, NG, dt)
+function time_step(U, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, Nx, Ny, Nz, NG, dt, ϕ)
     Nx_tot = Nx+2*NG
     Ny_tot = Ny+2*NG
     Nz_tot = Nz+2*NG
@@ -79,16 +79,16 @@ function time_step(U, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, d�
 
         # RK3-1
         @cuda threads=nthreads blocks=nblock copyOld(Un, U, Nx, Ny, Nz, NG, Ncons)
-        flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt)
+        flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
         @cuda threads=nthreads blocks=nblock fillGhost(U, NG, Nx, Ny, Nz)
 
         # RK3-2
-        flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt)
+        flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
         @cuda threads=nthreads blocks=nblock linComb(U, Un, Nx, Ny, Nz, NG, Ncons, 0.25, 0.75)
         @cuda threads=nthreads blocks=nblock fillGhost(U, NG, Nx, Ny, Nz)
 
         # RK3-3
-        flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt)
+        flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
         @cuda threads=nthreads blocks=nblock linComb(U, Un, Nx, Ny, Nz, NG, Ncons, 2/3, 1/3)
         @cuda threads=nthreads blocks=nblock fillGhost(U, NG, Nx, Ny, Nz)
     end

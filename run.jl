@@ -5,13 +5,14 @@ using PyCall
 @load "metrics.jld2" NG Nx Ny Nz dξdx dξdy dξdz dηdx dηdy dηdz dζdx dζdy dζdz J x y z
 
 # global variables, do not change name
-const dt::Float64 = 1e-8
-const Time::Float64 = 5e-5
+const dt::Float64 = 2e-8
+const Time::Float64 = 5e-4
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
 const Nprim::Int64 = 7 # ρ u v w p T c 
 const mech = "./air.yaml"
 
 U = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG, Ncons)
+ϕ = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG, 3) # shock sensor
 
 #initialization on CPU
 function initialize(U, mech)
@@ -34,6 +35,7 @@ end
 initialize(U, mech)
 
 U_d = CuArray(U)
+ϕ_d = CuArray(ϕ)
 dξdx_d = CuArray(dξdx)
 dξdy_d = CuArray(dξdy)
 dξdz_d = CuArray(dξdz)
@@ -45,8 +47,9 @@ dζdy_d = CuArray(dζdy)
 dζdz_d = CuArray(dζdz)
 J_d = CuArray(J)
 
-@time time_step(U_d, dξdx_d, dξdy_d, dξdz_d, dηdx_d, dηdy_d, dηdz_d, dζdx_d, dζdy_d, dζdz_d, J_d, Nx, Ny, Nz, NG, dt)
+@time time_step(U_d, dξdx_d, dξdy_d, dξdz_d, dηdx_d, dηdy_d, dηdz_d, dζdx_d, dζdy_d, dζdz_d, J_d, Nx, Ny, Nz, NG, dt, ϕ_d)
 copyto!(U, U_d)
+copyto!(ϕ, ϕ_d)
 
 rho = U[:, :, :, 1]
 u =   U[:, :, :, 2]./rho
@@ -54,7 +57,9 @@ v =   U[:, :, :, 3]./rho
 w =   U[:, :, :, 4]./rho
 p = @. (U[:, :, :, 5] - 0.5*rho*(u^2+v^2+w^2)) * 0.4
 T = @. p/(287.0 * rho)
-
+ϕx = ϕ[:, :, :, 1]
+ϕy = ϕ[:, :, :, 2]
+ϕz = ϕ[:, :, :, 3]
 vtk_grid("result.vts", x, y, z) do vtk
     vtk["rho"] = rho
     vtk["u"] = u
@@ -62,4 +67,7 @@ vtk_grid("result.vts", x, y, z) do vtk
     vtk["w"] = w
     vtk["p"] = p
     vtk["T"] = T
+    vtk["phix"] = ϕx
+    vtk["phiy"] = ϕy
+    vtk["phiz"] = ϕz
 end 

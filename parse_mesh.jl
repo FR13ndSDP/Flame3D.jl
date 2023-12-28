@@ -3,10 +3,10 @@ using JLD2
 using WriteVTK
 
 const NG::Int64 = 4
-const Nx::Int64 = 512
+const Nx::Int64 = 2048
 const Ny::Int64 = 256
-const Nz::Int64 = 8
-const Lx::Float64 = 1
+const Nz::Int64 = 16
+const Lx::Float64 = 2
 const Ly::Float64 = 0.1
 const Lz::Float64 = 0.01
 const Nx_tot::Int64 = Nx + 2*NG
