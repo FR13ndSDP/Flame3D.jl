@@ -12,44 +12,44 @@ function div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, NG, Nx, Ny, Nz, J)
     c3::Float64 = -3/4
 
     @inbounds Jac = J[i, j, k]
-    @inbounds dV11dξ = c1*(Fv_x[i-1-NG, j+2-NG, k+2-NG, 1] - Fv_x[i+5-NG, j+2-NG, k+2-NG, 1]) 
-                     + c2*(Fv_x[i-NG,   j+2-NG, k+2-NG, 1] - Fv_x[i+4-NG, j+2-NG, k+2-NG, 1]) 
-                     + c3*(Fv_x[i+1-NG, j+2-NG, k+2-NG, 1] - Fv_x[i+3-NG, j+2-NG, k+2-NG, 1])
-    @inbounds dV12dξ = c1*(Fv_x[i-1-NG, j+2-NG, k+2-NG, 2] - Fv_x[i+5-NG, j+2-NG, k+2-NG, 2]) 
-                     + c2*(Fv_x[i-NG,   j+2-NG, k+2-NG, 2] - Fv_x[i+4-NG, j+2-NG, k+2-NG, 2]) 
-                     + c3*(Fv_x[i+1-NG, j+2-NG, k+2-NG, 2] - Fv_x[i+3-NG, j+2-NG, k+2-NG, 2])
-    @inbounds dV13dξ = c1*(Fv_x[i-1-NG, j+2-NG, k+2-NG, 3] - Fv_x[i+5-NG, j+2-NG, k+2-NG, 3]) 
-                     + c2*(Fv_x[i-NG,   j+2-NG, k+2-NG, 3] - Fv_x[i+4-NG, j+2-NG, k+2-NG, 3]) 
-                     + c3*(Fv_x[i+1-NG, j+2-NG, k+2-NG, 3] - Fv_x[i+3-NG, j+2-NG, k+2-NG, 3])
-    @inbounds dV14dξ = c1*(Fv_x[i-1-NG, j+2-NG, k+2-NG, 4] - Fv_x[i+5-NG, j+2-NG, k+2-NG, 4]) 
-                     + c2*(Fv_x[i-NG,   j+2-NG, k+2-NG, 4] - Fv_x[i+4-NG, j+2-NG, k+2-NG, 4]) 
-                     + c3*(Fv_x[i+1-NG, j+2-NG, k+2-NG, 4] - Fv_x[i+3-NG, j+2-NG, k+2-NG, 4])
+    @inbounds dV11dξ = c1*(Fv_x[i-1-NG, j+2-NG, k+2-NG, 1] - Fv_x[i+5-NG, j+2-NG, k+2-NG, 1]) + 
+                       c2*(Fv_x[i-NG,   j+2-NG, k+2-NG, 1] - Fv_x[i+4-NG, j+2-NG, k+2-NG, 1]) + 
+                       c3*(Fv_x[i+1-NG, j+2-NG, k+2-NG, 1] - Fv_x[i+3-NG, j+2-NG, k+2-NG, 1])
+    @inbounds dV12dξ = c1*(Fv_x[i-1-NG, j+2-NG, k+2-NG, 2] - Fv_x[i+5-NG, j+2-NG, k+2-NG, 2]) +
+                       c2*(Fv_x[i-NG,   j+2-NG, k+2-NG, 2] - Fv_x[i+4-NG, j+2-NG, k+2-NG, 2]) +
+                       c3*(Fv_x[i+1-NG, j+2-NG, k+2-NG, 2] - Fv_x[i+3-NG, j+2-NG, k+2-NG, 2])
+    @inbounds dV13dξ = c1*(Fv_x[i-1-NG, j+2-NG, k+2-NG, 3] - Fv_x[i+5-NG, j+2-NG, k+2-NG, 3]) +
+                       c2*(Fv_x[i-NG,   j+2-NG, k+2-NG, 3] - Fv_x[i+4-NG, j+2-NG, k+2-NG, 3]) +
+                       c3*(Fv_x[i+1-NG, j+2-NG, k+2-NG, 3] - Fv_x[i+3-NG, j+2-NG, k+2-NG, 3])
+    @inbounds dV14dξ = c1*(Fv_x[i-1-NG, j+2-NG, k+2-NG, 4] - Fv_x[i+5-NG, j+2-NG, k+2-NG, 4]) +
+                       c2*(Fv_x[i-NG,   j+2-NG, k+2-NG, 4] - Fv_x[i+4-NG, j+2-NG, k+2-NG, 4]) +
+                       c3*(Fv_x[i+1-NG, j+2-NG, k+2-NG, 4] - Fv_x[i+3-NG, j+2-NG, k+2-NG, 4])
 
-    @inbounds dV21dη = c1*(Fv_y[i+2-NG, j-1-NG, k+2-NG, 1] - Fv_y[i+2-NG, j+5-NG, k+2-NG, 1]) 
-                     + c2*(Fv_y[i+2-NG, j-NG,   k+2-NG, 1] - Fv_y[i+2-NG, j+4-NG, k+2-NG, 1]) 
-                     + c3*(Fv_y[i+2-NG, j+1-NG, k+2-NG, 1] - Fv_y[i+2-NG, j+3-NG, k+2-NG, 1])
-    @inbounds dV22dη = c1*(Fv_y[i+2-NG, j-1-NG, k+2-NG, 2] - Fv_y[i+2-NG, j+5-NG, k+2-NG, 2]) 
-                     + c2*(Fv_y[i+2-NG, j-NG,   k+2-NG, 2] - Fv_y[i+2-NG, j+4-NG, k+2-NG, 2]) 
-                     + c3*(Fv_y[i+2-NG, j+1-NG, k+2-NG, 2] - Fv_y[i+2-NG, j+3-NG, k+2-NG, 2])
-    @inbounds dV23dη = c1*(Fv_y[i+2-NG, j-1-NG, k+2-NG, 3] - Fv_y[i+2-NG, j+5-NG, k+2-NG, 3]) 
-                     + c2*(Fv_y[i+2-NG, j-NG,   k+2-NG, 3] - Fv_y[i+2-NG, j+4-NG, k+2-NG, 3]) 
-                     + c3*(Fv_y[i+2-NG, j+1-NG, k+2-NG, 3] - Fv_y[i+2-NG, j+3-NG, k+2-NG, 3])
-    @inbounds dV24dη = c1*(Fv_y[i+2-NG, j-1-NG, k+2-NG, 4] - Fv_y[i+2-NG, j+5-NG, k+2-NG, 4]) 
-                     + c2*(Fv_y[i+2-NG, j-NG,   k+2-NG, 4] - Fv_y[i+2-NG, j+4-NG, k+2-NG, 4]) 
-                     + c3*(Fv_y[i+2-NG, j+1-NG, k+2-NG, 4] - Fv_y[i+2-NG, j+3-NG, k+2-NG, 4])
+    @inbounds dV21dη = c1*(Fv_y[i+2-NG, j-1-NG, k+2-NG, 1] - Fv_y[i+2-NG, j+5-NG, k+2-NG, 1]) + 
+                       c2*(Fv_y[i+2-NG, j-NG,   k+2-NG, 1] - Fv_y[i+2-NG, j+4-NG, k+2-NG, 1]) + 
+                       c3*(Fv_y[i+2-NG, j+1-NG, k+2-NG, 1] - Fv_y[i+2-NG, j+3-NG, k+2-NG, 1])
+    @inbounds dV22dη = c1*(Fv_y[i+2-NG, j-1-NG, k+2-NG, 2] - Fv_y[i+2-NG, j+5-NG, k+2-NG, 2]) +
+                       c2*(Fv_y[i+2-NG, j-NG,   k+2-NG, 2] - Fv_y[i+2-NG, j+4-NG, k+2-NG, 2]) +
+                       c3*(Fv_y[i+2-NG, j+1-NG, k+2-NG, 2] - Fv_y[i+2-NG, j+3-NG, k+2-NG, 2])
+    @inbounds dV23dη = c1*(Fv_y[i+2-NG, j-1-NG, k+2-NG, 3] - Fv_y[i+2-NG, j+5-NG, k+2-NG, 3]) +
+                       c2*(Fv_y[i+2-NG, j-NG,   k+2-NG, 3] - Fv_y[i+2-NG, j+4-NG, k+2-NG, 3]) +
+                       c3*(Fv_y[i+2-NG, j+1-NG, k+2-NG, 3] - Fv_y[i+2-NG, j+3-NG, k+2-NG, 3])
+    @inbounds dV24dη = c1*(Fv_y[i+2-NG, j-1-NG, k+2-NG, 4] - Fv_y[i+2-NG, j+5-NG, k+2-NG, 4]) +
+                       c2*(Fv_y[i+2-NG, j-NG,   k+2-NG, 4] - Fv_y[i+2-NG, j+4-NG, k+2-NG, 4]) +
+                       c3*(Fv_y[i+2-NG, j+1-NG, k+2-NG, 4] - Fv_y[i+2-NG, j+3-NG, k+2-NG, 4])
 
-    @inbounds dV31dζ = c1*(Fv_z[i+2-NG, j+2-NG, k-1-NG, 1] - Fv_z[i+2-NG, j+2-NG, k+5-NG, 1]) 
-                     + c2*(Fv_z[i+2-NG, j+2-NG, k-NG,   1] - Fv_z[i+2-NG, j+2-NG, k+4-NG, 1]) 
-                     + c3*(Fv_z[i+2-NG, j+2-NG, k+1-NG, 1] - Fv_z[i+2-NG, j+2-NG, k+3-NG, 1])
-    @inbounds dV32dζ = c1*(Fv_z[i+2-NG, j+2-NG, k-1-NG, 2] - Fv_z[i+2-NG, j+2-NG, k+5-NG, 2]) 
-                     + c2*(Fv_z[i+2-NG, j+2-NG, k-NG,   2] - Fv_z[i+2-NG, j+2-NG, k+4-NG, 2]) 
-                     + c3*(Fv_z[i+2-NG, j+2-NG, k+1-NG, 2] - Fv_z[i+2-NG, j+2-NG, k+3-NG, 2])
-    @inbounds dV33dζ = c1*(Fv_z[i+2-NG, j+2-NG, k-1-NG, 3] - Fv_z[i+2-NG, j+2-NG, k+5-NG, 3]) 
-                     + c2*(Fv_z[i+2-NG, j+2-NG, k-NG,   3] - Fv_z[i+2-NG, j+2-NG, k+4-NG, 3]) 
-                     + c3*(Fv_z[i+2-NG, j+2-NG, k+1-NG, 3] - Fv_z[i+2-NG, j+2-NG, k+3-NG, 3])
-    @inbounds dV34dζ = c1*(Fv_z[i+2-NG, j+2-NG, k-1-NG, 4] - Fv_z[i+2-NG, j+2-NG, k+5-NG, 4]) 
-                     + c2*(Fv_z[i+2-NG, j+2-NG, k-NG,   4] - Fv_z[i+2-NG, j+2-NG, k+4-NG, 4]) 
-                     + c3*(Fv_z[i+2-NG, j+2-NG, k+1-NG, 4] - Fv_z[i+2-NG, j+2-NG, k+3-NG, 4])
+    @inbounds dV31dζ = c1*(Fv_z[i+2-NG, j+2-NG, k-1-NG, 1] - Fv_z[i+2-NG, j+2-NG, k+5-NG, 1]) +
+                       c2*(Fv_z[i+2-NG, j+2-NG, k-NG,   1] - Fv_z[i+2-NG, j+2-NG, k+4-NG, 1]) +
+                       c3*(Fv_z[i+2-NG, j+2-NG, k+1-NG, 1] - Fv_z[i+2-NG, j+2-NG, k+3-NG, 1])
+    @inbounds dV32dζ = c1*(Fv_z[i+2-NG, j+2-NG, k-1-NG, 2] - Fv_z[i+2-NG, j+2-NG, k+5-NG, 2]) +
+                       c2*(Fv_z[i+2-NG, j+2-NG, k-NG,   2] - Fv_z[i+2-NG, j+2-NG, k+4-NG, 2]) +
+                       c3*(Fv_z[i+2-NG, j+2-NG, k+1-NG, 2] - Fv_z[i+2-NG, j+2-NG, k+3-NG, 2])
+    @inbounds dV33dζ = c1*(Fv_z[i+2-NG, j+2-NG, k-1-NG, 3] - Fv_z[i+2-NG, j+2-NG, k+5-NG, 3]) +
+                       c2*(Fv_z[i+2-NG, j+2-NG, k-NG,   3] - Fv_z[i+2-NG, j+2-NG, k+4-NG, 3]) +
+                       c3*(Fv_z[i+2-NG, j+2-NG, k+1-NG, 3] - Fv_z[i+2-NG, j+2-NG, k+3-NG, 3])
+    @inbounds dV34dζ = c1*(Fv_z[i+2-NG, j+2-NG, k-1-NG, 4] - Fv_z[i+2-NG, j+2-NG, k+5-NG, 4]) +
+                       c2*(Fv_z[i+2-NG, j+2-NG, k-NG,   4] - Fv_z[i+2-NG, j+2-NG, k+4-NG, 4]) +
+                       c3*(Fv_z[i+2-NG, j+2-NG, k+1-NG, 4] - Fv_z[i+2-NG, j+2-NG, k+3-NG, 4])
     for n = 1:Ncons
         @inbounds U[i, j, k, n] +=  (Fx[i-1-NG, j-1-NG, k-1-NG, n] - Fx[i-NG, j-1-NG, k-1-NG, n] 
                                    + Fy[i-1-NG, j-1-NG, k-1-NG, n] - Fy[i-1-NG, j-NG, k-1-NG, n]

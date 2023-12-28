@@ -61,7 +61,7 @@ function WENO_x(F, Fp, Fm, NG, Nx, Ny, Nz, NV)
         return
     end
 
-    eps::Float64 = CUDA.eps(Float64)
+    eps::Float64 = CUDA.eps(1e-10)
     tmp1::Float64 = 13/12
     tmp2::Float64 = 1/6
 
@@ -137,7 +137,7 @@ function WENO_y(F, Fp, Fm, NG, Nx, Ny, Nz, NV)
         return
     end
 
-    eps::Float64 = CUDA.eps(Float64)
+    eps::Float64 = CUDA.eps(1e-10)
     tmp1::Float64 = 13/12
     tmp2::Float64 = 1/6
 
@@ -213,7 +213,7 @@ function WENO_z(F, Fp, Fm, NG, Nx, Ny, Nz, NV)
         return
     end
 
-    eps::Float64 = CUDA.eps(Float64)
+    eps::Float64 = CUDA.eps(1e-10)
     tmp1::Float64 = 13/12
     tmp2::Float64 = 1/6
 

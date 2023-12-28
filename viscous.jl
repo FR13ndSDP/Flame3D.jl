@@ -24,22 +24,22 @@ function viscousFlux(Fv_x, Fv_y, Fv_z, Q, NG, Nx, Ny, Nz, Pr, Cp, C_s, T_s, dξd
     κ = Cp*μ/Pr
 
     c1::Float64 = 1/12
-    c2::Float64 = 2/3
-    @inbounds ∂u∂ξ = c1*(Q[i-2, j, k, 2] - Q[i+2, j, k, 2]) - c2*(Q[i-1, j, k, 2] - Q[i+1, j, k, 2])
-    @inbounds ∂u∂η = c1*(Q[i, j-2, k, 2] - Q[i, j+2, k, 2]) - c2*(Q[i, j-1, k, 2] - Q[i, j+1, k, 2])
-    @inbounds ∂u∂ζ = c1*(Q[i, j, k-2, 2] - Q[i, j, k+2, 2]) - c2*(Q[i, j, k-1, 2] - Q[i, j, k+1, 2])
+    c2::Float64 = -2/3
+    @inbounds ∂u∂ξ = c1*(Q[i-2, j, k, 2] - Q[i+2, j, k, 2]) + c2*(Q[i-1, j, k, 2] - Q[i+1, j, k, 2])
+    @inbounds ∂u∂η = c1*(Q[i, j-2, k, 2] - Q[i, j+2, k, 2]) + c2*(Q[i, j-1, k, 2] - Q[i, j+1, k, 2])
+    @inbounds ∂u∂ζ = c1*(Q[i, j, k-2, 2] - Q[i, j, k+2, 2]) + c2*(Q[i, j, k-1, 2] - Q[i, j, k+1, 2])
 
-    @inbounds ∂v∂ξ = c1*(Q[i-2, j, k, 3] - Q[i+2, j, k, 3]) - c2*(Q[i-1, j, k, 3] - Q[i+1, j, k, 3])
-    @inbounds ∂v∂η = c1*(Q[i, j-2, k, 3] - Q[i, j+2, k, 3]) - c2*(Q[i, j-1, k, 3] - Q[i, j+1, k, 3])
-    @inbounds ∂v∂ζ = c1*(Q[i, j, k-2, 3] - Q[i, j, k+2, 3]) - c2*(Q[i, j, k-1, 3] - Q[i, j, k+1, 3])
+    @inbounds ∂v∂ξ = c1*(Q[i-2, j, k, 3] - Q[i+2, j, k, 3]) + c2*(Q[i-1, j, k, 3] - Q[i+1, j, k, 3])
+    @inbounds ∂v∂η = c1*(Q[i, j-2, k, 3] - Q[i, j+2, k, 3]) + c2*(Q[i, j-1, k, 3] - Q[i, j+1, k, 3])
+    @inbounds ∂v∂ζ = c1*(Q[i, j, k-2, 3] - Q[i, j, k+2, 3]) + c2*(Q[i, j, k-1, 3] - Q[i, j, k+1, 3])
 
-    @inbounds ∂w∂ξ = c1*(Q[i-2, j, k, 4] - Q[i+2, j, k, 4]) - c2*(Q[i-1, j, k, 4] - Q[i+1, j, k, 4])
-    @inbounds ∂w∂η = c1*(Q[i, j-2, k, 4] - Q[i, j+2, k, 4]) - c2*(Q[i, j-1, k, 4] - Q[i, j+1, k, 4])
-    @inbounds ∂w∂ζ = c1*(Q[i, j, k-2, 4] - Q[i, j, k+2, 4]) - c2*(Q[i, j, k-1, 4] - Q[i, j, k+1, 4])
+    @inbounds ∂w∂ξ = c1*(Q[i-2, j, k, 4] - Q[i+2, j, k, 4]) + c2*(Q[i-1, j, k, 4] - Q[i+1, j, k, 4])
+    @inbounds ∂w∂η = c1*(Q[i, j-2, k, 4] - Q[i, j+2, k, 4]) + c2*(Q[i, j-1, k, 4] - Q[i, j+1, k, 4])
+    @inbounds ∂w∂ζ = c1*(Q[i, j, k-2, 4] - Q[i, j, k+2, 4]) + c2*(Q[i, j, k-1, 4] - Q[i, j, k+1, 4])
 
-    @inbounds ∂T∂ξ = c1*(Q[i-2, j, k, 6] - Q[i+2, j, k, 6]) - c2*(Q[i-1, j, k, 6] - Q[i+1, j, k, 6])
-    @inbounds ∂T∂η = c1*(Q[i, j-2, k, 6] - Q[i, j+2, k, 6]) - c2*(Q[i, j-1, k, 6] - Q[i, j+1, k, 6])
-    @inbounds ∂T∂ζ = c1*(Q[i, j, k-2, 6] - Q[i, j, k+2, 6]) - c2*(Q[i, j, k-1, 6] - Q[i, j, k+1, 6])
+    @inbounds ∂T∂ξ = c1*(Q[i-2, j, k, 6] - Q[i+2, j, k, 6]) + c2*(Q[i-1, j, k, 6] - Q[i+1, j, k, 6])
+    @inbounds ∂T∂η = c1*(Q[i, j-2, k, 6] - Q[i, j+2, k, 6]) + c2*(Q[i, j-1, k, 6] - Q[i, j+1, k, 6])
+    @inbounds ∂T∂ζ = c1*(Q[i, j, k-2, 6] - Q[i, j, k+2, 6]) + c2*(Q[i, j, k-1, 6] - Q[i, j, k+1, 6])
 
     @inbounds u = Q[i, j, k, 2]
     @inbounds v = Q[i, j, k, 3]

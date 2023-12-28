@@ -5,8 +5,8 @@ using PyCall
 @load "metrics.jld2" NG Nx Ny Nz dξdx dξdy dξdz dηdx dηdy dηdz dζdx dζdy dζdz J x y z
 
 # global variables, do not change name
-const dt::Float64 = 1e-7
-const Time::Float64 = 5e-4
+const dt::Float64 = 1e-8
+const Time::Float64 = 5e-5
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
 const Nprim::Int64 = 7 # ρ u v w p T c 
 const mech = "./air.yaml"
