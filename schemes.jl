@@ -1,3 +1,28 @@
+function shockSensor(ϕ, Q, Nx, Ny, Nz, NG)
+    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+
+    if i < 1+NG || i > Nx+NG || j < 1+NG || j > Ny+NG || k < 1+NG || k > Nz+NG
+        return
+    end
+
+    @inbounds Px1 = Q[i-1, j, k, 5]
+    @inbounds Px2 = Q[i,   j, k, 5]
+    @inbounds Px3 = Q[i+1, j, k, 5]
+    @inbounds Py1 = Q[i, j-1, k, 5]
+    @inbounds Py2 = Q[i, j,   k, 5]
+    @inbounds Py3 = Q[i, j+1, k, 5]
+    @inbounds Pz1 = Q[i, j, k-1, 5]
+    @inbounds Pz2 = Q[i, j, k  , 5]
+    @inbounds Pz3 = Q[i, j, k+1, 5]
+    ϕx = CUDA.abs(-Px1 + 2*Px2 - Px3)/(Px1 + 2*Px2 + Px3)
+    ϕy = CUDA.abs(-Py1 + 2*Py2 - Py3)/(Py1 + 2*Py2 + Py3)
+    ϕz = CUDA.abs(-Pz1 + 2*Pz2 - Pz3)/(Pz1 + 2*Pz2 + Pz3)
+    ϕ[i, j, k] = ϕx + ϕy + ϕz
+    return
+end
+
 @inline function minmod(a, b)
     ifelse(a*b > 0, (CUDA.abs(a) > CUDA.abs(b)) ? b : a, zero(a))
 end
@@ -52,7 +77,7 @@ function NND_z(F, Fp, Fm, NG, Nx, Ny, Nz, NV)
 end
 
 #Range: 1 -> N-1
-function WENO_x(F, Q, Fp, Fm, NG, Nx, Ny, Nz, NV, ϕ)
+function WENO_x(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -61,7 +86,7 @@ function WENO_x(F, Q, Fp, Fm, NG, Nx, Ny, Nz, NV, ϕ)
         return
     end
 
-    eps::Float64 = CUDA.eps(1e-10)
+    eps::Float64 = CUDA.eps(1e-16)
     tmp1::Float64 = 13/12
     tmp2::Float64 = 1/6
 
@@ -73,12 +98,7 @@ function WENO_x(F, Q, Fp, Fm, NG, Nx, Ny, Nz, NV, ϕ)
     c6::Float64 = 0.005
 
     # Jameson sensor
-    @inbounds P1 = Q[i+NG, j+1+NG, k+1+NG, 5]
-    @inbounds P2 = Q[i+1+NG, j+1+NG, k+1+NG, 5]
-    @inbounds P3 = Q[i+2+NG, j+1+NG, k+1+NG, 5]
-    ϕx = CUDA.abs(-P1 + 2*P2 - P3)/(P1 + 2*P2 + P3)
-
-    ϕ[i+1+NG, j+1+NG, k+1+NG, 1] = ϕx
+    ϕx = ϕ[i+1+NG, j+1+NG, k+1+NG]
 
     if ϕx < 0.02
         for n = 1:NV
@@ -102,7 +122,7 @@ function WENO_x(F, Q, Fp, Fm, NG, Nx, Ny, Nz, NV, ϕ)
 
             @inbounds F[i, j, k, n] = fpx + fmx
         end
-    else
+    elseif ϕx < 0.8
         for n = 1:NV
             @inbounds V1 = Fp[i-2+NG, j+1+NG, k+1+NG, n]
             @inbounds V2 = Fp[i-1+NG, j+1+NG, k+1+NG, n]
@@ -162,12 +182,18 @@ function WENO_x(F, Q, Fp, Fm, NG, Nx, Ny, Nz, NV, ϕ)
             
             @inbounds F[i, j, k, n] = fpx + fmx
         end
+    else
+        for n = 1:NV
+            @inbounds fp = Fp[i+NG, j+1+NG, k+1+NG, n] + 0.5*minmod(Fp[i+1+NG, j+1+NG, k+1+NG, n]-Fp[i+NG, j+1+NG, k+1+NG, n], Fp[i+NG, j+1+NG, k+1+NG, n] - Fp[i-1+NG, j+1+NG, k+1+NG, n])
+            @inbounds fm = Fm[i+1+NG, j+1+NG, k+1+NG, n] - 0.5*minmod(Fm[i+2+NG, j+1+NG, k+1+NG, n]-Fm[i+1+NG, j+1+NG, k+1+NG, n], Fm[i+1+NG, j+1+NG, k+1+NG, n] - Fm[i+NG, j+1+NG, k+1+NG, n])
+            @inbounds F[i, j, k, n] = fp + fm
+        end
     end
     return
 end
 
 #Range: 1 -> N-1
-function WENO_y(F, Q, Fp, Fm, NG, Nx, Ny, Nz, NV, ϕ)
+function WENO_y(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -176,7 +202,7 @@ function WENO_y(F, Q, Fp, Fm, NG, Nx, Ny, Nz, NV, ϕ)
         return
     end
 
-    eps::Float64 = CUDA.eps(1e-10)
+    eps::Float64 = CUDA.eps(1e-16)
     tmp1::Float64 = 13/12
     tmp2::Float64 = 1/6
 
@@ -188,12 +214,7 @@ function WENO_y(F, Q, Fp, Fm, NG, Nx, Ny, Nz, NV, ϕ)
     c6::Float64 = 0.005
 
     # Jameson sensor
-    @inbounds P1 = Q[i+1+NG, j+NG, k+1+NG, 5]
-    @inbounds P2 = Q[i+1+NG, j+1+NG, k+1+NG, 5]
-    @inbounds P3 = Q[i+1+NG, j+2+NG, k+1+NG, 5]
-    ϕy = CUDA.abs(-P1 + 2*P2 - P3)/(P1 + 2*P2 + P3)
-
-    ϕ[i+1+NG, j+1+NG, k+1+NG, 2] = ϕy
+    ϕy = ϕ[i+1+NG, j+1+NG, k+1+NG]
 
     if ϕy < 0.02
         for n = 1:NV
@@ -217,7 +238,7 @@ function WENO_y(F, Q, Fp, Fm, NG, Nx, Ny, Nz, NV, ϕ)
 
             @inbounds F[i, j, k, n] = fpy + fmy
         end
-    else
+    elseif ϕy < 0.8
         for n = 1:NV
             @inbounds V1 = Fp[i+1+NG, j-2+NG, k+1+NG, n]
             @inbounds V2 = Fp[i+1+NG, j-1+NG, k+1+NG, n]
@@ -277,12 +298,18 @@ function WENO_y(F, Q, Fp, Fm, NG, Nx, Ny, Nz, NV, ϕ)
             
             @inbounds F[i, j, k, n] = fpy + fmy
         end
+    else
+        for n = 1:NV
+            @inbounds fp = Fp[i+1+NG, j+NG, k+1+NG, n] + 0.5*minmod(Fp[i+1+NG, j+1+NG, k+1+NG, n]-Fp[i+1+NG, j+NG, k+1+NG, n], Fp[i+1+NG, j+NG, k+1+NG, n] - Fp[i+1+NG, j-1+NG, k+1+NG, n])
+            @inbounds fm = Fm[i+1+NG, j+1+NG, k+1+NG, n] - 0.5*minmod(Fm[i+1+NG, j+2+NG, k+1+NG, n]-Fm[i+1+NG, j+1+NG, k+1+NG, n], Fm[i+1+NG, j+1+NG, k+1+NG, n] - Fm[i+1+NG, j+NG, k+1+NG, n])
+            @inbounds F[i, j, k, n] = fp + fm
+        end  
     end
     return
 end
 
 #Range: 1 -> N-1
-function WENO_z(F, Q, Fp, Fm, NG, Nx, Ny, Nz, NV, ϕ)
+function WENO_z(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -291,7 +318,7 @@ function WENO_z(F, Q, Fp, Fm, NG, Nx, Ny, Nz, NV, ϕ)
         return
     end
 
-    eps::Float64 = CUDA.eps(1e-10)
+    eps::Float64 = CUDA.eps(1e-16)
     tmp1::Float64 = 13/12
     tmp2::Float64 = 1/6
 
@@ -303,12 +330,7 @@ function WENO_z(F, Q, Fp, Fm, NG, Nx, Ny, Nz, NV, ϕ)
     c6::Float64 = 0.005
 
     # Jameson sensor
-    @inbounds P1 = Q[i+1+NG, j+1+NG, k+NG, 5]
-    @inbounds P2 = Q[i+1+NG, j+1+NG, k+1+NG, 5]
-    @inbounds P3 = Q[i+1+NG, j+1+NG, k+2+NG, 5]
-    ϕz = CUDA.abs(-P1 + 2*P2 - P3)/(P1 + 2*P2 + P3)
-
-    ϕ[i+1+NG, j+1+NG, k+1+NG, 3] = ϕz
+    ϕz = ϕ[i+1+NG, j+1+NG, k+1+NG]
 
     if ϕz < 0.02
         for n = 1:NV
@@ -332,7 +354,7 @@ function WENO_z(F, Q, Fp, Fm, NG, Nx, Ny, Nz, NV, ϕ)
 
             @inbounds F[i, j, k, n] = fpz + fmz
         end
-    else
+    elseif ϕz < 0.8
         for n = 1:NV
             @inbounds V1 = Fp[i+1+NG, j+1+NG, k-2+NG, n]
             @inbounds V2 = Fp[i+1+NG, j+1+NG, k-1+NG, n]
@@ -392,6 +414,12 @@ function WENO_z(F, Q, Fp, Fm, NG, Nx, Ny, Nz, NV, ϕ)
             
             @inbounds F[i, j, k, n] = fpy + fmy
         end
+    else
+        for n = 1:NV
+            @inbounds fp = Fp[i+1+NG, j+1+NG, k+NG, n] + 0.5*minmod(Fp[i+1+NG, j+1+NG, k+1+NG, n]-Fp[i+1+NG, j+1+NG, k+NG, n], Fp[i+1+NG, j+1+NG, k+NG, n] - Fp[i+1+NG, j+1+NG, k-1+NG, n])
+            @inbounds fm = Fm[i+1+NG, j+1+NG, k+1+NG, n] - 0.5*minmod(Fm[i+1+NG, j+1+NG, k+2+NG, n]-Fm[i+1+NG, j+1+NG, k+1+NG, n], Fm[i+1+NG, j+1+NG, k+1+NG, n] - Fm[i+1+NG, j+1+NG, k+NG, n])
+            @inbounds F[i, j, k, n] = fp + fm
+        end    
     end
     return
 end

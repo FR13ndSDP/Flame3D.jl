@@ -29,14 +29,16 @@ function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG,
 
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, Nx, Ny, Nz, NG, 1.4, 287)
 
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q, Nx, Ny, Nz, NG)
+
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_x(Fx, Q, Fp, Fm, NG, Nx, Ny, Nz, Ncons, ϕ)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_x(Fx, ϕ, Fp, Fm, NG, Nx, Ny, Nz, Ncons)
 
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, dηdx, dηdy, dηdz)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_y(Fy, Q, Fp, Fm, NG, Nx, Ny, Nz, Ncons, ϕ)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_y(Fy, ϕ, Fp, Fm, NG, Nx, Ny, Nz, Ncons)
 
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, dζdx, dζdy, dζdz)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_z(Fz, Q, Fp, Fm, NG, Nx, Ny, Nz, Ncons, ϕ)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_z(Fz, ϕ, Fp, Fm, NG, Nx, Ny, Nz, Ncons)
 
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock viscousFlux(Fv_x, Fv_y, Fv_z, Q, NG, Nx, Ny, Nz, Pr, Cp, C_s, T_s, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
