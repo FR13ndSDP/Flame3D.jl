@@ -1,3 +1,5 @@
+include("reaction.jl")
+
 # Range: 1 -> N+2*NG
 function c2Prim(U, Q, Nx, Ny, Nz, NG, gamma, Rg)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
