@@ -4,4 +4,4 @@
 *.txt
 *.h5
 .vscode/**
-*.json
+!/NN/luxmodel.jld2
