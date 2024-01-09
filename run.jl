@@ -30,8 +30,7 @@ const Nspecs::Int64 = 5 # number of species
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
 const Nprim::Int64 = 7 # ρ u v w p T c 
 const mech = "./NN/air.yaml"
-const reaction::Bool = true
-
+const reaction::Bool = false
 const nthreads::Tuple{Int64, Int64, Int64} = (8, 8, 4)
 const nblock::Tuple{Int64, Int64, Int64} = (cld((Nx+2*NG), 8), 
                                             cld((Ny+2*NG), 8),

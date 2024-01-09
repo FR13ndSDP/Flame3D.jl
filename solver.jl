@@ -178,6 +178,7 @@ function time_step(U, ρi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζd
                 printstyled("Oops, NaN detected\n", color=:red)
                 return
             end
+            flush(stdout)
         end
 
         if reaction

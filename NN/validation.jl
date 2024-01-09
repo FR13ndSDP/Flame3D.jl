@@ -14,17 +14,14 @@ ct_gas.TPX = TPX
 r = ct.IdealGasReactor(ct_gas, name="R1")
 sim = ct.ReactorNet([r])
 T_evo_ct = zeros(Float64, 10000)
-P_evo_ct = zeros(Float64, 10000)
 Y_evo_ct = zeros(Float64, (5, 10000))
 T_evo_ct[1] = ct_gas.T
-P_evo_ct[1] = ct_gas.P
 Y_evo_ct[:, 1] = ct_gas.Y
 dt = 5e-8
 
 @time for i ∈ 1:9999
     sim.advance(i*dt)
     T_evo_ct[i+1] = ct_gas.T
-    P_evo_ct[i+1] = ct_gas.P
     Y_evo_ct[:, i+1] = ct_gas.Y
 end
 
@@ -32,10 +29,8 @@ end
 gas = ct.Solution(mech)
 gas.TPX = TPX
 T_evo = zeros(Float64, 10000)
-P_evo = zeros(Float64, 10000)
 Y_evo = zeros(Float64, (5, 10000))
 T_evo[1] = gas.T
-P_evo[1] = gas.P
 Y_evo[:, 1] = gas.Y
 
 input = zeros(Float64, 7)
@@ -58,7 +53,6 @@ labels_std = convert(Vector{Float64}, j["labels_std"])
     @. y_pred = (lambda * (y_pred * dt + input[3:end]) + 1).^(1/lambda)
     gas.TDY = t_pred, gas.density, y_pred
     T_evo[i+1] = gas.T
-    P_evo[i+1] = gas.P
     Y_evo[:, i+1] = gas.Y
 end
 
@@ -74,8 +68,7 @@ println("Max relative error for T: $max_err")
 # fig
 gr()
 p1 = plot([T_evo T_evo_ct], w = 1, lab = ["predict-T" "cantera-T"], ls=[:dot :solid], lw = 2)
-p2 = plot([P_evo P_evo_ct], w = 1, lab = ["predict-P" "cantera-P"], ls=[:dot :solid], lw = 2)
-p3 = plot(Y_evo[:, :]', ls=:solid, lw = 2, lab=nothing)
-p3 = plot!(Y_evo_ct[:, :]', ls=:dot, lw = 2, lab=nothing)
+p2 = plot(Y_evo[:, :]', ls=:solid, lw = 2, lab=nothing)
+p2 = plot!(Y_evo_ct[:, :]', ls=:dot, lw = 2, lab=nothing)
 
-plot(p1, p2, p3, layout=@layout([a; b; c]), size=(800,800))
+plot(p1, p2, layout=@layout([a; b]), size=(800,800))
