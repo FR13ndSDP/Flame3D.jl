@@ -98,7 +98,7 @@ function WENO_x(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
     c6::Float64 = 0.005
 
     # Jameson sensor
-    ϕx = ϕ[i+1+NG, j+1+NG, k+1+NG]
+    ϕx = ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+2+NG, j+1+NG, k+1+NG] + ϕ[i+NG, j+1+NG, k+1+NG]
 
     if ϕx < 0.02
         for n = 1:NV
@@ -214,7 +214,7 @@ function WENO_y(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
     c6::Float64 = 0.005
 
     # Jameson sensor
-    ϕy = ϕ[i+1+NG, j+1+NG, k+1+NG]
+    ϕy = ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+1+NG, j+2+NG, k+1+NG] + ϕ[i+1+NG, j+NG, k+1+NG]
 
     if ϕy < 0.02
         for n = 1:NV
@@ -330,7 +330,7 @@ function WENO_z(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
     c6::Float64 = 0.005
 
     # Jameson sensor
-    ϕz = ϕ[i+1+NG, j+1+NG, k+1+NG]
+    ϕz = ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+1+NG, j+1+NG, k+2+NG] + ϕ[i+1+NG, j+1+NG, k+NG]
 
     if ϕz < 0.02
         for n = 1:NV

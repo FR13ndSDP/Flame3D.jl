@@ -1,5 +1,5 @@
 # Mesh for flat plate
-using JLD2
+using HDF5
 using WriteVTK
 
 const NG::Int64 = 4
@@ -191,7 +191,25 @@ end
 @. dζdy = dxdη*dzdξ - dxdξ*dzdη
 @. dζdz = dxdξ*dydη - dxdη*dydξ
 
-@save "metrics.jld2" NG Nx Ny Nz dξdx dξdy dξdz dηdx dηdy dηdz dζdx dζdy dζdz J x y z
+h5open("metrics.h5", "w") do file
+    write(file, "metrics/NG", NG)
+    write(file, "metrics/Nx", Nx)
+    write(file, "metrics/Ny", Ny)
+    write(file, "metrics/Nz", Nz)
+    write(file, "metrics/dξdx", dξdx)
+    write(file, "metrics/dξdy", dξdy)
+    write(file, "metrics/dξdz", dξdz)
+    write(file, "metrics/dηdx", dηdx)
+    write(file, "metrics/dηdy", dηdy)
+    write(file, "metrics/dηdz", dηdz)
+    write(file, "metrics/dζdx", dζdx)
+    write(file, "metrics/dζdy", dζdy)
+    write(file, "metrics/dζdz", dζdz)
+    write(file, "metrics/J", J)
+    write(file, "metrics/x", x)
+    write(file, "metrics/y", y)
+    write(file, "metrics/z", z)
+end
 
 vtk_grid("mesh.vts", x, y, z) do vtk
     vtk["J"] = J

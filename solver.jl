@@ -1,7 +1,7 @@
 using WriteVTK
 using Lux, LuxCUDA
 using CUDA
-using JLD2, JSON
+using JLD2, JSON, HDF5
 
 CUDA.allowscalar(false)
 include("split.jl")
@@ -69,10 +69,10 @@ function specAdvance(U, ρi, Q, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Nx, Ny, Nz, NG, d�
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock NND_x(Fx_i, Fp_i, Fm_i, NG, Nx, Ny, Nz, Nspecs)
 
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock split(ρi, Q, U, Fp_i, Fm_i, dηdx, dηdy, dηdz, Nx, Ny, Nz, NG)
-    @cuda maxregs=255 fastmath=true  threads=nthreads blocks=nblock NND_y(Fy_i, Fp_i, Fm_i, NG, Nx, Ny, Nz, Nspecs)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock NND_y(Fy_i, Fp_i, Fm_i, NG, Nx, Ny, Nz, Nspecs)
 
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock split(ρi, Q, U, Fp_i, Fm_i, dζdx, dζdy, dζdz, Nx, Ny, Nz, NG)
-    @cuda maxregs=255 fastmath=true  threads=nthreads blocks=nblock NND_z(Fz_i, Fp_i, Fm_i, NG, Nx, Ny, Nz, Nspecs)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock NND_z(Fz_i, Fp_i, Fm_i, NG, Nx, Ny, Nz, Nspecs)
 
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock divSpecs(ρi, Fx_i, Fy_i, Fz_i, dt, NG, Nx, Ny, Nz, J)
 end
@@ -90,12 +90,12 @@ function pre_input(inputs, inputs_norm, Q, ρi, lambda, inputs_mean, inputs_std,
     @inbounds inputs[1, i + Nx*(j-1 + Ny*(k-1))] = Q[i+NG, j+NG, k+NG, 6] # T
     @inbounds inputs[2, i + Nx*(j-1 + Ny*(k-1))] = Q[i+NG, j+NG, k+NG, 5] # p
 
-    for n = 3:9
-        @inbounds Yi = max(ρi[i+NG, j+NG, k+NG, n-2], 0)/Q[i+NG, j+NG, k+NG, 1]
+    for n = 3:Nspecs+2
+        @inbounds Yi = CUDA.max(ρi[i+NG, j+NG, k+NG, n-2]/Q[i+NG, j+NG, k+NG, 1], 0)
         @inbounds inputs[n, i + Nx*(j-1 + Ny*(k-1))] = (Yi^lambda - 1) / lambda
     end
 
-    for n = 1:9
+    for n = 1:Nspecs+2
         @inbounds inputs_norm[n, i + Nx*(j-1 + Ny*(k-1))] = (inputs[n, i + Nx*(j-1 + Ny*(k-1))] - inputs_mean[n]) / inputs_std[n]
     end
     return
@@ -111,23 +111,27 @@ function post_predict(yt_pred, inputs, U, Q, ρi, dt, lambda, Nx, Ny, Nz, NG)
         return
     end
 
-    @inbounds T = yt_pred[8, i + Nx*(j-1 + Ny*(k-1))] * dt * Q[i+NG, j+NG, k+NG, 6] + Q[i+NG, j+NG, k+NG, 6]
-    @inbounds U[i+NG, j+NG, k+NG, 5] += (Q[i+NG, j+NG, k+NG, 1] * 287 * T - Q[i+NG, j+NG, k+NG, 5])/0.4
-    for n = 1:Nspecs-1
-        @inbounds Yi = (lambda * (yt_pred[n, i + Nx*(j-1 + Ny*(k-1))] * dt + inputs[n+2, i + Nx*(j-1 + Ny*(k-1))]) + 1) ^ (1/lambda)
-        @inbounds ρi[i+NG, j+NG, k+NG, n] = Yi * Q[i+NG, j+NG, k+NG, 1]
+    T = Q[i+NG, j+NG, k+NG, 6]
+    # only T > 2000 K calculate reaction
+    if T > 2000
+        @inbounds T += yt_pred[Nspecs+1, i + Nx*(j-1 + Ny*(k-1))] * dt
+        @inbounds U[i+NG, j+NG, k+NG, 5] += (Q[i+NG, j+NG, k+NG, 1] * 287 * T - Q[i+NG, j+NG, k+NG, 5])/0.4
+        for n = 1:Nspecs
+            @inbounds Yi = (lambda * (yt_pred[n, i + Nx*(j-1 + Ny*(k-1))] * dt + inputs[n+2, i + Nx*(j-1 + Ny*(k-1))]) + 1) ^ (1/lambda)
+            @inbounds ρi[i+NG, j+NG, k+NG, n] = Yi * Q[i+NG, j+NG, k+NG, 1]
+        end
     end
     return
 end
 
-function time_step(U, ρi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, Nx, Ny, Nz, NG, dt, ϕ)
+function time_step(U, ρi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, Nx, Ny, Nz, NG, dt, ϕ, reaction)
     Nx_tot = Nx+2*NG
     Ny_tot = Ny+2*NG
     Nz_tot = Nz+2*NG
 
     Un = copy(U)
     ρn = copy(ρi)
-    Q =    CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nprim)
+    Q  =   CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nprim)
     Fp =   CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Ncons)
     Fm =   CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Ncons)
     Fx =   CUDA.zeros(Float64, Nx-1, Ny-2, Nz-2, Ncons)
@@ -146,21 +150,23 @@ function time_step(U, ρi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζd
     fillGhost(U, NG, Nx, Ny, Nz)
     fillSpec(ρi, U, NG, Nx, Ny, Nz)
 
-    @load "./NN/luxmodel.jld2" model ps st
+    if reaction
+        @load "./NN/luxmodel.jld2" model ps st
 
-    ps = ps |> gpu_device()
+        ps = ps |> gpu_device()
 
-    j = JSON.parsefile("./NN/norm.json")
-    lambda = j["lambda"]
-    inputs_mean = CuArray(convert(Vector{Float32}, j["inputs_mean"]))
-    inputs_std =  CuArray(convert(Vector{Float32}, j["inputs_std"]))
-    labels_mean = CuArray(convert(Vector{Float32}, j["labels_mean"]))
-    labels_std =  CuArray(convert(Vector{Float32}, j["labels_std"]))
+        j = JSON.parsefile("./NN/norm.json")
+        lambda = j["lambda"]
+        inputs_mean = CuArray(convert(Vector{Float32}, j["inputs_mean"]))
+        inputs_std =  CuArray(convert(Vector{Float32}, j["inputs_std"]))
+        labels_mean = CuArray(convert(Vector{Float32}, j["labels_mean"]))
+        labels_std =  CuArray(convert(Vector{Float32}, j["labels_std"]))
 
-    inputs = CUDA.zeros(Float32, 9, Nx*Ny*Nz)
-    inputs_norm = CUDA.zeros(Float32, 9, Nx*Ny*Nz)
+        inputs = CUDA.zeros(Float32, Nspecs+2, Nx*Ny*Nz)
+        inputs_norm = CUDA.zeros(Float32, Nspecs+2, Nx*Ny*Nz)
 
-    dt2 = dt/2
+        dt2 = dt/2
+    end
 
     for tt ∈ 1:ceil(Int, Time/dt)
         if tt % 10 == 0
@@ -174,15 +180,17 @@ function time_step(U, ρi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζd
             end
         end
 
-        # Reaction Step
-        @cuda threads=nthreads blocks=nblock c2Prim(U, Q, Nx, Ny, Nz, NG, 1.4, 287)
-        @cuda threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, ρi, lambda, inputs_mean, inputs_std, Nx, Ny, Nz, NG)
-        yt_pred = model(inputs_norm, ps, st)[1]
-        @. yt_pred = yt_pred * labels_std + labels_mean
-        @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, Nx, Ny, Nz, NG)
-        fillGhost(U, NG, Nx, Ny, Nz)
-        fillSpec(ρi, U, NG, Nx, Ny, Nz)
-        @cuda threads=nthreads blocks=nblock correction(U, ρi, NG, Nx, Ny, Nz)
+        if reaction
+            # Reaction Step
+            @cuda threads=nthreads blocks=nblock c2Prim(U, Q, Nx, Ny, Nz, NG, 1.4, 287)
+            @cuda threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, ρi, lambda, inputs_mean, inputs_std, Nx, Ny, Nz, NG)
+            yt_pred = model(inputs_norm, ps, st)[1]
+            @. yt_pred = yt_pred * labels_std + labels_mean
+            @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, Nx, Ny, Nz, NG)
+            @cuda threads=nthreads blocks=nblock correction(U, ρi, NG, Nx, Ny, Nz)
+            fillGhost(U, NG, Nx, Ny, Nz)
+            fillSpec(ρi, U, NG, Nx, Ny, Nz)
+        end
 
         # RK3-1
         @cuda threads=nthreads blocks=nblock copyOld(Un, U, Nx, Ny, Nz, NG, Ncons)
@@ -206,19 +214,21 @@ function time_step(U, ρi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζd
         flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
         @cuda threads=nthreads blocks=nblock linComb(U, Un, Nx, Ny, Nz, NG, Ncons, 2/3, 1/3)
         @cuda threads=nthreads blocks=nblock linComb(ρi, ρn, Nx, Ny, Nz, NG, Nspecs, 2/3, 1/3)
+        @cuda threads=nthreads blocks=nblock correction(U, ρi, NG, Nx, Ny, Nz)
         fillGhost(U, NG, Nx, Ny, Nz)
         fillSpec(ρi, U, NG, Nx, Ny, Nz)
-        @cuda threads=nthreads blocks=nblock correction(U, ρi, NG, Nx, Ny, Nz)
 
-        # Reaction Step
-        @cuda threads=nthreads blocks=nblock c2Prim(U, Q, Nx, Ny, Nz, NG, 1.4, 287)
-        @cuda threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, ρi, lambda, inputs_mean, inputs_std, Nx, Ny, Nz, NG)
-        yt_pred = model(inputs_norm, ps, st)[1]
-        @. yt_pred = yt_pred * labels_std + labels_mean
-        @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, Nx, Ny, Nz, NG)
-        fillGhost(U, NG, Nx, Ny, Nz)
-        fillSpec(ρi, U, NG, Nx, Ny, Nz)
-        @cuda threads=nthreads blocks=nblock correction(U, ρi, NG, Nx, Ny, Nz)
+        if reaction
+            # Reaction Step
+            @cuda threads=nthreads blocks=nblock c2Prim(U, Q, Nx, Ny, Nz, NG, 1.4, 287)
+            @cuda threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, ρi, lambda, inputs_mean, inputs_std, Nx, Ny, Nz, NG)
+            yt_pred = model(inputs_norm, ps, st)[1]
+            @. yt_pred = yt_pred * labels_std + labels_mean
+            @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, Nx, Ny, Nz, NG)
+            @cuda threads=nthreads blocks=nblock correction(U, ρi, NG, Nx, Ny, Nz)
+            fillGhost(U, NG, Nx, Ny, Nz)
+            fillSpec(ρi, U, NG, Nx, Ny, Nz)
+        end
     end
     return
 end

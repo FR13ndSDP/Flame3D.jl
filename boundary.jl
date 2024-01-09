@@ -106,7 +106,7 @@ function fill_x_s(ρi, NG, Nx, Ny, Nz)
             @inbounds ρi[i, j, k, n] = 0
         end
         @inbounds ρi[i, j, k, 2] = 0.035651512619407424 * 0.233
-        @inbounds ρi[i, j, k, 7] = 0.035651512619407424 * 0.767
+        @inbounds ρi[i, j, k, 5] = 0.035651512619407424 * 0.767
     elseif i > Nx+NG-1
         for n = 1:Nspecs
             @inbounds ρi[i, j, k, n] = ρi[Nx+NG-1, j, k, n]

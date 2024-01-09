@@ -3,15 +3,34 @@ using PyCall
 import Adapt
 
 # load mesh metrics
-@load "metrics.jld2" NG Nx Ny Nz dξdx dξdy dξdz dηdx dηdy dηdz dζdx dζdy dζdz J x y z
+NG = h5read("metrics.h5", "metrics/NG")
+Nx = h5read("metrics.h5", "metrics/Nx")
+Ny = h5read("metrics.h5", "metrics/Ny")
+Nz = h5read("metrics.h5", "metrics/Nz")
+
+dξdx = h5read("metrics.h5", "metrics/dξdx")
+dξdy = h5read("metrics.h5", "metrics/dξdy")
+dξdz = h5read("metrics.h5", "metrics/dξdz")
+dηdx = h5read("metrics.h5", "metrics/dηdx")
+dηdy = h5read("metrics.h5", "metrics/dηdy")
+dηdz = h5read("metrics.h5", "metrics/dηdz")
+dζdx = h5read("metrics.h5", "metrics/dζdx")
+dζdy = h5read("metrics.h5", "metrics/dζdy")
+dζdz = h5read("metrics.h5", "metrics/dζdz")
+
+J = h5read("metrics.h5", "metrics/J") 
+x = h5read("metrics.h5", "metrics/x") 
+y = h5read("metrics.h5", "metrics/y") 
+z = h5read("metrics.h5", "metrics/z") 
 
 # global variables, do not change name
 const dt::Float64 = 1e-7
-const Time::Float64 = 5e-5
-const Nspecs::Int64 = 8 # number of species
+const Time::Float64 = 1e-4
+const Nspecs::Int64 = 5 # number of species
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
 const Nprim::Int64 = 7 # ρ u v w p T c 
 const mech = "./NN/air.yaml"
+const reaction::Bool = true
 
 const nthreads::Tuple{Int64, Int64, Int64} = (8, 8, 4)
 const nblock::Tuple{Int64, Int64, Int64} = (cld((Nx+2*NG), 8), 
@@ -57,7 +76,7 @@ function initialize(U, mech)
     end
 end
 
-thermo = initThermo(mech, Nspecs)
+# thermo = initThermo(mech, Nspecs) # now only NASA7
 initialize(U, mech)
 
 U_d = CuArray(U)
@@ -74,7 +93,7 @@ dζdy_d = CuArray(dζdy)
 dζdz_d = CuArray(dζdz)
 J_d = CuArray(J)
 
-@time time_step(U_d, ρi_d, dξdx_d, dξdy_d, dξdz_d, dηdx_d, dηdy_d, dηdz_d, dζdx_d, dζdy_d, dζdz_d, J_d, Nx, Ny, Nz, NG, dt, ϕ_d)
+@time time_step(U_d, ρi_d, dξdx_d, dξdy_d, dξdz_d, dηdx_d, dηdy_d, dηdz_d, dζdx_d, dζdy_d, dζdz_d, J_d, Nx, Ny, Nz, NG, dt, ϕ_d, reaction)
 copyto!(U, U_d)
 copyto!(ρi, ρi_d)
 copyto!(ϕ, ϕ_d)
@@ -90,10 +109,7 @@ YO = ρi[:, :, :, 1]./rho
 YO2 = ρi[:, :, :, 2]./rho
 YN = ρi[:, :, :, 3]./rho
 YNO = ρi[:, :, :, 4]./rho
-YNO2 = ρi[:, :, :, 5]./rho
-YN2O = ρi[:, :, :, 6]./rho
-YN2 = ρi[:, :, :, 7]./rho
-YAR = ρi[:, :, :, 8]./rho
+YN2 = ρi[:, :, :, 5]./rho
 vtk_grid("result.vts", x, y, z) do vtk
     vtk["rho"] = rho
     vtk["u"] = u
@@ -106,8 +122,5 @@ vtk_grid("result.vts", x, y, z) do vtk
     vtk["YO2"] = YO2
     vtk["YN"] = YN
     vtk["YNO"] = YNO
-    vtk["YNO2"] = YNO2
-    vtk["YN2O"] = YN2O
     vtk["YN2"] = YN2
-    vtk["YAR"] = YAR
 end 

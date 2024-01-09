@@ -11,8 +11,8 @@ dev_gpu = gpu_device()
 train_epoch = 2000
 batch_size = 1024
 lr = 1f-3
-decay_rate = 0.1
-decay_step = 500
+decay_rate = 0.3
+decay_step = 200
 
 inputs = readdlm("input.txt", Float32)
 labels = readdlm("label.txt", Float32)
@@ -34,10 +34,9 @@ end
 rng = MersenneTwister()
 Random.seed!(rng, 12345)
 
-model = Lux.Chain(Lux.Dense(9 => 256, gelu), 
-                  Lux.Dense(256 => 128, gelu), 
+model = Lux.Chain(Lux.Dense(7 => 128, gelu), 
                   Lux.Dense(128 => 64, gelu), 
-                  Lux.Dense(64 => 8))
+                  Lux.Dense(64 => 6))
 
 opt = Optimisers.Adam(lr)
 
