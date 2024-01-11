@@ -1,6 +1,6 @@
 using WriteVTK
 using Lux, LuxCUDA
-using CUDA
+using LinearAlgebra, CUDA
 using JLD2, JSON, HDF5
 
 CUDA.allowscalar(false)
@@ -10,6 +10,27 @@ include("viscous.jl")
 include("boundary.jl")
 include("utils.jl")
 include("div.jl")
+
+#initialization on CPU
+function initialize(U, ρi)
+    ct = pyimport("cantera")
+    gas = ct.Solution(mech)
+    T::Float64 = 350
+    P::Float64 = 3596
+    gas.TPY = T, P, "N2:0.767 O2:0.233"
+    ρ::Float64 = P/(287*T)
+    c::Float64 = sqrt(1.4 * P / ρ)
+    u::Float64 = 10 * c
+
+    U[:, :, :, 1] .= ρ
+    U[:, :, :, 2] .= ρ * u
+    U[:, :, :, 3] .= 0.0
+    U[:, :, :, 4] .= 0.0
+    U[:, :, :, 5] .= P/(1.4-1) + 0.5 * ρ * u^2
+    for k ∈ 1:Nz+2*NG, j ∈ 1:Ny+2*NG, i ∈ 1:Nx+2*NG
+        ρi[i, j, k, :] .= gas.Y .* ρ
+    end
+end
 
 function correction(U, ρi, NG, Nx, Ny, Nz)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
@@ -124,11 +145,65 @@ function post_predict(yt_pred, inputs, U, Q, ρi, dt, lambda, Nx, Ny, Nz, NG)
     return
 end
 
-function time_step(U, ρi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, Nx, Ny, Nz, NG, dt, ϕ, reaction)
+# Zero GPU allocation
+function evalModel(Y1, Y2, output, w1, w2, w3, b1, b2, b3, input)
+    mul!(Y1, w1, input)
+    Y1 .+= b1
+    @. Y1 = gelu(Y1)
+
+    mul!(Y2, w2, Y1)
+    Y2 .+= b2
+    @. Y2 = gelu(Y2)
+
+    mul!(output, w3, Y2)
+    output .+= b3
+
+    return
+end
+
+function time_step()
     Nx_tot = Nx+2*NG
     Ny_tot = Ny+2*NG
     Nz_tot = Nz+2*NG
 
+    U_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG, Ncons)
+    ρi_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG, Nspecs)
+    ϕ_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG) # shock sensor
+
+    initialize(U_h, ρi_h)
+    
+    # load mesh metrics
+    dξdx_h = h5read("metrics.h5", "metrics/dξdx")
+    dξdy_h = h5read("metrics.h5", "metrics/dξdy")
+    dξdz_h = h5read("metrics.h5", "metrics/dξdz")
+    dηdx_h = h5read("metrics.h5", "metrics/dηdx")
+    dηdy_h = h5read("metrics.h5", "metrics/dηdy")
+    dηdz_h = h5read("metrics.h5", "metrics/dηdz")
+    dζdx_h = h5read("metrics.h5", "metrics/dζdx")
+    dζdy_h = h5read("metrics.h5", "metrics/dζdy")
+    dζdz_h = h5read("metrics.h5", "metrics/dζdz")
+
+    J_h = h5read("metrics.h5", "metrics/J") 
+    x_h = h5read("metrics.h5", "metrics/x") 
+    y_h = h5read("metrics.h5", "metrics/y") 
+    z_h = h5read("metrics.h5", "metrics/z") 
+
+    # move to device memory
+    U = CuArray(U_h)
+    ρi = CuArray(ρi_h)
+    ϕ = CuArray(ϕ_h)
+    dξdx = CuArray(dξdx_h)
+    dξdy = CuArray(dξdy_h)
+    dξdz = CuArray(dξdz_h)
+    dηdx = CuArray(dηdx_h)
+    dηdy = CuArray(dηdy_h)
+    dηdz = CuArray(dηdz_h)
+    dζdx = CuArray(dζdx_h)
+    dζdy = CuArray(dζdy_h)
+    dζdz = CuArray(dζdz_h)
+    J = CuArray(J_h)
+
+    # allocate on device
     Un = copy(U)
     ρn = copy(ρi)
     Q  =   CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nprim)
@@ -154,6 +229,17 @@ function time_step(U, ρi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζd
         @load "./NN/luxmodel.jld2" model ps st
 
         ps = ps |> gpu_device()
+
+        w1 = ps[1].weight
+        b1 = ps[1].bias
+        w2 = ps[2].weight
+        b2 = ps[2].bias
+        w3 = ps[3].weight
+        b3 = ps[3].bias
+
+        Y1 = CUDA.ones(Float32, 128, Nx*Ny*Nz)
+        Y2 = CUDA.ones(Float32, 64, Nx*Ny*Nz)
+        yt_pred = CUDA.ones(Float32, Nspecs+1, Nx*Ny*Nz)
 
         j = JSON.parsefile("./NN/norm.json")
         lambda = j["lambda"]
@@ -185,7 +271,7 @@ function time_step(U, ρi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζd
             # Reaction Step
             @cuda threads=nthreads blocks=nblock c2Prim(U, Q, Nx, Ny, Nz, NG, 1.4, 287)
             @cuda threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, ρi, lambda, inputs_mean, inputs_std, Nx, Ny, Nz, NG)
-            yt_pred = model(inputs_norm, ps, st)[1]
+            evalModel(Y1, Y2, yt_pred, w1, w2, w3, b1, b2, b3, inputs_norm)
             @. yt_pred = yt_pred * labels_std + labels_mean
             @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, Nx, Ny, Nz, NG)
             @cuda threads=nthreads blocks=nblock correction(U, ρi, NG, Nx, Ny, Nz)
@@ -223,12 +309,52 @@ function time_step(U, ρi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζd
             # Reaction Step
             @cuda threads=nthreads blocks=nblock c2Prim(U, Q, Nx, Ny, Nz, NG, 1.4, 287)
             @cuda threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, ρi, lambda, inputs_mean, inputs_std, Nx, Ny, Nz, NG)
-            yt_pred = model(inputs_norm, ps, st)[1]
+            evalModel(Y1, Y2, yt_pred, w1, w2, w3, b1, b2, b3, inputs_norm)
             @. yt_pred = yt_pred * labels_std + labels_mean
             @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, Nx, Ny, Nz, NG)
             @cuda threads=nthreads blocks=nblock correction(U, ρi, NG, Nx, Ny, Nz)
             fillGhost(U, NG, Nx, Ny, Nz)
             fillSpec(ρi, U, NG, Nx, Ny, Nz)
+        end
+
+        if tt % step_out == 0 || tt == ceil(Int, Time/dt)
+            copyto!(U_h, U)
+            copyto!(ρi_h, ρi)
+            copyto!(ϕ_h, ϕ)
+            fname::String = string("plt", tt)
+
+            rho = U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1]
+            u =   U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2]./rho
+            v =   U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 3]./rho
+            w =   U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 4]./rho
+            p = @. (U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 5] - 0.5*rho*(u^2+v^2+w^2)) * 0.4
+            T = @. p/(287.0 * rho)
+        
+            YO = ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1]./rho
+            YO2 = ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2]./rho
+            YN = ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 3]./rho
+            YNO = ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 4]./rho
+            YN2 = ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 5]./rho
+
+            @views ϕ_ng = ϕ_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+            @views x_ng = x_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+            @views y_ng = y_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+            @views z_ng = z_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+
+            vtk_grid(fname, x_ng, y_ng, z_ng) do vtk
+                vtk["rho"] = rho
+                vtk["u"] = u
+                vtk["v"] = v
+                vtk["w"] = w
+                vtk["p"] = p
+                vtk["T"] = T
+                vtk["phi"] = ϕ_ng
+                vtk["YO"] = YO
+                vtk["YO2"] = YO2
+                vtk["YN"] = YN
+                vtk["YNO"] = YNO
+                vtk["YN2"] = YN2
+            end 
         end
     end
     return

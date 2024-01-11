@@ -8,11 +8,11 @@ function fill_x(U, NG, Nx, Ny, Nz)
     end
     # Mach 10 inlet
     if i <= 10
-        @inbounds U[i, j, k, 1] = 0.035651512619407424
-        @inbounds U[i, j, k, 2] = 0.035651512619407424 * 3757.810529345963
+        @inbounds U[i, j, k, 1] = 0.03579890492782479
+        @inbounds U[i, j, k, 2] = 0.03579890492782479 * 3750.06666607408
         @inbounds U[i, j, k, 3] = 0.0
         @inbounds U[i, j, k, 4] = 0.0
-        @inbounds U[i, j, k, 5] = 3596/0.4 + 0.5*0.035651512619407424*3757.810529345963^2
+        @inbounds U[i, j, k, 5] = 3596/0.4 + 0.5*0.03579890492782479*3750.06666607408^2
     elseif i > Nx+NG-1
         for n = 1:Ncons
             @inbounds U[i, j, k, n] = U[Nx+NG-1, j, k, n]
@@ -34,7 +34,7 @@ function fill_y(U, NG, Nx, Ny, Nz)
     T_wall::Float64 = 5323
     Rg::Float64 = 287
 
-    noise::Float64 = rand() * 0.02 * 3757.810529345963
+    noise::Float64 = rand() * 0.05 * 3750.06666607408
 
     if j == NG+1 
         P2 = (gamma-1)*(U[i, j+1, k, 5] - 0.5/U[i, j+1, k, 1]*(U[i, j+1, k, 2]^2 + U[i, j+1, k, 3]^2) + U[i, j+1, k, 4]^2)
@@ -43,7 +43,7 @@ function fill_y(U, NG, Nx, Ny, Nz)
         @inbounds U[i, j, k, 1] = P1/(T_wall * Rg)
         @inbounds U[i, j, k, 2] = 0
         @inbounds U[i, j, k, 4] = 0
-        if i <= 40 && i >= 30
+        if i <= 150 && i >= 120
             @inbounds U[i, j, k, 3] = noise * U[i, j, k, 1]
         else
             @inbounds U[i, j, k, 3] = 0
@@ -105,8 +105,8 @@ function fill_x_s(ρi, NG, Nx, Ny, Nz)
         for n = 1:Nspecs
             @inbounds ρi[i, j, k, n] = 0
         end
-        @inbounds ρi[i, j, k, 2] = 0.035651512619407424 * 0.233
-        @inbounds ρi[i, j, k, 5] = 0.035651512619407424 * 0.767
+        @inbounds ρi[i, j, k, 2] = 0.03579890492782479 * 0.233
+        @inbounds ρi[i, j, k, 5] = 0.03579890492782479 * 0.767
     elseif i > Nx+NG-1
         for n = 1:Nspecs
             @inbounds ρi[i, j, k, n] = ρi[Nx+NG-1, j, k, n]

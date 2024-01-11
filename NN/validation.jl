@@ -68,7 +68,7 @@ println("Max relative error for T: $max_err")
 # fig
 gr()
 p1 = plot([T_evo T_evo_ct], w = 1, lab = ["predict-T" "cantera-T"], ls=[:dot :solid], lw = 2)
-p2 = plot(Y_evo[:, :]', ls=:solid, lw = 2, lab=nothing)
-p2 = plot!(Y_evo_ct[:, :]', ls=:dot, lw = 2, lab=nothing)
+p2 = plot(Y_evo', ls=:solid, lw = 2, lab=nothing)
+p3 = plot(Y_evo_ct', ls=:solid, lw = 2, lab=nothing)
 
-plot(p1, p2, layout=@layout([a; b]), size=(800,800))
+plot(p1, p2, p3, layout=@layout([a; b c]), size=(800,800))
