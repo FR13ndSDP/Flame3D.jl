@@ -100,7 +100,7 @@ function WENO_x(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
     # Jameson sensor
     ϕx = (ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+2+NG, j+1+NG, k+1+NG] + ϕ[i+NG, j+1+NG, k+1+NG])/3
 
-    if ϕx < 0.02
+    if ϕx < 0.01
         for n = 1:NV
             @inbounds V1 = Fp[i-2+NG, j+1+NG, k+1+NG, n]
             @inbounds V2 = Fp[i-1+NG, j+1+NG, k+1+NG, n]
@@ -134,13 +134,13 @@ function WENO_x(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V2-V4)^2
             s33 = tmp1*(V3-2*V4+V5)^2 + 0.25*(3*V3-4*V4+V5)^2
 
-            s11 = 1/(eps+s11)^2
-            s22 = 1/(eps+s22)^2
-            s33 = 1/(eps+s33)^2
-            # τ = CUDA.abs(s11-s33)
-            # s11 = 1 + (τ/(eps+s11))^2
-            # s22 = 1 + (τ/(eps+s22))^2
-            # s33 = 1 + (τ/(eps+s33))^2
+            # s11 = 1/(eps+s11)^2
+            # s22 = 1/(eps+s22)^2
+            # s33 = 1/(eps+s33)^2
+            τ = CUDA.abs(s11-s33)
+            s11 = 1 + (τ/(eps+s11))^2
+            s22 = 1 + (τ/(eps+s22))^2
+            s33 = 1 + (τ/(eps+s33))^2
 
             a1 = s11
             a2 = 6*s22
@@ -162,13 +162,13 @@ function WENO_x(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V4-V2)^2
             s33 = tmp1*(V3-2*V2+V1)^2 + 0.25*(3*V3-4*V2+V1)^2
 
-            s11 = 1/(eps+s11)^2
-            s22 = 1/(eps+s22)^2
-            s33 = 1/(eps+s33)^2
-            # τ = CUDA.abs(s11-s33)
-            # s11 = 1 + (τ/(eps+s11))^2
-            # s22 = 1 + (τ/(eps+s22))^2
-            # s33 = 1 + (τ/(eps+s33))^2
+            # s11 = 1/(eps+s11)^2
+            # s22 = 1/(eps+s22)^2
+            # s33 = 1/(eps+s33)^2
+            τ = CUDA.abs(s11-s33)
+            s11 = 1 + (τ/(eps+s11))^2
+            s22 = 1 + (τ/(eps+s22))^2
+            s33 = 1 + (τ/(eps+s33))^2
 
             a1 = s11
             a2 = 6*s22
@@ -216,7 +216,7 @@ function WENO_y(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
     # Jameson sensor
     ϕy = (ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+1+NG, j+2+NG, k+1+NG] + ϕ[i+1+NG, j+NG, k+1+NG])/3
 
-    if ϕy < 0.02
+    if ϕy < 0.01
         for n = 1:NV
             @inbounds V1 = Fp[i+1+NG, j-2+NG, k+1+NG, n]
             @inbounds V2 = Fp[i+1+NG, j-1+NG, k+1+NG, n]
@@ -250,13 +250,13 @@ function WENO_y(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V2-V4)^2
             s33 = tmp1*(V3-2*V4+V5)^2 + 0.25*(3*V3-4*V4+V5)^2
 
-            s11 = 1/(eps+s11)^2
-            s22 = 1/(eps+s22)^2
-            s33 = 1/(eps+s33)^2
-            # τ = CUDA.abs(s11-s33)
-            # s11 = 1 + (τ/(eps+s11))^2
-            # s22 = 1 + (τ/(eps+s22))^2
-            # s33 = 1 + (τ/(eps+s33))^2
+            # s11 = 1/(eps+s11)^2
+            # s22 = 1/(eps+s22)^2
+            # s33 = 1/(eps+s33)^2
+            τ = CUDA.abs(s11-s33)
+            s11 = 1 + (τ/(eps+s11))^2
+            s22 = 1 + (τ/(eps+s22))^2
+            s33 = 1 + (τ/(eps+s33))^2
 
             a1 = s11
             a2 = 6*s22
@@ -278,13 +278,13 @@ function WENO_y(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V4-V2)^2
             s33 = tmp1*(V3-2*V2+V1)^2 + 0.25*(3*V3-4*V2+V1)^2
 
-            s11 = 1/(eps+s11)^2
-            s22 = 1/(eps+s22)^2
-            s33 = 1/(eps+s33)^2
-            # τ = CUDA.abs(s11-s33)
-            # s11 = 1 + (τ/(eps+s11))^2
-            # s22 = 1 + (τ/(eps+s22))^2
-            # s33 = 1 + (τ/(eps+s33))^2
+            # s11 = 1/(eps+s11)^2
+            # s22 = 1/(eps+s22)^2
+            # s33 = 1/(eps+s33)^2
+            τ = CUDA.abs(s11-s33)
+            s11 = 1 + (τ/(eps+s11))^2
+            s22 = 1 + (τ/(eps+s22))^2
+            s33 = 1 + (τ/(eps+s33))^2
 
             a1 = s11
             a2 = 6*s22
@@ -332,7 +332,7 @@ function WENO_z(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
     # Jameson sensor
     ϕz = (ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+1+NG, j+1+NG, k+2+NG] + ϕ[i+1+NG, j+1+NG, k+NG])/3
 
-    if ϕz < 0.02
+    if ϕz < 0.01
         for n = 1:NV
             @inbounds V1 = Fp[i+1+NG, j+1+NG, k-2+NG, n]
             @inbounds V2 = Fp[i+1+NG, j+1+NG, k-1+NG, n]
@@ -366,13 +366,13 @@ function WENO_z(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V2-V4)^2
             s33 = tmp1*(V3-2*V4+V5)^2 + 0.25*(3*V3-4*V4+V5)^2
 
-            s11 = 1/(eps+s11)^2
-            s22 = 1/(eps+s22)^2
-            s33 = 1/(eps+s33)^2
-            # τ = CUDA.abs(s11-s33)
-            # s11 = 1 + (τ/(eps+s11))^2
-            # s22 = 1 + (τ/(eps+s22))^2
-            # s33 = 1 + (τ/(eps+s33))^2
+            # s11 = 1/(eps+s11)^2
+            # s22 = 1/(eps+s22)^2
+            # s33 = 1/(eps+s33)^2
+            τ = CUDA.abs(s11-s33)
+            s11 = 1 + (τ/(eps+s11))^2
+            s22 = 1 + (τ/(eps+s22))^2
+            s33 = 1 + (τ/(eps+s33))^2
 
             a1 = s11
             a2 = 6*s22
@@ -394,13 +394,13 @@ function WENO_z(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V4-V2)^2
             s33 = tmp1*(V3-2*V2+V1)^2 + 0.25*(3*V3-4*V2+V1)^2
 
-            s11 = 1/(eps+s11)^2
-            s22 = 1/(eps+s22)^2
-            s33 = 1/(eps+s33)^2
-            # τ = CUDA.abs(s11-s33)
-            # s11 = 1 + (τ/(eps+s11))^2
-            # s22 = 1 + (τ/(eps+s22))^2
-            # s33 = 1 + (τ/(eps+s33))^2
+            # s11 = 1/(eps+s11)^2
+            # s22 = 1/(eps+s22)^2
+            # s33 = 1/(eps+s33)^2
+            τ = CUDA.abs(s11-s33)
+            s11 = 1 + (τ/(eps+s11))^2
+            s22 = 1 + (τ/(eps+s22))^2
+            s33 = 1 + (τ/(eps+s33))^2
 
             a1 = s11
             a2 = 6*s22

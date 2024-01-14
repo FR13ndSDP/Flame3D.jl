@@ -12,6 +12,8 @@ const Lz::Float64 = 0.01
 const Nx_tot::Int64 = Nx + 2*NG
 const Ny_tot::Int64 = Ny + 2*NG
 const Nz_tot::Int64 = Nz + 2*NG
+const vis::Bool = false
+const compress_level::Int64 = 3
 
 x = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
 y = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
@@ -192,34 +194,40 @@ end
 @. dζdz = dxdξ*dydη - dxdη*dydξ
 
 h5open("metrics.h5", "w") do file
-    write(file, "metrics/NG", NG)
-    write(file, "metrics/Nx", Nx)
-    write(file, "metrics/Ny", Ny)
-    write(file, "metrics/Nz", Nz)
-    write(file, "metrics/dξdx", dξdx)
-    write(file, "metrics/dξdy", dξdy)
-    write(file, "metrics/dξdz", dξdz)
-    write(file, "metrics/dηdx", dηdx)
-    write(file, "metrics/dηdy", dηdy)
-    write(file, "metrics/dηdz", dηdz)
-    write(file, "metrics/dζdx", dζdx)
-    write(file, "metrics/dζdy", dζdy)
-    write(file, "metrics/dζdz", dζdz)
-    write(file, "metrics/J", J)
-    write(file, "metrics/x", x)
-    write(file, "metrics/y", y)
-    write(file, "metrics/z", z)
+    file["NG"] = NG
+    file["Nx"] = Nx
+    file["Ny"] = Ny
+    file["Nz"] = Nz
+    file["dξdx", compress=compress_level] = dξdx
+    file["dξdy", compress=compress_level] = dξdy
+    file["dξdz", compress=compress_level] = dξdz
+    file["dηdx", compress=compress_level] = dηdx
+    file["dηdy", compress=compress_level] = dηdy
+    file["dηdz", compress=compress_level] = dηdz
+    file["dζdx", compress=compress_level] = dζdx
+    file["dζdy", compress=compress_level] = dζdy
+    file["dζdz", compress=compress_level] = dζdz
+    file["J", compress=compress_level] = J
+    file["x", compress=compress_level] = x
+    file["y", compress=compress_level] = y
+    file["z", compress=compress_level] = z
 end
 
-vtk_grid("mesh.vts", x, y, z) do vtk
-    vtk["J"] = J
-    vtk["dkdx"] = dξdx
-    vtk["dkdy"] = dξdy
-    vtk["dkdz"] = dξdz
-    vtk["dedx"] = dηdx
-    vtk["dedy"] = dηdy
-    vtk["dedz"] = dηdz
-    vtk["dsdx"] = dζdx
-    vtk["dsdy"] = dζdy
-    vtk["dsdz"] = dζdz
+if vis
+    vtk_grid("mesh.vts", x, y, z) do vtk
+        vtk["J"] = J
+        vtk["dkdx"] = dξdx
+        vtk["dkdy"] = dξdy
+        vtk["dkdz"] = dξdz
+        vtk["dedx"] = dηdx
+        vtk["dedy"] = dηdy
+        vtk["dedz"] = dηdz
+        vtk["dsdx"] = dζdx
+        vtk["dsdy"] = dζdy
+        vtk["dsdz"] = dζdz
+    end
+
 end
+
+println("Parse mesh done!")
+flush(stdout)

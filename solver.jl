@@ -87,13 +87,13 @@ function specAdvance(U, ρi, Q, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Nx, Ny, Nz, NG, d�
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q, Nx, Ny, Nz, NG)
 
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock split(ρi, Q, U, Fp_i, Fm_i, dξdx, dξdy, dξdz, Nx, Ny, Nz, NG)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock NND_x(Fx_i, Fp_i, Fm_i, NG, Nx, Ny, Nz, Nspecs)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_x(Fx_i, ϕ, Fp_i, Fm_i, NG, Nx, Ny, Nz, Nspecs)
 
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock split(ρi, Q, U, Fp_i, Fm_i, dηdx, dηdy, dηdz, Nx, Ny, Nz, NG)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock NND_y(Fy_i, Fp_i, Fm_i, NG, Nx, Ny, Nz, Nspecs)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_y(Fy_i, ϕ, Fp_i, Fm_i, NG, Nx, Ny, Nz, Nspecs)
 
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock split(ρi, Q, U, Fp_i, Fm_i, dζdx, dζdy, dζdz, Nx, Ny, Nz, NG)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock NND_z(Fz_i, Fp_i, Fm_i, NG, Nx, Ny, Nz, Nspecs)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_z(Fz_i, ϕ, Fp_i, Fm_i, NG, Nx, Ny, Nz, Nspecs)
 
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock divSpecs(ρi, Fx_i, Fy_i, Fz_i, dt, NG, Nx, Ny, Nz, J)
 end
@@ -134,7 +134,7 @@ function post_predict(yt_pred, inputs, U, Q, ρi, dt, lambda, Nx, Ny, Nz, NG)
 
     T = Q[i+NG, j+NG, k+NG, 6]
     # only T > 2000 K calculate reaction
-    if T > 2000
+    if T > 3000
         @inbounds T += yt_pred[Nspecs+1, i + Nx*(j-1 + Ny*(k-1))] * dt
         @inbounds U[i+NG, j+NG, k+NG, 5] += (Q[i+NG, j+NG, k+NG, 1] * 287 * T - Q[i+NG, j+NG, k+NG, 5])/0.4
         for n = 1:Nspecs
@@ -166,27 +166,32 @@ function time_step()
     Ny_tot = Ny+2*NG
     Nz_tot = Nz+2*NG
 
-    U_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG, Ncons)
-    ρi_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG, Nspecs)
-    ϕ_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG) # shock sensor
+    if restart[1:3] == "chk"
+        U_h = h5read(restart, "U_h")
+        ρi_h = h5read(restart, "ρi_h")
+    else
+        U_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG, Ncons)
+        ρi_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG, Nspecs)
+        initialize(U_h, ρi_h)
+    end
 
-    initialize(U_h, ρi_h)
+    ϕ_h = zeros(Float32, Nx+2*NG, Ny+2*NG, Nz+2*NG) # shock sensor, single precision
     
     # load mesh metrics
-    dξdx_h = h5read("metrics.h5", "metrics/dξdx")
-    dξdy_h = h5read("metrics.h5", "metrics/dξdy")
-    dξdz_h = h5read("metrics.h5", "metrics/dξdz")
-    dηdx_h = h5read("metrics.h5", "metrics/dηdx")
-    dηdy_h = h5read("metrics.h5", "metrics/dηdy")
-    dηdz_h = h5read("metrics.h5", "metrics/dηdz")
-    dζdx_h = h5read("metrics.h5", "metrics/dζdx")
-    dζdy_h = h5read("metrics.h5", "metrics/dζdy")
-    dζdz_h = h5read("metrics.h5", "metrics/dζdz")
+    dξdx_h = h5read("metrics.h5", "dξdx")
+    dξdy_h = h5read("metrics.h5", "dξdy")
+    dξdz_h = h5read("metrics.h5", "dξdz")
+    dηdx_h = h5read("metrics.h5", "dηdx")
+    dηdy_h = h5read("metrics.h5", "dηdy")
+    dηdz_h = h5read("metrics.h5", "dηdz")
+    dζdx_h = h5read("metrics.h5", "dζdx")
+    dζdy_h = h5read("metrics.h5", "dζdy")
+    dζdz_h = h5read("metrics.h5", "dζdz")
 
-    J_h = h5read("metrics.h5", "metrics/J") 
-    x_h = h5read("metrics.h5", "metrics/x") 
-    y_h = h5read("metrics.h5", "metrics/y") 
-    z_h = h5read("metrics.h5", "metrics/z") 
+    J_h = h5read("metrics.h5", "J") 
+    x_h = h5read("metrics.h5", "x") 
+    y_h = h5read("metrics.h5", "y") 
+    z_h = h5read("metrics.h5", "z")
 
     # move to device memory
     U = CuArray(U_h)
@@ -321,25 +326,27 @@ function time_step()
             copyto!(U_h, U)
             copyto!(ρi_h, ρi)
             copyto!(ϕ_h, ϕ)
+
+            # visualization file, in Float32
             fname::String = string("plt", tt)
 
-            rho = U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1]
-            u =   U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2]./rho
-            v =   U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 3]./rho
-            w =   U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 4]./rho
-            p = @. (U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 5] - 0.5*rho*(u^2+v^2+w^2)) * 0.4
-            T = @. p/(287.0 * rho)
+            rho = convert(Array{Float32, 3}, U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1])
+            u =   convert(Array{Float32, 3}, U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2]./rho)
+            v =   convert(Array{Float32, 3}, U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 3]./rho)
+            w =   convert(Array{Float32, 3}, U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 4]./rho)
+            p = convert(Array{Float32, 3}, @. (U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 5] - 0.5*rho*(u^2+v^2+w^2)) * 0.4)
+            T = convert(Array{Float32, 3}, @. p/(287.0 * rho))
         
-            YO = ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1]./rho
-            YO2 = ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2]./rho
-            YN = ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 3]./rho
-            YNO = ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 4]./rho
-            YN2 = ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 5]./rho
+            YO  = convert(Array{Float32, 3}, ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1]./rho)
+            YO2 = convert(Array{Float32, 3}, ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2]./rho)
+            YN  = convert(Array{Float32, 3}, ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 3]./rho)
+            YNO = convert(Array{Float32, 3}, ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 4]./rho)
+            YN2 = convert(Array{Float32, 3}, ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 5]./rho)
 
             @views ϕ_ng = ϕ_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
-            @views x_ng = x_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
-            @views y_ng = y_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
-            @views z_ng = z_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+            x_ng = convert(Array{Float32, 3}, x_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
+            y_ng = convert(Array{Float32, 3}, y_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
+            z_ng = convert(Array{Float32, 3}, z_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
 
             vtk_grid(fname, x_ng, y_ng, z_ng) do vtk
                 vtk["rho"] = rho
@@ -355,6 +362,15 @@ function time_step()
                 vtk["YNO"] = YNO
                 vtk["YN2"] = YN2
             end 
+
+            # restart file, in Float64
+            if chk_out
+                chkname::String = string("chk", tt, ".h5")
+                h5open(chkname, "w") do file
+                    file["U_h", compress=chk_compress_level] = U_h
+                    file["ρi_h", compress=chk_compress_level] = ρi_h
+                end
+            end
         end
     end
     return
