@@ -140,6 +140,7 @@ function time_step(thermo, consts)
     Nz_tot = Nz+2*NG
 
     if restart[1:3] == "chk"
+        printstyled("Restart\n", color=:red)
         U_h = h5read(restart, "U_h")
         ρi_h = h5read(restart, "ρi_h")
     else
@@ -373,6 +374,8 @@ function time_step(thermo, consts)
 
             # restart file, in Float64
             if chk_out
+                copyto!(U_h, U)
+                copyto!(ρi_h, ρi)
                 chkname::String = string("chk", tt, ".h5")
                 h5open(chkname, "w") do file
                     file["U_h", compress=chk_compress_level] = U_h
