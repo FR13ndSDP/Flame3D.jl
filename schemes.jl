@@ -1,4 +1,4 @@
-function shockSensor(ϕ, Q, Nx, Ny, Nz, NG)
+function shockSensor(ϕ, Q)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -28,7 +28,7 @@ end
 end
 
 #Range: 1 -> N-1
-function NND_x(F, Fp, Fm, NG, Nx, Ny, Nz, NV)
+function NND_x(F, Fp, Fm, NV)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -44,7 +44,7 @@ function NND_x(F, Fp, Fm, NG, Nx, Ny, Nz, NV)
     return
 end
 
-function NND_y(F, Fp, Fm, NG, Nx, Ny, Nz, NV)
+function NND_y(F, Fp, Fm, NV)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -60,7 +60,7 @@ function NND_y(F, Fp, Fm, NG, Nx, Ny, Nz, NV)
     return
 end
 
-function NND_z(F, Fp, Fm, NG, Nx, Ny, Nz, NV)
+function NND_z(F, Fp, Fm, NV)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -77,7 +77,7 @@ function NND_z(F, Fp, Fm, NG, Nx, Ny, Nz, NV)
 end
 
 #Range: 1 -> N-1
-function WENO_x(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
+function WENO_x(F, ϕ, Fp, Fm, NV, consts)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -86,21 +86,21 @@ function WENO_x(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
         return
     end
 
-    eps::Float64 = CUDA.eps(1e-6)
-    tmp1::Float64 = 13/12
-    tmp2::Float64 = 1/6
+    eps::Float64 = consts.WENO5[1]
+    tmp1::Float64 = consts.WENO5[2]
+    tmp2::Float64 = consts.WENO5[3]
 
-    c1::Float64 = 0.85/30
-    c2::Float64 = -5.75/30
-    c3::Float64 = 22/30
-    c4::Float64 = 0.5
-    c5::Float64 = -0.075
-    c6::Float64 = 0.005
+    c1::Float64 = consts.UP5[1]
+    c2::Float64 = consts.UP5[2]
+    c3::Float64 = consts.UP5[3]
+    c4::Float64 = consts.UP5[4]
+    c5::Float64 = consts.UP5[5]
+    c6::Float64 = consts.UP5[6]
 
     # Jameson sensor
     ϕx = (ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+2+NG, j+1+NG, k+1+NG] + ϕ[i+NG, j+1+NG, k+1+NG])/3
 
-    if ϕx < 0.01
+    if ϕx < consts.Hybrid[1]
         for n = 1:NV
             @inbounds V1 = Fp[i-2+NG, j+1+NG, k+1+NG, n]
             @inbounds V2 = Fp[i-1+NG, j+1+NG, k+1+NG, n]
@@ -122,7 +122,7 @@ function WENO_x(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
 
             @inbounds F[i, j, k, n] = fpx + fmx
         end
-    elseif ϕx < 0.2
+    elseif ϕx < consts.Hybrid[2]
         for n = 1:NV
             @inbounds V1 = Fp[i-2+NG, j+1+NG, k+1+NG, n]
             @inbounds V2 = Fp[i-1+NG, j+1+NG, k+1+NG, n]
@@ -193,7 +193,7 @@ function WENO_x(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
 end
 
 #Range: 1 -> N-1
-function WENO_y(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
+function WENO_y(F, ϕ, Fp, Fm, NV, consts)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -202,21 +202,21 @@ function WENO_y(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
         return
     end
 
-    eps::Float64 = CUDA.eps(1e-6)
-    tmp1::Float64 = 13/12
-    tmp2::Float64 = 1/6
+    eps::Float64 = consts.WENO5[1]
+    tmp1::Float64 = consts.WENO5[2]
+    tmp2::Float64 = consts.WENO5[3]
 
-    c1::Float64 = 0.85/30
-    c2::Float64 = -5.75/30
-    c3::Float64 = 22/30
-    c4::Float64 = 0.5
-    c5::Float64 = -0.075
-    c6::Float64 = 0.005
+    c1::Float64 = consts.UP5[1]
+    c2::Float64 = consts.UP5[2]
+    c3::Float64 = consts.UP5[3]
+    c4::Float64 = consts.UP5[4]
+    c5::Float64 = consts.UP5[5]
+    c6::Float64 = consts.UP5[6]
 
     # Jameson sensor
     ϕy = (ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+1+NG, j+2+NG, k+1+NG] + ϕ[i+1+NG, j+NG, k+1+NG])/3
 
-    if ϕy < 0.01
+    if ϕy < consts.Hybrid[1]
         for n = 1:NV
             @inbounds V1 = Fp[i+1+NG, j-2+NG, k+1+NG, n]
             @inbounds V2 = Fp[i+1+NG, j-1+NG, k+1+NG, n]
@@ -238,7 +238,7 @@ function WENO_y(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
 
             @inbounds F[i, j, k, n] = fpy + fmy
         end
-    elseif ϕy < 0.2
+    elseif ϕy < consts.Hybrid[2]
         for n = 1:NV
             @inbounds V1 = Fp[i+1+NG, j-2+NG, k+1+NG, n]
             @inbounds V2 = Fp[i+1+NG, j-1+NG, k+1+NG, n]
@@ -309,7 +309,7 @@ function WENO_y(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
 end
 
 #Range: 1 -> N-1
-function WENO_z(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
+function WENO_z(F, ϕ, Fp, Fm, NV, consts)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -318,21 +318,21 @@ function WENO_z(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
         return
     end
 
-    eps::Float64 = CUDA.eps(1e-6)
-    tmp1::Float64 = 13/12
-    tmp2::Float64 = 1/6
+    eps::Float64 = consts.WENO5[1]
+    tmp1::Float64 = consts.WENO5[2]
+    tmp2::Float64 = consts.WENO5[3]
 
-    c1::Float64 = 0.85/30
-    c2::Float64 = -5.75/30
-    c3::Float64 = 22/30
-    c4::Float64 = 0.5
-    c5::Float64 = -0.075
-    c6::Float64 = 0.005
+    c1::Float64 = consts.UP5[1]
+    c2::Float64 = consts.UP5[2]
+    c3::Float64 = consts.UP5[3]
+    c4::Float64 = consts.UP5[4]
+    c5::Float64 = consts.UP5[5]
+    c6::Float64 = consts.UP5[6]
 
     # Jameson sensor
     ϕz = (ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+1+NG, j+1+NG, k+2+NG] + ϕ[i+1+NG, j+1+NG, k+NG])/3
 
-    if ϕz < 0.01
+    if ϕz < consts.Hybrid[1]
         for n = 1:NV
             @inbounds V1 = Fp[i+1+NG, j+1+NG, k-2+NG, n]
             @inbounds V2 = Fp[i+1+NG, j+1+NG, k-1+NG, n]
@@ -354,7 +354,7 @@ function WENO_z(F, ϕ, Fp, Fm, NG, Nx, Ny, Nz, NV)
 
             @inbounds F[i, j, k, n] = fpz + fmz
         end
-    elseif ϕz < 0.2
+    elseif ϕz < consts.Hybrid[2]
         for n = 1:NV
             @inbounds V1 = Fp[i+1+NG, j+1+NG, k-2+NG, n]
             @inbounds V2 = Fp[i+1+NG, j+1+NG, k-1+NG, n]

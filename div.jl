@@ -1,5 +1,5 @@
 #Range: 2+NG -> N+NG-1
-function div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, NG, Nx, Ny, Nz, J)
+function div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J, consts)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -7,9 +7,9 @@ function div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, NG, Nx, Ny, Nz, J)
         return
     end
 
-    c1::Float64 = -1/60
-    c2::Float64 = 3/20
-    c3::Float64 = -3/4
+    c1::Float64 = consts.CD6[1]
+    c2::Float64 = consts.CD6[2]
+    c3::Float64 = consts.CD6[3]
 
     @inbounds Jac = J[i, j, k]
     @inbounds dV11dξ = c1*(Fv_x[i-1-NG, j+2-NG, k+2-NG, 1] - Fv_x[i+5-NG, j+2-NG, k+2-NG, 1]) + 
@@ -63,7 +63,7 @@ function div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, NG, Nx, Ny, Nz, J)
 end
 
 #Range: 2+NG -> N+NG-1
-function divSpecs(U, Fx, Fy, Fz, dt, NG, Nx, Ny, Nz, J)
+function divSpecs(U, Fx, Fy, Fz, Fd_x, Fd_y, Fd_z, dt, J)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -72,10 +72,16 @@ function divSpecs(U, Fx, Fy, Fz, dt, NG, Nx, Ny, Nz, J)
     end
 
     @inbounds Jac = J[i, j, k]
+
     for n = 1:Nspecs
+        @inbounds dVdξ = 0.5 * (Fd_x[i+3-NG, j+2-NG, k+2-NG, n] - Fd_x[i+1-NG, j+2-NG, k+2-NG, n])
+        @inbounds dVdη = 0.5 * (Fd_y[i+2-NG, j+3-NG, k+2-NG, n] - Fd_y[i+2-NG, j+1-NG, k+2-NG, n])
+        @inbounds dVdζ = 0.5 * (Fd_z[i+2-NG, j+2-NG, k+3-NG, n] - Fd_z[i+2-NG, j+2-NG, k+1-NG, n])
+
         @inbounds U[i, j, k, n] +=  (Fx[i-1-NG, j-1-NG, k-1-NG, n] - Fx[i-NG, j-1-NG, k-1-NG, n] + 
                                      Fy[i-1-NG, j-1-NG, k-1-NG, n] - Fy[i-1-NG, j-NG, k-1-NG, n] + 
-                                     Fz[i-1-NG, j-1-NG, k-1-NG, n] - Fz[i-1-NG, j-1-NG, k-NG, n]) * dt * Jac
+                                     Fz[i-1-NG, j-1-NG, k-1-NG, n] - Fz[i-1-NG, j-1-NG, k-NG, n] + 
+                                     dVdξ + dVdη + dVdζ) * dt * Jac
     end
     return
 end

@@ -3,9 +3,9 @@ using HDF5
 using WriteVTK
 
 const NG::Int64 = 4
-const Nx::Int64 = 2048
+const Nx::Int64 = 1024
 const Ny::Int64 = 128
-const Nz::Int64 = 4
+const Nz::Int64 = 8
 const Lx::Float64 = 2
 const Ly::Float64 = 0.2
 const Lz::Float64 = 0.01

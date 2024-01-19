@@ -1,5 +1,5 @@
 #For N-S, range: 1->N+2*NG
-function fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, Ax, Ay, Az)
+function fluxSplit(Q, U, Fp, Fm, Ax, Ay, Az)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -19,8 +19,8 @@ function fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, Ax, Ay, Az)
     @inbounds A2 = Ay[i, j, k]
     @inbounds A3 = Az[i, j, k]
 
-    # γ = p/ei + 1
-    γ = 1.4
+    γ = p/ei + 1
+    # γ = 1.4
 
     ss = CUDA.sqrt(A1*A1 + A2*A2 + A3*A3)
     E1 = A1*u + A2*v + A3*w
@@ -70,7 +70,7 @@ function fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, Ax, Ay, Az)
 end
 
 # For species, range 1->N+2*NG
-function split(ρi, Q, U, Fp, Fm, Ax, Ay, Az, Nx, Ny, Nz, NG)
+function split(ρi, Q, U, Fp, Fm, Ax, Ay, Az)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -90,8 +90,8 @@ function split(ρi, Q, U, Fp, Fm, Ax, Ay, Az, Nx, Ny, Nz, NG)
     @inbounds A2 = Ay[i, j, k]
     @inbounds A3 = Az[i, j, k]
 
-    # γ = p/ei + 1
-    γ = 1.4
+    γ = p/ei + 1
+    # γ = 1.4
 
     ss = CUDA.sqrt(A1*A1 + A2*A2 + A3*A3)
     E1 = A1*u + A2*v + A3*w

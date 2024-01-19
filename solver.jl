@@ -10,29 +10,9 @@ include("viscous.jl")
 include("boundary.jl")
 include("utils.jl")
 include("div.jl")
+include("reaction.jl")
 
-#initialization on CPU
-function initialize(U, ρi)
-    ct = pyimport("cantera")
-    gas = ct.Solution(mech)
-    T::Float64 = 350
-    P::Float64 = 3596
-    gas.TPY = T, P, "N2:0.767 O2:0.233"
-    ρ::Float64 = P/(287*T)
-    c::Float64 = sqrt(1.4 * P / ρ)
-    u::Float64 = 10 * c
-
-    U[:, :, :, 1] .= ρ
-    U[:, :, :, 2] .= ρ * u
-    U[:, :, :, 3] .= 0.0
-    U[:, :, :, 4] .= 0.0
-    U[:, :, :, 5] .= P/(1.4-1) + 0.5 * ρ * u^2
-    for k ∈ 1:Nz+2*NG, j ∈ 1:Ny+2*NG, i ∈ 1:Nx+2*NG
-        ρi[i, j, k, :] .= gas.Y .* ρ
-    end
-end
-
-function correction(U, ρi, NG, Nx, Ny, Nz)
+function correction(U, ρi)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -49,57 +29,47 @@ function correction(U, ρi, NG, Nx, Ny, Nz)
         end
         @inbounds ∑ρ += ρi[i, j, k, n]
     end
-    for n = 1:Nspecs
-        @inbounds ρi[i, j, k, n] *= ρ/∑ρ
-    end
+    # for n = 1:Nspecs
+    #     @inbounds ρi[i, j, k, n] *= ρ/∑ρ
+    # end
+    ρi[i, j, k, Nspecs] += ρ - ∑ρ
+    return
 end
 
-function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
-    # local constants
-    gamma::Float64 = 1.4
-    Ru::Float64 = 8.31446
-    eos_m::Float64 = 28.97e-3
-    Rg::Float64 = Ru/eos_m
-    Pr::Float64 = 0.72
-    Cv::Float64 = Rg/(gamma-1)
-    Cp::Float64 = gamma * Cv
-    C_s::Float64 = 1.458e-6
-    T_s::Float64 = 110.4
+function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fh, consts)
 
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_x(Fx, ϕ, Fp, Fm, NG, Nx, Ny, Nz, Ncons)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, dξdx, dξdy, dξdz)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_x(Fx, ϕ, Fp, Fm, Ncons, consts)
 
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, dηdx, dηdy, dηdz)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_y(Fy, ϕ, Fp, Fm, NG, Nx, Ny, Nz, Ncons)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, dηdx, dηdy, dηdz)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_y(Fy, ϕ, Fp, Fm, Ncons, consts)
 
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, Nx, Ny, Nz, NG, dζdx, dζdy, dζdz)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_z(Fz, ϕ, Fp, Fm, NG, Nx, Ny, Nz, Ncons)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, dζdx, dζdy, dζdz)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_z(Fz, ϕ, Fp, Fm, Ncons, consts)
 
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock viscousFlux(Fv_x, Fv_y, Fv_z, Q, NG, Nx, Ny, Nz, Pr, Cp, C_s, T_s, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fh, consts)
 
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, NG, Nx, Ny, Nz, J)
-
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J, consts)
 end
 
-function specAdvance(U, ρi, Q, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, Nx, Ny, Nz, NG, 1.4, 287)
+function specAdvance(U, ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fh, thermo, consts)
 
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q, Nx, Ny, Nz, NG)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock split(ρi, Q, U, Fp_i, Fm_i, dξdx, dξdy, dξdz)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_x(Fx_i, ϕ, Fp_i, Fm_i, Nspecs, consts)
 
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock split(ρi, Q, U, Fp_i, Fm_i, dξdx, dξdy, dξdz, Nx, Ny, Nz, NG)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_x(Fx_i, ϕ, Fp_i, Fm_i, NG, Nx, Ny, Nz, Nspecs)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock split(ρi, Q, U, Fp_i, Fm_i, dηdx, dηdy, dηdz)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_y(Fy_i, ϕ, Fp_i, Fm_i, Nspecs, consts)
 
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock split(ρi, Q, U, Fp_i, Fm_i, dηdx, dηdy, dηdz, Nx, Ny, Nz, NG)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_y(Fy_i, ϕ, Fp_i, Fm_i, NG, Nx, Ny, Nz, Nspecs)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock split(ρi, Q, U, Fp_i, Fm_i, dζdx, dζdy, dζdz)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_z(Fz_i, ϕ, Fp_i, Fm_i, Nspecs, consts)
 
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock split(ρi, Q, U, Fp_i, Fm_i, dζdx, dζdy, dζdz, Nx, Ny, Nz, NG)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_z(Fz_i, ϕ, Fp_i, Fm_i, NG, Nx, Ny, Nz, Nspecs)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock specViscousFlux(Fd_x, Fd_y, Fd_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo)
 
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock divSpecs(ρi, Fx_i, Fy_i, Fz_i, dt, NG, Nx, Ny, Nz, J)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock divSpecs(ρi, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dt, J)
 end
 
 # Collect input
-function pre_input(inputs, inputs_norm, Q, ρi, lambda, inputs_mean, inputs_std, Nx, Ny, Nz, NG)
+function pre_input(inputs, inputs_norm, Q, Y, lambda, inputs_mean, inputs_std)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -112,7 +82,7 @@ function pre_input(inputs, inputs_norm, Q, ρi, lambda, inputs_mean, inputs_std,
     @inbounds inputs[2, i + Nx*(j-1 + Ny*(k-1))] = Q[i+NG, j+NG, k+NG, 5] # p
 
     for n = 3:Nspecs+2
-        @inbounds Yi = CUDA.max(ρi[i+NG, j+NG, k+NG, n-2]/Q[i+NG, j+NG, k+NG, 1], 0)
+        @inbounds Yi = Y[i+NG, j+NG, k+NG, n-2]
         @inbounds inputs[n, i + Nx*(j-1 + Ny*(k-1))] = (Yi^lambda - 1) / lambda
     end
 
@@ -123,7 +93,7 @@ function pre_input(inputs, inputs_norm, Q, ρi, lambda, inputs_mean, inputs_std,
 end
 
 # Parse prediction
-function post_predict(yt_pred, inputs, U, Q, ρi, dt, lambda, Nx, Ny, Nz, NG)
+function post_predict(yt_pred, inputs, U, Q, ρi, dt, lambda, thermo)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -133,10 +103,13 @@ function post_predict(yt_pred, inputs, U, Q, ρi, dt, lambda, Nx, Ny, Nz, NG)
     end
 
     T = Q[i+NG, j+NG, k+NG, 6]
+    P = Q[i+NG, j+NG, k+NG, 5]
+    @inbounds rhoi = @view ρi[i+NG, j+NG, k+NG, :]
+
     # only T > 2000 K calculate reaction
-    if T > 3000
-        @inbounds T += yt_pred[Nspecs+1, i + Nx*(j-1 + Ny*(k-1))] * dt
-        @inbounds U[i+NG, j+NG, k+NG, 5] += (Q[i+NG, j+NG, k+NG, 1] * 287 * T - Q[i+NG, j+NG, k+NG, 5])/0.4
+    if T > 3000 && P < 10132.5
+        @inbounds T1 = T + yt_pred[Nspecs+1, i + Nx*(j-1 + Ny*(k-1))] * dt
+        @inbounds U[i+NG, j+NG, k+NG, 5] += InternalEnergy(T1, rhoi, thermo) - InternalEnergy(T, rhoi, thermo)
         for n = 1:Nspecs
             @inbounds Yi = (lambda * (yt_pred[n, i + Nx*(j-1 + Ny*(k-1))] * dt + inputs[n+2, i + Nx*(j-1 + Ny*(k-1))]) + 1) ^ (1/lambda)
             @inbounds ρi[i+NG, j+NG, k+NG, n] = Yi * Q[i+NG, j+NG, k+NG, 1]
@@ -161,7 +134,7 @@ function evalModel(Y1, Y2, output, w1, w2, w3, b1, b2, b3, input)
     return
 end
 
-function time_step()
+function time_step(thermo, consts)
     Nx_tot = Nx+2*NG
     Ny_tot = Ny+2*NG
     Nz_tot = Nz+2*NG
@@ -172,7 +145,7 @@ function time_step()
     else
         U_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG, Ncons)
         ρi_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG, Nspecs)
-        initialize(U_h, ρi_h)
+        initialize(U_h, ρi_h, consts)
     end
 
     ϕ_h = zeros(Float32, Nx+2*NG, Ny+2*NG, Nz+2*NG) # shock sensor, single precision
@@ -220,15 +193,30 @@ function time_step()
     Fv_x = CUDA.zeros(Float64, Nx_tot-4, Ny_tot-4, Nz_tot-4, 4)
     Fv_y = CUDA.zeros(Float64, Nx_tot-4, Ny_tot-4, Nz_tot-4, 4)
     Fv_z = CUDA.zeros(Float64, Nx_tot-4, Ny_tot-4, Nz_tot-4, 4)
+
     Fp_i = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs)
     Fm_i = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs)
-    Fx_i = CUDA.zeros(Float64, Nx-1, Ny-2, Nz-2, Nspecs)
-    Fy_i = CUDA.zeros(Float64, Nx-2, Ny-1, Nz-2, Nspecs)
-    Fz_i = CUDA.zeros(Float64, Nx-2, Ny-2, Nz-1, Nspecs)
+    Fx_i = CUDA.zeros(Float64, Nx-1, Ny-2, Nz-2, Nspecs) # species advection
+    Fy_i = CUDA.zeros(Float64, Nx-2, Ny-1, Nz-2, Nspecs) # species advection
+    Fz_i = CUDA.zeros(Float64, Nx-2, Ny-2, Nz-1, Nspecs) # species advection
+    Fd_x = CUDA.zeros(Float64, Nx_tot-4, Ny_tot-4, Nz_tot-4, Nspecs) # species diffusion
+    Fd_y = CUDA.zeros(Float64, Nx_tot-4, Ny_tot-4, Nz_tot-4, Nspecs) # species diffusion
+    Fd_z = CUDA.zeros(Float64, Nx_tot-4, Ny_tot-4, Nz_tot-4, Nspecs) # species diffusion
+    Fh = CUDA.zeros(Float64, Nx_tot-4, Ny_tot-4, Nz_tot-4, 3) # enthalpy diffusion
 
+    μ = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
+    λ = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
+    D = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs)
+
+    μi = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs) # tmp for both μ and λ
+    Xi = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs)
+    Yi = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs)
+    Dij = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs*Nspecs) # tmp for N*N matricies
+    
     # fill boundary
-    fillGhost(U, NG, Nx, Ny, Nz)
-    fillSpec(ρi, U, NG, Nx, Ny, Nz)
+    fillGhost(U)
+    fillSpec(ρi, U)
+    @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, Yi, thermo)
 
     if reaction
         @load "./NN/luxmodel.jld2" model ps st
@@ -243,7 +231,7 @@ function time_step()
         b3 = ps[3].bias
 
         Y1 = CUDA.ones(Float32, 128, Nx*Ny*Nz)
-        Y2 = CUDA.ones(Float32, 64, Nx*Ny*Nz)
+        Y2 = CUDA.ones(Float32, 256, Nx*Ny*Nz)
         yt_pred = CUDA.ones(Float32, Nspecs+1, Nx*Ny*Nz)
 
         j = JSON.parsefile("./NN/norm.json")
@@ -259,7 +247,7 @@ function time_step()
         dt2 = dt/2
     end
 
-    for tt ∈ 1:ceil(Int, Time/dt)
+    for tt = 1:ceil(Int, Time/dt)
         if tt % 10 == 0
             printstyled("Step: ", color=:cyan)
             print("$tt")
@@ -274,93 +262,113 @@ function time_step()
 
         if reaction
             # Reaction Step
-            @cuda threads=nthreads blocks=nblock c2Prim(U, Q, Nx, Ny, Nz, NG, 1.4, 287)
-            @cuda threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, ρi, lambda, inputs_mean, inputs_std, Nx, Ny, Nz, NG)
+            @cuda threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, Yi, lambda, inputs_mean, inputs_std)
             evalModel(Y1, Y2, yt_pred, w1, w2, w3, b1, b2, b3, inputs_norm)
             @. yt_pred = yt_pred * labels_std + labels_mean
-            @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, Nx, Ny, Nz, NG)
-            @cuda threads=nthreads blocks=nblock correction(U, ρi, NG, Nx, Ny, Nz)
-            fillGhost(U, NG, Nx, Ny, Nz)
-            fillSpec(ρi, U, NG, Nx, Ny, Nz)
+            @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, thermo)
+            @cuda threads=nthreads blocks=nblock correction(U, ρi)
+            fillGhost(U)
+            fillSpec(ρi, U)
+            @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, Yi, thermo)
         end
 
         # RK3-1
-        @cuda threads=nthreads blocks=nblock copyOld(Un, U, Nx, Ny, Nz, NG, Ncons)
-        @cuda threads=nthreads blocks=nblock copyOld(ρn, ρi, Nx, Ny, Nz, NG, Nspecs)
+        @cuda threads=nthreads blocks=nblock copyOld(Un, U, Ncons)
+        @cuda threads=nthreads blocks=nblock copyOld(ρn, ρi, Nspecs)
 
-        specAdvance(U, ρi, Q, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
-        flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
-        fillGhost(U, NG, Nx, Ny, Nz)
-        fillSpec(ρi, U, NG, Nx, Ny, Nz)
+        @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock mixture(Q, Yi, Xi, μi, Dij, λ, μ, D, thermo)
+        @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q)
+        specAdvance(U, ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fh, thermo, consts)
+        flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fh, consts)
+        fillGhost(U)
+        fillSpec(ρi,U)
+        @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, Yi, thermo)
 
         # RK3-2
-        specAdvance(U, ρi, Q, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
-        flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
-        @cuda threads=nthreads blocks=nblock linComb(U, Un, Nx, Ny, Nz, NG, Ncons, 0.25, 0.75)
-        @cuda threads=nthreads blocks=nblock linComb(ρi, ρn, Nx, Ny, Nz, NG, Nspecs, 0.25, 0.75)
-        fillGhost(U, NG, Nx, Ny, Nz)
-        fillSpec(ρi, U, NG, Nx, Ny, Nz)
+        @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock mixture(Q, Yi, Xi, μi, Dij, λ, μ, D, thermo)
+        @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q)
+        specAdvance(U, ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fh, thermo, consts)
+        flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fh, consts)
+        @cuda threads=nthreads blocks=nblock linComb(U, Un, Ncons, 0.25, 0.75)
+        @cuda threads=nthreads blocks=nblock linComb(ρi, ρn, Nspecs, 0.25, 0.75)
+        fillGhost(U)
+        fillSpec(ρi, U)
+        @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, Yi, thermo)
 
         # RK3-3
-        specAdvance(U, ρi, Q, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
-        flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, Nx, Ny, Nz, NG, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
-        @cuda threads=nthreads blocks=nblock linComb(U, Un, Nx, Ny, Nz, NG, Ncons, 2/3, 1/3)
-        @cuda threads=nthreads blocks=nblock linComb(ρi, ρn, Nx, Ny, Nz, NG, Nspecs, 2/3, 1/3)
-        @cuda threads=nthreads blocks=nblock correction(U, ρi, NG, Nx, Ny, Nz)
-        fillGhost(U, NG, Nx, Ny, Nz)
-        fillSpec(ρi, U, NG, Nx, Ny, Nz)
+        @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock mixture(Q, Yi, Xi, μi, Dij, λ, μ, D, thermo)
+        @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q)
+        specAdvance(U, ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fh, thermo, consts)
+        flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fh, consts)
+        @cuda threads=nthreads blocks=nblock linComb(U, Un, Ncons, 2/3, 1/3)
+        @cuda threads=nthreads blocks=nblock linComb(ρi, ρn, Nspecs, 2/3, 1/3)
+        @cuda threads=nthreads blocks=nblock correction(U, ρi)
+        fillGhost(U)
+        fillSpec(ρi, U)
+        @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, Yi, thermo)
 
         if reaction
             # Reaction Step
-            @cuda threads=nthreads blocks=nblock c2Prim(U, Q, Nx, Ny, Nz, NG, 1.4, 287)
-            @cuda threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, ρi, lambda, inputs_mean, inputs_std, Nx, Ny, Nz, NG)
+            @cuda threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, Yi, lambda, inputs_mean, inputs_std)
             evalModel(Y1, Y2, yt_pred, w1, w2, w3, b1, b2, b3, inputs_norm)
             @. yt_pred = yt_pred * labels_std + labels_mean
-            @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, Nx, Ny, Nz, NG)
-            @cuda threads=nthreads blocks=nblock correction(U, ρi, NG, Nx, Ny, Nz)
-            fillGhost(U, NG, Nx, Ny, Nz)
-            fillSpec(ρi, U, NG, Nx, Ny, Nz)
+            @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, thermo)
+            @cuda threads=nthreads blocks=nblock correction(U, ρi)
+            fillGhost(U)
+            fillSpec(ρi, U)
+            @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, Yi, thermo)
         end
 
         if tt % step_out == 0 || tt == ceil(Int, Time/dt)
-            copyto!(U_h, U)
-            copyto!(ρi_h, ρi)
+            Q_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG, Nprim)
+            Yi_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG, Nspecs)
+            μ_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG)
+            λ_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG)
+            copyto!(Q_h, Q)
+            copyto!(Yi_h, Yi)
             copyto!(ϕ_h, ϕ)
+            copyto!(μ_h, μ)
+            copyto!(λ_h, λ)
 
             # visualization file, in Float32
             fname::String = string("plt", tt)
 
-            rho = convert(Array{Float32, 3}, U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1])
-            u =   convert(Array{Float32, 3}, U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2]./rho)
-            v =   convert(Array{Float32, 3}, U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 3]./rho)
-            w =   convert(Array{Float32, 3}, U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 4]./rho)
-            p = convert(Array{Float32, 3}, @. (U_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 5] - 0.5*rho*(u^2+v^2+w^2)) * 0.4)
-            T = convert(Array{Float32, 3}, @. p/(287.0 * rho))
+            rho = convert(Array{Float32, 3}, @view Q_h[:, :, :, 1])
+            u =   convert(Array{Float32, 3}, @view Q_h[:, :, :, 2])
+            v =   convert(Array{Float32, 3}, @view Q_h[:, :, :, 3])
+            w =   convert(Array{Float32, 3}, @view Q_h[:, :, :, 4])
+            p =   convert(Array{Float32, 3}, @view Q_h[:, :, :, 5])
+            T =   convert(Array{Float32, 3}, @view Q_h[:, :, :, 6])
         
-            YO  = convert(Array{Float32, 3}, ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1]./rho)
-            YO2 = convert(Array{Float32, 3}, ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2]./rho)
-            YN  = convert(Array{Float32, 3}, ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 3]./rho)
-            YNO = convert(Array{Float32, 3}, ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 4]./rho)
-            YN2 = convert(Array{Float32, 3}, ρi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 5]./rho)
+            YO  = convert(Array{Float32, 3}, @view Yi_h[:, :, :, 1])
+            YO2 = convert(Array{Float32, 3}, @view Yi_h[:, :, :, 2])
+            YN  = convert(Array{Float32, 3}, @view Yi_h[:, :, :, 3])
+            YNO = convert(Array{Float32, 3}, @view Yi_h[:, :, :, 4])
+            YN2 = convert(Array{Float32, 3}, @view Yi_h[:, :, :, 5])
 
-            @views ϕ_ng = ϕ_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
-            x_ng = convert(Array{Float32, 3}, x_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
-            y_ng = convert(Array{Float32, 3}, y_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
-            z_ng = convert(Array{Float32, 3}, z_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
+            # ϕ_ng = @view ϕ_h
+            # x_ng = convert(Array{Float32, 3}, @view x_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
+            # y_ng = convert(Array{Float32, 3}, @view y_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
+            # z_ng = convert(Array{Float32, 3}, @view z_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
 
-            vtk_grid(fname, x_ng, y_ng, z_ng) do vtk
+            μ_ng = convert(Array{Float32, 3}, μ_h)
+            λ_ng = convert(Array{Float32, 3}, λ_h)
+
+            vtk_grid(fname, x_h, y_h, z_h) do vtk
                 vtk["rho"] = rho
                 vtk["u"] = u
                 vtk["v"] = v
                 vtk["w"] = w
                 vtk["p"] = p
                 vtk["T"] = T
-                vtk["phi"] = ϕ_ng
+                vtk["phi"] = ϕ_h
                 vtk["YO"] = YO
                 vtk["YO2"] = YO2
                 vtk["YN"] = YN
                 vtk["YNO"] = YNO
                 vtk["YN2"] = YN2
+                vtk["mu"] = μ_ng
+                vtk["lambda"] = λ_ng
             end 
 
             # restart file, in Float64
@@ -371,6 +379,10 @@ function time_step()
                     file["ρi_h", compress=chk_compress_level] = ρi_h
                 end
             end
+            
+            # release memory
+            Q_h = nothing
+            Yi_h = nothing
         end
     end
     return

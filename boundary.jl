@@ -1,4 +1,4 @@
-function fill_x(U, NG, Nx, Ny, Nz)
+function fill_x(U)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -8,11 +8,11 @@ function fill_x(U, NG, Nx, Ny, Nz)
     end
     # Mach 10 inlet
     if i <= 10
-        @inbounds U[i, j, k, 1] = 0.03579890492782479
-        @inbounds U[i, j, k, 2] = 0.03579890492782479 * 3750.06666607408
+        @inbounds U[i, j, k, 1] = 0.035651512619407424
+        @inbounds U[i, j, k, 2] = 0.035651512619407424 * 3752.945872528232
         @inbounds U[i, j, k, 3] = 0.0
         @inbounds U[i, j, k, 4] = 0.0
-        @inbounds U[i, j, k, 5] = 3596/0.4 + 0.5*0.03579890492782479*3750.06666607408^2
+        @inbounds U[i, j, k, 5] = 9070.324229651233 + 0.5*0.035651512619407424*3752.945872528232^2
     elseif i > Nx+NG-1
         for n = 1:Ncons
             @inbounds U[i, j, k, n] = U[Nx+NG-1, j, k, n]
@@ -21,7 +21,7 @@ function fill_x(U, NG, Nx, Ny, Nz)
     return
 end
 
-function fill_y(U, NG, Nx, Ny, Nz)
+function fill_y(U)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -32,9 +32,9 @@ function fill_y(U, NG, Nx, Ny, Nz)
 
     gamma::Float64 = 1.4
     T_wall::Float64 = 5323
-    Rg::Float64 = 287
+    Rg::Float64 = 380
 
-    noise::Float64 = rand() * 0.05 * 3750.06666607408
+    noise::Float64 = rand() * 0.02 * 3746.7125063192125
 
     if j == NG+1 
         P2 = (gamma-1)*(U[i, j+1, k, 5] - 0.5/U[i, j+1, k, 1]*(U[i, j+1, k, 2]^2 + U[i, j+1, k, 3]^2) + U[i, j+1, k, 4]^2)
@@ -71,7 +71,7 @@ function fill_y(U, NG, Nx, Ny, Nz)
     return
 end
 
-function fill_z(U, NG, Nx, Ny, Nz)
+function fill_z(U)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -92,7 +92,7 @@ function fill_z(U, NG, Nx, Ny, Nz)
     return
 end
 
-function fill_x_s(ρi, NG, Nx, Ny, Nz)
+function fill_x_s(ρi)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -105,8 +105,8 @@ function fill_x_s(ρi, NG, Nx, Ny, Nz)
         for n = 1:Nspecs
             @inbounds ρi[i, j, k, n] = 0
         end
-        @inbounds ρi[i, j, k, 2] = 0.03579890492782479 * 0.233
-        @inbounds ρi[i, j, k, 5] = 0.03579890492782479 * 0.767
+        @inbounds ρi[i, j, k, 2] = 0.035651512619407424 * 0.233
+        @inbounds ρi[i, j, k, 5] = 0.035651512619407424 * 0.767
     elseif i > Nx+NG-1
         for n = 1:Nspecs
             @inbounds ρi[i, j, k, n] = ρi[Nx+NG-1, j, k, n]
@@ -115,7 +115,7 @@ function fill_x_s(ρi, NG, Nx, Ny, Nz)
     return
 end
 
-function fill_y_s(ρi, U, NG, Nx, Ny, Nz)
+function fill_y_s(ρi, U)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -124,10 +124,12 @@ function fill_y_s(ρi, U, NG, Nx, Ny, Nz)
         return
     end
 
-    if j <= NG+1
-        for n = 1:Nspecs
-            @inbounds Yi = ρi[i, NG+2, k, n]/U[i, NG+2, k, 1]
-            @inbounds ρi[i, j, k, n] = Yi * U[i, j, k, 1]
+    if j == NG+1
+        for l = 0:NG
+            for n = 1:Nspecs
+                @inbounds Yi = ρi[i, j-l+1, k, n]/U[i, j-l+1, k, 1]
+                @inbounds ρi[i, j-l, k, n] = Yi * U[i, j-l, k, 1]
+            end
         end
     elseif j > Ny+NG-1
         for n = 1:Nspecs
@@ -137,7 +139,7 @@ function fill_y_s(ρi, U, NG, Nx, Ny, Nz)
     return
 end
 
-function fill_z_s(ρi, NG, Nx, Ny, Nz)
+function fill_z_s(ρi)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -159,14 +161,14 @@ function fill_z_s(ρi, NG, Nx, Ny, Nz)
     return
 end
 
-function fillGhost(U, NG, Nx, Ny, Nz)
-    @cuda threads=nthreads blocks=nblock fill_y(U, NG, Nx, Ny, Nz)
-    @cuda threads=nthreads blocks=nblock fill_x(U, NG, Nx, Ny, Nz)
-    @cuda threads=nthreads blocks=nblock fill_z(U, NG, Nx, Ny, Nz)
+function fillGhost(U)
+    @cuda threads=nthreads blocks=nblock fill_y(U)
+    @cuda threads=nthreads blocks=nblock fill_x(U)
+    @cuda threads=nthreads blocks=nblock fill_z(U)
 end
 
-function fillSpec(ρi, U, NG, Nx, Ny, Nz)
-    @cuda threads=nthreads blocks=nblock fill_y_s(ρi, U, NG, Nx, Ny, Nz)
-    @cuda threads=nthreads blocks=nblock fill_x_s(ρi, NG, Nx, Ny, Nz)
-    @cuda threads=nthreads blocks=nblock fill_z_s(ρi, NG, Nx, Ny, Nz)
+function fillSpec(ρi, U)
+    @cuda threads=nthreads blocks=nblock fill_y_s(ρi, U)
+    @cuda threads=nthreads blocks=nblock fill_x_s(ρi)
+    @cuda threads=nthreads blocks=nblock fill_z_s(ρi)
 end

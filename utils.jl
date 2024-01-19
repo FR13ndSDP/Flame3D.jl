@@ -1,7 +1,5 @@
-include("reaction.jl")
-
 # Range: 1 -> N+2*NG
-function c2Prim(U, Q, Nx, Ny, Nz, NG, gamma, Rg)
+function c2Prim(U, Q, ρi, Yi, thermo)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -14,9 +12,17 @@ function c2Prim(U, Q, Nx, Ny, Nz, NG, gamma, Rg)
     @inbounds u = U[i, j, k, 2]/ρ # U
     @inbounds v = U[i, j, k, 3]/ρ # V
     @inbounds w = U[i, j, k, 4]/ρ # W
-    @inbounds p = CUDA.max((gamma-1) * (U[i, j, k, 5] - 0.5*ρ*(u^2 + v^2 + w^2)), CUDA.eps(Float64)) # P
-    @inbounds T = CUDA.max(p/(Rg * ρ), CUDA.eps(Float64)) # T
-    @inbounds c = CUDA.sqrt(gamma * Rg * T) # speed of sound
+    @inbounds ei = max((U[i, j, k, 5] - 0.5*ρ*(u^2 + v^2 + w^2)), CUDA.eps(Float64))
+    
+    for n = 1:Nspecs
+        @inbounds Yi[i, j, k, n] = max(ρi[i, j, k, n]/ρ, 0.0)
+    end
+
+    @inbounds rho = @view ρi[i, j, k, :]
+    T::Float64 = GetT(ei, rho, thermo)
+    p::Float64 = Pmixture(T, rho, thermo)
+    γ::Float64 = p/ei + 1
+    c::Float64 = CUDA.sqrt(γ*p/ρ)
 
     @inbounds Q[i, j, k, 1] = ρ
     @inbounds Q[i, j, k, 2] = u
@@ -28,7 +34,7 @@ function c2Prim(U, Q, Nx, Ny, Nz, NG, gamma, Rg)
     return
 end
 
-function copyOld(Un, U, Nx, Ny, Nz, NG, NV)
+function copyOld(Un, U, NV)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -43,7 +49,7 @@ function copyOld(Un, U, Nx, Ny, Nz, NG, NV)
     return
 end
 
-function linComb(U, Un, Nx, Ny, Nz, NG, NV, a::Float64, b::Float64)
+function linComb(U, Un, NV, a::Float64, b::Float64)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z

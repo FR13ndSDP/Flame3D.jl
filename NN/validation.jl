@@ -7,10 +7,10 @@ using Lux, JLD2
 # Validation
 # Call Cantera
 mech = "./air.yaml"
-TPX = 5320, 4000, "N2:77 O2:21 O:2 NO:1"
+TPY = 6000, 9000, "N2:77 O2:23"
 ct = pyimport("cantera")
 ct_gas = ct.Solution(mech)
-ct_gas.TPX = TPX
+ct_gas.TPY = TPY
 r = ct.IdealGasReactor(ct_gas, name="R1")
 sim = ct.ReactorNet([r])
 T_evo_ct = zeros(Float64, 10000)
@@ -19,7 +19,7 @@ T_evo_ct[1] = ct_gas.T
 Y_evo_ct[:, 1] = ct_gas.Y
 dt = 5e-8
 
-@time for i ∈ 1:9999
+@time for i = 1:9999
     sim.advance(i*dt)
     T_evo_ct[i+1] = ct_gas.T
     Y_evo_ct[:, i+1] = ct_gas.Y
@@ -27,7 +27,7 @@ end
 
 # Lux.jl
 gas = ct.Solution(mech)
-gas.TPX = TPX
+gas.TPY = TPY
 T_evo = zeros(Float64, 10000)
 Y_evo = zeros(Float64, (5, 10000))
 T_evo[1] = gas.T
@@ -41,7 +41,7 @@ inputs_std = convert(Vector{Float64}, j["inputs_std"])
 labels_mean = convert(Vector{Float64}, j["labels_mean"])
 labels_std = convert(Vector{Float64}, j["labels_std"])
 
-@time for i ∈ 1:9999
+@time for i = 1:9999
     input[1] = gas.T
     input[2] = gas.P
     input[3:end] = @. (gas.Y^lambda - 1) / lambda

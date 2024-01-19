@@ -4,15 +4,15 @@ import json
 import random
 from rich.progress import track
 
-m = 10000 # number of reactions
-s_uniform = 100 # number of uniform sample points
+m = 2000 # number of reactions
+s_uniform = 500 # number of uniform sample points
 T_input = []
 P_input = []
 Y_input = np.zeros((10000000,5)) # make it large enough
 Y_label = np.zeros((10000000,5)) # make it large enough
 T_label = []
 dt = 1e-7
-lamda = 0.2
+lamda = 0.1
 steps = 10000
 
 y_index = 0
@@ -21,21 +21,21 @@ for i in track(range(m), description="gen data..."):
     sample = random.sample(range(1,steps), s_uniform)
 
     # Data range
-    T = np.random.uniform(100, 10000)
-    P = np.random.uniform(0.01*ct.one_atm, 1.0*ct.one_atm)
+    T = np.random.uniform(1000, 8000)
+    P = np.random.uniform(0.01*ct.one_atm, 0.1*ct.one_atm)
 
-    X = np.zeros(5)
-    X[4] = np.random.uniform(0.7, 0.8)
-    X[1] = np.random.uniform(0.2, 0.3)
-    X[0] = 10**(-np.random.uniform(1, 20))
-    X[2] = 10**(-np.random.uniform(1, 20))
-    X[3] = 10**(-np.random.uniform(1, 20))
-    X /= sum(X)
+    Y = np.zeros(5)
+    Y[4] = np.random.uniform(0, 0.8)
+    Y[1] = np.random.uniform(0, 0.4)
+    Y[0] = 10**(-np.random.uniform(1, 10))
+    Y[2] = 10**(-np.random.uniform(1, 10))
+    Y[3] = 10**(-np.random.uniform(1, 10))
+    Y /= sum(Y)
 
-    initial_TPX = T, P, X
+    initial_TPY = T, P, Y
 
     gas = ct.Solution('air.yaml')
-    gas.TPX = initial_TPX
+    gas.TPY = initial_TPY
 
     r = ct.IdealGasReactor(gas, name='R1')
     sim = ct.ReactorNet([r])
@@ -106,9 +106,6 @@ normdata = {
 
 with open(data_path, 'w') as json_file:
         json.dump(normdata,json_file,indent=4)
-
-# np.save('norm_inputs-new.npy',norm_inputs)
-# np.save('norm_labels-new.npy',norm_labels)
 
 np.savetxt("input.txt", norm_inputs)
 np.savetxt("label.txt", norm_labels)

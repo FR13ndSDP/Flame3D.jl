@@ -25,7 +25,7 @@ gas = ct.Solution(mech)
 gas.TPY = 5500, 3679, "N2:77 O2:23"
 input[:, :, :, 1] .= gas.T
 input[:, :, :, 2] .= gas.P
-for k ∈ 1:Nz, j ∈ 1:Ny, i ∈ 1:Nx
+for k = 1:Nz, j = 1:Ny, i = 1:Nx
     input[i, j, k, 3:end] .= gas.Y[1:7]
 end
 
@@ -79,7 +79,7 @@ y_pred = reshape(y_pred, (7, Nx, Ny, Nz))
 
 pred = zeros(Float64, Nx, Ny, Nz, 8)
 copyto!(input_cpu, input)
-for k ∈ 1:Nz, j ∈ 1:Ny, i ∈ 1:Nx
+for k = 1:Nz, j = 1:Ny, i = 1:Nx
     pred[i, j, k, 1] = t_pred[i, j, k]
     pred[i, j, k, 2:end] = @. (lambda * (y_pred[:, i, j, k] * dt + input_cpu[i, j, k, 3:end]) + 1) ^ (1/lambda)
 end

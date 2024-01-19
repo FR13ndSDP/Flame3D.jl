@@ -8,17 +8,14 @@ w2 = ps[2].weight
 b2 = ps[2].bias
 w3 = ps[3].weight
 b3 = ps[3].bias
-w4 = ps[4].weight
-b4 = ps[4].bias
 
-input = CUDA.ones(Float32, 9, 2048*1024)
-Y1 = CUDA.ones(Float32, 256, 2048*1024)
-Y2 = CUDA.ones(Float32, 128, 2048*1024)
-Y3 = CUDA.ones(Float32, 64, 2048*1024)
-Y4 = CUDA.ones(Float32, 8, 2048*1024)
+input = CUDA.ones(Float32, 7, 2048*1024)
+Y1 = CUDA.ones(Float32, 128, 2048*1024)
+Y2 = CUDA.ones(Float32, 64, 2048*1024)
+Y3 = CUDA.ones(Float32, 6, 2048*1024)
 
 # Zero GPU allocation
-function evalModel(Y1, Y2, Y3, Y4, w1, w2, w3, w4, b1, b2, b3, b4, input)
+function evalModel(Y1, Y2, Y3, w1, w2, w3, b1, b2, b3, input)
     mul!(Y1, w1, input)
     Y1 .+= b1
     @. Y1 = gelu(Y1)
@@ -29,12 +26,8 @@ function evalModel(Y1, Y2, Y3, Y4, w1, w2, w3, w4, b1, b2, b3, b4, input)
 
     mul!(Y3, w3, Y2)
     Y3 .+= b3
-    @. Y3 = gelu(Y3)
 
-    mul!(Y4, w4, Y3)
-    Y4 .+= b4
-
-    return Y4
+    return Y3
 end
 
 CUDA.@time for n=1:200
@@ -42,5 +35,5 @@ CUDA.@time for n=1:200
 end
 
 CUDA.@time for n=1:200
-    evalModel(Y1, Y2, Y3, Y4, w1, w2, w3, w4, b1, b2, b3, b4, input)
+    evalModel(Y1, Y2, Y3, w1, w2, w3, b1, b2, b3, input)
 end

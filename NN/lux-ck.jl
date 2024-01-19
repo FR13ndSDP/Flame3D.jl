@@ -12,7 +12,8 @@ train_epoch = 2000
 batch_size = 1024
 lr = 1f-3
 decay_rate = 0.3
-decay_step = 200
+decay_step = 500
+epoch_out = 201
 
 inputs = readdlm("input.txt", Float32)
 labels = readdlm("label.txt", Float32)
@@ -35,8 +36,8 @@ rng = MersenneTwister()
 Random.seed!(rng, 12345)
 
 model = Lux.Chain(Lux.Dense(7 => 128, gelu), 
-                  Lux.Dense(128 => 64, gelu), 
-                  Lux.Dense(64 => 6))
+                  Lux.Dense(128 => 256, gelu), 
+                  Lux.Dense(256 => 6))
 
 opt = Optimisers.Adam(lr)
 
@@ -80,11 +81,14 @@ function main(tstate::Lux.Experimental.TrainState, vjp, epochs)
         if (epoch % 10 == 0)
             plot(loss_all, yscale=:log10, lw = 2, show=true, lab="loss")
         end
+
+        if epoch % epoch_out == 0 || epoch == epochs
+            ps = tstate.parameters |> dev_cpu
+            st = tstate.states |> dev_cpu
+            @save "luxmodel.jld2" model ps st
+        end
     end
-    return tstate
+    return
 end
 
-tstate = main(tstate, vjp_rule, train_epoch)
-ps = tstate.parameters |> dev_cpu
-st = tstate.states |> dev_cpu
-@save "luxmodel.jld2" model ps st
+main(tstate, vjp_rule, train_epoch)
