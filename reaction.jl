@@ -79,11 +79,11 @@ end
 # get enthalpy for species using NASA-7 polynomial, J/kg
 @inline function h_specs(T::Float64, T2::Float64, T3::Float64, T4::Float64, T5::Float64, n, thermo)
     if T < thermo.coeffs_sep[n]
-        hi = thermo.coeffs_lo[n, 1] * T + thermo.coeffs_lo[n, 2]/2 * T2 + thermo.coeffs_lo[n, 3]/3 * T3 +
-        thermo.coeffs_lo[n, 4]/4 * T4 + thermo.coeffs_lo[n, 5]/5 * T5
+        hi = thermo.coeffs_lo[n, 1] * T + thermo.coeffs_lo[n, 2] * 0.5 * T2 + thermo.coeffs_lo[n, 3] * 0.3333333333333333 * T3 +
+        thermo.coeffs_lo[n, 4] * 0.25 * T4 + thermo.coeffs_lo[n, 5] * 0.2 * T5
     else
-        hi = thermo.coeffs_hi[n, 1] * T + thermo.coeffs_hi[n, 2]/2 * T2 + thermo.coeffs_hi[n, 3]/3 * T3 +
-        thermo.coeffs_hi[n, 4]/4 * T4 + thermo.coeffs_hi[n, 5]/5 * T5 + (thermo.coeffs_hi[n, 6] - thermo.coeffs_lo[n, 6])
+        hi = thermo.coeffs_hi[n, 1] * T + thermo.coeffs_hi[n, 2] * 0.5 * T2 + thermo.coeffs_hi[n, 3] * 0.3333333333333333 * T3 +
+        thermo.coeffs_hi[n, 4] * 0.25 * T4 + thermo.coeffs_hi[n, 5] * 0.2 * T5 + (thermo.coeffs_hi[n, 6] - thermo.coeffs_lo[n, 6])
     end
 
     hi *= thermo.Ru / thermo.mw[n]
@@ -94,11 +94,11 @@ end
 # get internal energy for species using NASA-7 polynomial
 @inline function ei_specs(T::Float64, T2::Float64, T3::Float64, T4::Float64, T5::Float64, n, thermo)
     if T < thermo.coeffs_sep[n]
-        ei = (thermo.coeffs_lo[n, 1] -1) * T + thermo.coeffs_lo[n, 2]/2 * T2 + thermo.coeffs_lo[n, 3]/3 * T3 +
-        thermo.coeffs_lo[n, 4]/4 * T4 + thermo.coeffs_lo[n, 5]/5 * T5
+        ei = (thermo.coeffs_lo[n, 1] -1) * T + thermo.coeffs_lo[n, 2] * 0.5 * T2 + thermo.coeffs_lo[n, 3] * 0.3333333333333333 * T3 +
+        thermo.coeffs_lo[n, 4] * 0.25 * T4 + thermo.coeffs_lo[n, 5] * 0.2 * T5
     else
-        ei = (thermo.coeffs_hi[n, 1] -1) * T + thermo.coeffs_hi[n, 2]/2 * T2 + thermo.coeffs_hi[n, 3]/3 * T3 +
-        thermo.coeffs_hi[n, 4]/4 * T4 + thermo.coeffs_hi[n, 5]/5 * T5 + (thermo.coeffs_hi[n, 6] - thermo.coeffs_lo[n, 6])
+        ei = (thermo.coeffs_hi[n, 1] -1) * T + thermo.coeffs_hi[n, 2] * 0.5 * T2 + thermo.coeffs_hi[n, 3] * 0.3333333333333333 * T3 +
+        thermo.coeffs_hi[n, 4] * 0.25 * T4 + thermo.coeffs_hi[n, 5] * 0.2 * T5 + (thermo.coeffs_hi[n, 6] - thermo.coeffs_lo[n, 6])
     end
 
     return ei
