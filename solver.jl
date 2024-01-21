@@ -63,9 +63,9 @@ function specAdvance(U, ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock split(ρi, Q, U, Fp_i, Fm_i, dζdx, dζdy, dζdz)
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock WENO_z(Fz_i, ϕ, Fp_i, Fm_i, Nspecs, consts)
 
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock specViscousFlux(Fd_x, Fd_y, Fd_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock specViscousFlux(Fd_x, Fd_y, Fd_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo, consts)
 
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock divSpecs(ρi, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dt, J)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock divSpecs(ρi, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dt, J, consts)
 end
 
 # Collect input
@@ -231,7 +231,7 @@ function time_step(thermo, consts)
         w3 = ps[3].weight
         b3 = ps[3].bias
 
-        Y1 = CUDA.ones(Float32, 128, Nx*Ny*Nz)
+        Y1 = CUDA.ones(Float32, 64, Nx*Ny*Nz)
         Y2 = CUDA.ones(Float32, 256, Nx*Ny*Nz)
         yt_pred = CUDA.ones(Float32, Nspecs+1, Nx*Ny*Nz)
 
@@ -334,35 +334,35 @@ function time_step(thermo, consts)
             # visualization file, in Float32
             fname::String = string("plt", tt)
 
-            rho = convert(Array{Float32, 3}, @view Q_h[:, :, :, 1])
-            u =   convert(Array{Float32, 3}, @view Q_h[:, :, :, 2])
-            v =   convert(Array{Float32, 3}, @view Q_h[:, :, :, 3])
-            w =   convert(Array{Float32, 3}, @view Q_h[:, :, :, 4])
-            p =   convert(Array{Float32, 3}, @view Q_h[:, :, :, 5])
-            T =   convert(Array{Float32, 3}, @view Q_h[:, :, :, 6])
+            rho = convert(Array{Float32, 3}, @view Q_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1])
+            u =   convert(Array{Float32, 3}, @view Q_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2])
+            v =   convert(Array{Float32, 3}, @view Q_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 3])
+            w =   convert(Array{Float32, 3}, @view Q_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 4])
+            p =   convert(Array{Float32, 3}, @view Q_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 5])
+            T =   convert(Array{Float32, 3}, @view Q_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 6])
         
-            YO  = convert(Array{Float32, 3}, @view Yi_h[:, :, :, 1])
-            YO2 = convert(Array{Float32, 3}, @view Yi_h[:, :, :, 2])
-            YN  = convert(Array{Float32, 3}, @view Yi_h[:, :, :, 3])
-            YNO = convert(Array{Float32, 3}, @view Yi_h[:, :, :, 4])
-            YN2 = convert(Array{Float32, 3}, @view Yi_h[:, :, :, 5])
+            YO  = convert(Array{Float32, 3}, @view Yi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1])
+            YO2 = convert(Array{Float32, 3}, @view Yi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2])
+            YN  = convert(Array{Float32, 3}, @view Yi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 3])
+            YNO = convert(Array{Float32, 3}, @view Yi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 4])
+            YN2 = convert(Array{Float32, 3}, @view Yi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 5])
 
-            # ϕ_ng = @view ϕ_h
-            # x_ng = convert(Array{Float32, 3}, @view x_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
-            # y_ng = convert(Array{Float32, 3}, @view y_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
-            # z_ng = convert(Array{Float32, 3}, @view z_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
+            ϕ_ng = @view ϕ_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+            x_ng = convert(Array{Float32, 3}, @view x_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
+            y_ng = convert(Array{Float32, 3}, @view y_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
+            z_ng = convert(Array{Float32, 3}, @view z_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
 
-            μ_ng = convert(Array{Float32, 3}, μ_h)
-            λ_ng = convert(Array{Float32, 3}, λ_h)
+            μ_ng = convert(Array{Float32, 3}, @view μ_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
+            λ_ng = convert(Array{Float32, 3}, @view λ_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
 
-            vtk_grid(fname, x_h, y_h, z_h) do vtk
+            vtk_grid(fname, x_ng, y_ng, z_ng) do vtk
                 vtk["rho"] = rho
                 vtk["u"] = u
                 vtk["v"] = v
                 vtk["w"] = w
                 vtk["p"] = p
                 vtk["T"] = T
-                vtk["phi"] = ϕ_h
+                vtk["phi"] = ϕ_ng
                 vtk["YO"] = YO
                 vtk["YO2"] = YO2
                 vtk["YN"] = YN
