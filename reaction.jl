@@ -15,12 +15,13 @@
 # Adapt.@adapt_structure thermoProperty
 
 # const Nspecs = 5
+using CUDA:i32
 
 # get mixture pressure from T and ρi
 @inline function Pmixture(T::Float64, ρi, thermo)
     YOW::Float64 = 0
     for n = 1:Nspecs
-        YOW += ρi[n]/thermo.mw[n]
+        @inbounds YOW += ρi[n]/thermo.mw[n]
     end
     return thermo.Ru * T * YOW
 end
@@ -29,7 +30,7 @@ end
 @inline function ρmixture(P::Float64, T::Float64, Yi, thermo)
     YOW::Float64 = 0
     for n = 1:Nspecs
-        YOW += Yi[n] / thermo.mw[n]
+        @inbounds YOW += Yi[n] / thermo.mw[n]
     end
     return P/(thermo.Ru * T * YOW)
 end
@@ -39,13 +40,13 @@ end
     YOW::Float64 = 0
 
     for n = 1:Nspecs
-        YOW += Yi[n] / thermo.mw[n]
+        @inbounds YOW += Yi[n] / thermo.mw[n]
     end
 
     YOWINV::Float64 = 1/YOW
 
     for n = 1:Nspecs
-        Xi[n] = Yi[n] / thermo.mw[n] * YOWINV
+        @inbounds Xi[n] = Yi[n] / thermo.mw[n] * YOWINV
     end
     
     return    
@@ -55,10 +56,10 @@ end
 @inline function X2Y(Xi, Yi, thermo)
     XW::Float64 = 0
     for n = 1:Nspecs
-        XW += Xi[n] * thermo.mw[n]
+        @inbounds XW += Xi[n] * thermo.mw[n]
     end
     for n = 1:Nspecs
-        Yi[n] = Xi[n] * thermo.mw[n] / XW
+        @inbounds Yi[n] = Xi[n] * thermo.mw[n] / XW
     end
     return    
 end
@@ -66,11 +67,11 @@ end
 # get cp for species using NASA-7 polynomial
 @inline function cp_specs(T::Float64, T2::Float64, T3::Float64, T4::Float64, n, thermo)
     if T < thermo.coeffs_sep[n]
-        cp = thermo.coeffs_lo[n, 1] + thermo.coeffs_lo[n, 2] * T + thermo.coeffs_lo[n, 3] * T2 +
-        thermo.coeffs_lo[n, 4] * T3 + thermo.coeffs_lo[n, 5] * T4
+        @inbounds cp = thermo.coeffs_lo[n, 1] + thermo.coeffs_lo[n, 2] * T + thermo.coeffs_lo[n, 3] * T2 +
+        @inbounds thermo.coeffs_lo[n, 4] * T3 + thermo.coeffs_lo[n, 5] * T4
     else
-        cp = thermo.coeffs_hi[n, 1] + thermo.coeffs_hi[n, 2] * T + thermo.coeffs_hi[n, 3] * T2 +
-        thermo.coeffs_hi[n, 4] * T3 + thermo.coeffs_hi[n, 5] * T4
+        @inbounds cp = thermo.coeffs_hi[n, 1] + thermo.coeffs_hi[n, 2] * T + thermo.coeffs_hi[n, 3] * T2 +
+        @inbounds thermo.coeffs_hi[n, 4] * T3 + thermo.coeffs_hi[n, 5] * T4
     end
 
     return cp
@@ -79,14 +80,14 @@ end
 # get enthalpy for species using NASA-7 polynomial, J/kg
 @inline function h_specs(T::Float64, T2::Float64, T3::Float64, T4::Float64, T5::Float64, n, thermo)
     if T < thermo.coeffs_sep[n]
-        hi = thermo.coeffs_lo[n, 1] * T + thermo.coeffs_lo[n, 2] * 0.5 * T2 + thermo.coeffs_lo[n, 3] * 0.3333333333333333 * T3 +
-        thermo.coeffs_lo[n, 4] * 0.25 * T4 + thermo.coeffs_lo[n, 5] * 0.2 * T5
+        @inbounds hi = thermo.coeffs_lo[n, 1] * T + thermo.coeffs_lo[n, 2] * 0.5 * T2 + thermo.coeffs_lo[n, 3] * 0.3333333333333333 * T3 +
+        @inbounds thermo.coeffs_lo[n, 4] * 0.25 * T4 + thermo.coeffs_lo[n, 5] * 0.2 * T5
     else
-        hi = thermo.coeffs_hi[n, 1] * T + thermo.coeffs_hi[n, 2] * 0.5 * T2 + thermo.coeffs_hi[n, 3] * 0.3333333333333333 * T3 +
-        thermo.coeffs_hi[n, 4] * 0.25 * T4 + thermo.coeffs_hi[n, 5] * 0.2 * T5 + (thermo.coeffs_hi[n, 6] - thermo.coeffs_lo[n, 6])
+        @inbounds hi = thermo.coeffs_hi[n, 1] * T + thermo.coeffs_hi[n, 2] * 0.5 * T2 + thermo.coeffs_hi[n, 3] * 0.3333333333333333 * T3 +
+        @inbounds thermo.coeffs_hi[n, 4] * 0.25 * T4 + thermo.coeffs_hi[n, 5] * 0.2 * T5 + (thermo.coeffs_hi[n, 6] - thermo.coeffs_lo[n, 6])
     end
 
-    hi *= thermo.Ru / thermo.mw[n]
+    @inbounds hi *= thermo.Ru / thermo.mw[n]
 
     return hi
 end
@@ -94,11 +95,11 @@ end
 # get internal energy for species using NASA-7 polynomial
 @inline function ei_specs(T::Float64, T2::Float64, T3::Float64, T4::Float64, T5::Float64, n, thermo)
     if T < thermo.coeffs_sep[n]
-        ei = (thermo.coeffs_lo[n, 1] -1) * T + thermo.coeffs_lo[n, 2] * 0.5 * T2 + thermo.coeffs_lo[n, 3] * 0.3333333333333333 * T3 +
-        thermo.coeffs_lo[n, 4] * 0.25 * T4 + thermo.coeffs_lo[n, 5] * 0.2 * T5
+        @inbounds ei = (thermo.coeffs_lo[n, 1] -1) * T + thermo.coeffs_lo[n, 2] * 0.5 * T2 + thermo.coeffs_lo[n, 3] * 0.3333333333333333 * T3 +
+        @inbounds thermo.coeffs_lo[n, 4] * 0.25 * T4 + thermo.coeffs_lo[n, 5] * 0.2 * T5
     else
-        ei = (thermo.coeffs_hi[n, 1] -1) * T + thermo.coeffs_hi[n, 2] * 0.5 * T2 + thermo.coeffs_hi[n, 3] * 0.3333333333333333 * T3 +
-        thermo.coeffs_hi[n, 4] * 0.25 * T4 + thermo.coeffs_hi[n, 5] * 0.2 * T5 + (thermo.coeffs_hi[n, 6] - thermo.coeffs_lo[n, 6])
+        @inbounds ei = (thermo.coeffs_hi[n, 1] -1) * T + thermo.coeffs_hi[n, 2] * 0.5 * T2 + thermo.coeffs_hi[n, 3] * 0.3333333333333333 * T3 +
+        @inbounds thermo.coeffs_hi[n, 4] * 0.25 * T4 + thermo.coeffs_hi[n, 5] * 0.2 * T5 + (thermo.coeffs_hi[n, 6] - thermo.coeffs_lo[n, 6])
     end
 
     return ei
@@ -113,7 +114,7 @@ end
     result::Float64 = 0
     for n = 1:Nspecs
         cp::Float64 = cp_specs(T, T2, T3, T4, n, thermo)
-        result += (cp - 1)*rhoi[n]/thermo.mw[n]
+        @inbounds result += (cp - 1)*rhoi[n]/thermo.mw[n]
     end
     return result*thermo.Ru
 end
@@ -127,7 +128,7 @@ end
     result::Float64 = 0
     for n = 1:Nspecs
         cp::Float64 = cp_specs(T, T2, T3, T4, n, thermo)
-        result += cp*rhoi[n]/thermo.mw[n]
+        @inbounds result += cp*rhoi[n]/thermo.mw[n]
     end
     return result*thermo.Ru
 end
@@ -143,14 +144,14 @@ end
     result::Float64 = 0
     for n = 1:Nspecs
         ei::Float64 = ei_specs(T, T2, T3, T4, T5, n, thermo)
-        result += rhoi[n] * ei/thermo.mw[n]
+        @inbounds result += rhoi[n] * ei/thermo.mw[n]
     end
     return result * thermo.Ru
 end
 
 # get temperature from ρi and internal energy
 @inline function GetT(ein::Float64, ρi, thermo)
-    maxiter::Int64 = 100
+    maxiter::Int32 = 100
     tol::Float64 = 1e-8
     tmin::Float64 = thermo.min_temp
     tmax::Float64 = thermo.max_temp
@@ -173,14 +174,14 @@ end
   
     As::Float64=0
     for n = 1:Nspecs
-        As += (thermo.coeffs_lo[n, 1]-1) *thermo.Ru/thermo.mw[n]*ρi[n]
+        @inbounds As += (thermo.coeffs_lo[n, 1]-1) *thermo.Ru/thermo.mw[n]*ρi[n]
     end
   
     # initial value
     t1::Float64 = ein/As
 
     if t1 < tmin || t1 > tmax
-        t1 = tmin + (tmax - tmin) / (emax - emin) * (ein - emin);
+        t1 = tmin + (tmax - tmin) / (emax - emin) * (ein - emin)
     end
   
     for _ = 1:maxiter
@@ -285,9 +286,9 @@ end
 end
 
 function mixture(Q, Yi, Xi, μi, Dij, λ, μ, D, thermo)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nx+2*NG || j > Ny+2*NG || k > Nz+2*NG
         return
