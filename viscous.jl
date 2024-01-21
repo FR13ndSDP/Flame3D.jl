@@ -147,7 +147,7 @@ function viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dη
 end
 
 # #Range: 3 -> N+2*NG-2
-function specViscousFlux(Fv_x, Fv_y, Fv_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo)
+function specViscousFlux(Fv_x, Fv_y, Fv_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo, consts)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -177,11 +177,14 @@ function specViscousFlux(Fv_x, Fv_y, Fv_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, d�
     @inbounds Fh[i-2, j-2, k-2, 2] = 0
     @inbounds Fh[i-2, j-2, k-2, 3] = 0
 
+    c1::Float64 = consts.CD4[1]
+    c2::Float64 = consts.CD4[2]
+
     for n = 1:Nspecs
         @inbounds Di = D[i, j, k, n]
-        @inbounds ∂Y∂ξ = 0.5*(Yi[i+1, j, k, n] - Yi[i-1, j, k, n])
-        @inbounds ∂Y∂η = 0.5*(Yi[i, j+1, k, n] - Yi[i, j-1, k, n])
-        @inbounds ∂Y∂ζ = 0.5*(Yi[i, j, k+1, n] - Yi[i, j, k-1, n])
+        @inbounds ∂Y∂ξ = c1*(Yi[i-2, j, k, n] - Yi[i+2, j, k, n]) + c2*(Yi[i-1, j, k, n] - Yi[i+1, j, k, n])
+        @inbounds ∂Y∂η = c1*(Yi[i, j-2, k, n] - Yi[i, j+2, k, n]) + c2*(Yi[i, j-1, k, n] - Yi[i, j+1, k, n])
+        @inbounds ∂Y∂ζ = c1*(Yi[i, j, k-2, n] - Yi[i, j, k+2, n]) + c2*(Yi[i, j, k-1, n] - Yi[i, j, k+1, n])
 
         dYdx = (∂Y∂ξ * ∂ξ∂x + ∂Y∂η * ∂η∂x + ∂Y∂ζ * ∂ζ∂x) * Jac
         dYdy = (∂Y∂ξ * ∂ξ∂y + ∂Y∂η * ∂η∂y + ∂Y∂ζ * ∂ζ∂y) * Jac

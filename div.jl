@@ -63,7 +63,7 @@ function div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J, consts)
 end
 
 #Range: 2+NG -> N+NG-1
-function divSpecs(U, Fx, Fy, Fz, Fd_x, Fd_y, Fd_z, dt, J)
+function divSpecs(U, Fx, Fy, Fz, Fd_x, Fd_y, Fd_z, dt, J, consts)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
@@ -72,11 +72,16 @@ function divSpecs(U, Fx, Fy, Fz, Fd_x, Fd_y, Fd_z, dt, J)
     end
 
     @inbounds Jac = J[i, j, k]
+    c1::Float64 = consts.CD4[1]
+    c2::Float64 = consts.CD4[2]
 
     for n = 1:Nspecs
-        @inbounds dVdξ = 0.5 * (Fd_x[i+3-NG, j+2-NG, k+2-NG, n] - Fd_x[i+1-NG, j+2-NG, k+2-NG, n])
-        @inbounds dVdη = 0.5 * (Fd_y[i+2-NG, j+3-NG, k+2-NG, n] - Fd_y[i+2-NG, j+1-NG, k+2-NG, n])
-        @inbounds dVdζ = 0.5 * (Fd_z[i+2-NG, j+2-NG, k+3-NG, n] - Fd_z[i+2-NG, j+2-NG, k+1-NG, n])
+        @inbounds dVdξ = c1 * (Fd_x[i-NG,   j+2-NG, k+2-NG, n] - Fd_x[i+4-NG, j+2-NG, k+2-NG, n]) +
+                         c2 * (Fd_x[i+1-NG, j+2-NG, k+2-NG, n] - Fd_x[i+3-NG, j+2-NG, k+2-NG, n])
+        @inbounds dVdη = c1 * (Fd_y[i+2-NG, j-NG,   k+2-NG, n] - Fd_y[i+2-NG, j+4-NG, k+2-NG, n]) +
+                         c2 * (Fd_y[i+2-NG, j+1-NG, k+2-NG, n] - Fd_y[i+2-NG, j+3-NG, k+2-NG, n])
+        @inbounds dVdζ = c1 * (Fd_z[i+2-NG, j+2-NG, k-NG,   n] - Fd_z[i+2-NG, j+2-NG, k+4-NG, n]) +
+                         c2 * (Fd_z[i+2-NG, j+2-NG, k+1-NG, n] - Fd_z[i+2-NG, j+2-NG, k+3-NG, n])
 
         @inbounds U[i, j, k, n] +=  (Fx[i-1-NG, j-1-NG, k-1-NG, n] - Fx[i-NG, j-1-NG, k-1-NG, n] + 
                                      Fy[i-1-NG, j-1-NG, k-1-NG, n] - Fy[i-1-NG, j-NG, k-1-NG, n] + 
