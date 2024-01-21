@@ -19,8 +19,8 @@ function c2Prim(U, Q, ρi, Yi, thermo)
     end
 
     @inbounds rho = @view ρi[i, j, k, :]
-    T::Float64 = GetT(ei, rho, thermo)
-    p::Float64 = Pmixture(T, rho, thermo)
+    T::Float64 = max(GetT(ei, rho, thermo), CUDA.eps(Float64))
+    p::Float64 = max(Pmixture(T, rho, thermo), CUDA.eps(Float64))
     γ::Float64 = p/ei + 1
     c::Float64 = CUDA.sqrt(γ*p/ρ)
 
