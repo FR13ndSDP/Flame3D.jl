@@ -98,7 +98,7 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
     c6::Float64 = consts.UP5[6]
 
     # Jameson sensor
-    ϕx = (ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+2+NG, j+1+NG, k+1+NG] + ϕ[i+NG, j+1+NG, k+1+NG])/3
+    ϕx = (2*ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+2+NG, j+1+NG, k+1+NG] + ϕ[i+NG, j+1+NG, k+1+NG])*0.25
 
     if ϕx < consts.Hybrid[1]
         for n = 1:NV
@@ -214,7 +214,7 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
     c6::Float64 = consts.UP5[6]
 
     # Jameson sensor
-    ϕy = (ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+1+NG, j+2+NG, k+1+NG] + ϕ[i+1+NG, j+NG, k+1+NG])/3
+    ϕy = (2*ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+1+NG, j+2+NG, k+1+NG] + ϕ[i+1+NG, j+NG, k+1+NG])*0.25
 
     if ϕy < consts.Hybrid[1]
         for n = 1:NV
@@ -330,7 +330,7 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
     c6::Float64 = consts.UP5[6]
 
     # Jameson sensor
-    ϕz = (ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+1+NG, j+1+NG, k+2+NG] + ϕ[i+1+NG, j+1+NG, k+NG])/3
+    ϕz = (2*ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+1+NG, j+1+NG, k+2+NG] + ϕ[i+1+NG, j+1+NG, k+NG])*0.25
 
     if ϕz < consts.Hybrid[1]
         for n = 1:NV

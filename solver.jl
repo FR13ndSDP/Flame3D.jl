@@ -149,7 +149,7 @@ function time_step(thermo, consts)
         initialize(U_h, ρi_h, consts)
     end
 
-    ϕ_h = zeros(Float32, Nx+2*NG, Ny+2*NG, Nz+2*NG) # shock sensor, single precision
+    ϕ_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG) # shock sensor
     
     # load mesh metrics
     dξdx_h = h5read("metrics.h5", "dξdx")
@@ -347,7 +347,7 @@ function time_step(thermo, consts)
             YNO = convert(Array{Float32, 3}, @view Yi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 4])
             YN2 = convert(Array{Float32, 3}, @view Yi_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 5])
 
-            ϕ_ng = @view ϕ_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+            ϕ_ng = convert(Array{Float32, 3}, @view ϕ_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
             x_ng = convert(Array{Float32, 3}, @view x_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
             y_ng = convert(Array{Float32, 3}, @view y_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
             z_ng = convert(Array{Float32, 3}, @view z_h[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
@@ -386,6 +386,8 @@ function time_step(thermo, consts)
             # release memory
             Q_h = nothing
             Yi_h = nothing
+            μ_h = nothing
+            λ_h = nothing
         end
     end
     return
