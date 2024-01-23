@@ -12,30 +12,6 @@ include("utils.jl")
 include("div.jl")
 include("reaction.jl")
 
-function correction(U, ρi)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
-    if i > Nx+2*NG || j > Ny+2*NG || k > Nz+2*NG
-        return
-    end
-
-    @inbounds ρ = U[i, j, k, 1]
-    ∑ρ = 0
-    for n = 1:Nspecs
-        @inbounds ρn = ρi[i, j, k, n]
-        if ρn < 0
-            ρi[i, j, k, n] = 0
-        end
-        @inbounds ∑ρ += ρi[i, j, k, n]
-    end
-    # for n = 1:Nspecs
-    #     @inbounds ρi[i, j, k, n] *= ρ/∑ρ
-    # end
-    ρi[i, j, k, Nspecs] += ρ - ∑ρ
-    return
-end
-
 function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fh, consts)
 
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, U, Fp, Fm, dξdx, dξdy, dξdz)
@@ -141,15 +117,24 @@ function time_step(thermo, consts)
 
     if restart[1:3] == "chk"
         printstyled("Restart\n", color=:red)
-        U_h = h5read(restart, "U_h")
-        ρi_h = h5read(restart, "ρi_h")
+        Q_h = h5read(restart, "Q_h")
+        Yi_h = h5read(restart, "Yi_h")
     else
-        U_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG, Ncons)
-        ρi_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG, Nspecs)
-        initialize(U_h, ρi_h, consts)
-    end
+        Q_h = zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nprim)
+        Yi_h = zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs)
+        initialize(Q_h, Yi_h, consts)
 
-    ϕ_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG) # shock sensor
+        profile = h5read("profile.h5", "profile")
+        prof = CuArray(profile)
+        for k = 1:Nz_tot, j = 1:Ny_tot, i = 1:Nx_tot
+            Q_h[i, j, k, 1] = profile[j, 1]
+            Q_h[i, j, k, 2] = profile[j, 2]
+            Q_h[i, j, k, 3] = profile[j, 3]
+            Q_h[i, j, k, 4] = 0
+            Q_h[i, j, k, 5] = profile[j, 5]
+            Q_h[i, j, k, 6] = profile[j, 6]
+        end
+    end
     
     # load mesh metrics
     dξdx_h = h5read("metrics.h5", "dξdx")
@@ -168,9 +153,6 @@ function time_step(thermo, consts)
     z_h = h5read("metrics.h5", "z")
 
     # move to device memory
-    U = CuArray(U_h)
-    ρi = CuArray(ρi_h)
-    ϕ = CuArray(ϕ_h)
     dξdx = CuArray(dξdx_h)
     dξdy = CuArray(dξdy_h)
     dξdz = CuArray(dξdz_h)
@@ -183,9 +165,11 @@ function time_step(thermo, consts)
     J = CuArray(J_h)
 
     # allocate on device
-    Un = copy(U)
-    ρn = copy(ρi)
-    Q  =   CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nprim)
+    Yi =   CuArray(Yi_h)
+    Q  =   CuArray(Q_h)
+    ϕ  =   CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot) # Shock sensor
+    U  =   CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Ncons)
+    ρi =   CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs)
     Fp =   CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Ncons)
     Fm =   CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Ncons)
     Fx =   CUDA.zeros(Float64, Nx-1, Ny-2, Nz-2, Ncons)
@@ -211,13 +195,15 @@ function time_step(thermo, consts)
 
     μi = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs) # tmp for both μ and λ
     Xi = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs)
-    Yi = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs)
     Dij = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs*Nspecs) # tmp for N*N matricies
     
-    # fill boundary
-    fillGhost(U)
-    fillSpec(ρi, U)
-    @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, Yi, thermo)
+    Un = copy(U)
+    ρn = copy(ρi)
+
+    # initial
+    @cuda threads=nthreads blocks=nblock prim2c(U, Q, ρi, Yi, thermo)
+    fillGhost(U, Q, ρi, Yi, thermo, prof)
+    fillSpec(ρi, Yi, Q)
 
     if reaction
         @load "./NN/luxmodel.jld2" model ps st
@@ -267,10 +253,9 @@ function time_step(thermo, consts)
             evalModel(Y1, Y2, yt_pred, w1, w2, w3, b1, b2, b3, inputs_norm)
             @. yt_pred = yt_pred * labels_std + labels_mean
             @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, thermo)
-            @cuda threads=nthreads blocks=nblock correction(U, ρi)
-            fillGhost(U)
-            fillSpec(ρi, U)
             @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, Yi, thermo)
+            fillGhost(U, Q, ρi, Yi, thermo, prof)
+            fillSpec(ρi, Yi, Q)
         end
 
         # RK3-1
@@ -281,9 +266,9 @@ function time_step(thermo, consts)
         @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q)
         specAdvance(U, ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fh, thermo, consts)
         flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fh, consts)
-        fillGhost(U)
-        fillSpec(ρi,U)
         @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, Yi, thermo)
+        fillGhost(U, Q, ρi, Yi, thermo, prof)
+        fillSpec(ρi, Yi, Q)
 
         # RK3-2
         @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock mixture(Q, Yi, Xi, μi, Dij, λ, μ, D, thermo)
@@ -292,9 +277,9 @@ function time_step(thermo, consts)
         flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fh, consts)
         @cuda threads=nthreads blocks=nblock linComb(U, Un, Ncons, 0.25, 0.75)
         @cuda threads=nthreads blocks=nblock linComb(ρi, ρn, Nspecs, 0.25, 0.75)
-        fillGhost(U)
-        fillSpec(ρi, U)
         @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, Yi, thermo)
+        fillGhost(U, Q, ρi, Yi, thermo, prof)
+        fillSpec(ρi, Yi, Q)
 
         # RK3-3
         @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock mixture(Q, Yi, Xi, μi, Dij, λ, μ, D, thermo)
@@ -303,10 +288,9 @@ function time_step(thermo, consts)
         flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fh, consts)
         @cuda threads=nthreads blocks=nblock linComb(U, Un, Ncons, 2/3, 1/3)
         @cuda threads=nthreads blocks=nblock linComb(ρi, ρn, Nspecs, 2/3, 1/3)
-        @cuda threads=nthreads blocks=nblock correction(U, ρi)
-        fillGhost(U)
-        fillSpec(ρi, U)
         @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, Yi, thermo)
+        fillGhost(U, Q, ρi, Yi, thermo, prof)
+        fillSpec(ρi, Yi, Q)
 
         if reaction
             # Reaction Step
@@ -314,17 +298,15 @@ function time_step(thermo, consts)
             evalModel(Y1, Y2, yt_pred, w1, w2, w3, b1, b2, b3, inputs_norm)
             @. yt_pred = yt_pred * labels_std + labels_mean
             @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, thermo)
-            @cuda threads=nthreads blocks=nblock correction(U, ρi)
-            fillGhost(U)
-            fillSpec(ρi, U)
             @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, Yi, thermo)
+            fillGhost(U, Q, ρi, Yi, thermo, prof)
+            fillSpec(ρi, Yi, Q)
         end
 
         if tt % step_out == 0 || tt == ceil(Int, Time/dt)
-            Q_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG, Nprim)
-            Yi_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG, Nspecs)
-            μ_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG)
-            λ_h = zeros(Float64, Nx+2*NG, Ny+2*NG, Nz+2*NG)
+            μ_h = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
+            λ_h = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
+            ϕ_h = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
             copyto!(Q_h, Q)
             copyto!(Yi_h, Yi)
             copyto!(ϕ_h, ϕ)
@@ -374,20 +356,17 @@ function time_step(thermo, consts)
 
             # restart file, in Float64
             if chk_out
-                copyto!(U_h, U)
-                copyto!(ρi_h, ρi)
                 chkname::String = string("chk", tt, ".h5")
                 h5open(chkname, "w") do file
-                    file["U_h", compress=chk_compress_level] = U_h
-                    file["ρi_h", compress=chk_compress_level] = ρi_h
+                    file["Q_h", compress=chk_compress_level] = Q_h
+                    file["Yi_h", compress=chk_compress_level] = Yi_h
                 end
             end
             
             # release memory
-            Q_h = nothing
-            Yi_h = nothing
             μ_h = nothing
             λ_h = nothing
+            ϕ_h = nothing
         end
     end
     return

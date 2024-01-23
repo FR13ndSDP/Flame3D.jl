@@ -4,7 +4,7 @@ import json
 import random
 from rich.progress import track
 
-m = 2000 # number of reactions
+m = 4000 # number of reactions
 s_uniform = 500 # number of uniform sample points
 T_input = []
 P_input = []
@@ -25,11 +25,11 @@ for i in track(range(m), description="gen data..."):
     P = np.random.uniform(0.01*ct.one_atm, 0.1*ct.one_atm)
 
     Y = np.zeros(5)
-    Y[4] = np.random.uniform(0, 0.8)
+    Y[4] = np.random.uniform(0, 1.0)
     Y[1] = np.random.uniform(0, 0.4)
-    Y[0] = 10**(-np.random.uniform(1, 10))
-    Y[2] = 10**(-np.random.uniform(1, 10))
-    Y[3] = 10**(-np.random.uniform(1, 10))
+    Y[0] = 10**(-np.random.uniform(0, 10))
+    Y[2] = 10**(-np.random.uniform(0, 10))
+    Y[3] = 10**(-np.random.uniform(0, 10))
     Y /= sum(Y)
 
     initial_TPY = T, P, Y

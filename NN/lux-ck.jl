@@ -35,8 +35,8 @@ end
 rng = MersenneTwister()
 Random.seed!(rng, 12345)
 
-model = Lux.Chain(Lux.Dense(7 => 128, gelu), 
-                  Lux.Dense(128 => 256, gelu), 
+model = Lux.Chain(Lux.Dense(7 => 64, gelu), 
+                  Lux.Dense(64 => 256, gelu), 
                   Lux.Dense(256 => 6))
 
 opt = Optimisers.Adam(lr)

@@ -13,13 +13,13 @@ function fluxSplit(Q, U, Fp, Fm, Ax, Ay, Az)
     @inbounds v = Q[i, j, k, 3]
     @inbounds w = Q[i, j, k, 4]
     @inbounds p = Q[i, j, k, 5]
-    @inbounds c = Q[i, j, k, 7]
     @inbounds ei = U[i, j, k, 5] - 0.5 * ρ * (u^2 + v^2 + w^2)
     @inbounds A1 = Ax[i, j, k]
     @inbounds A2 = Ay[i, j, k]
     @inbounds A3 = Az[i, j, k]
 
     γ = p/ei + 1
+    c = CUDA.sqrt(γ*p/ρ)
     # γ = 1.4
 
     ss = CUDA.sqrt(A1*A1 + A2*A2 + A3*A3)
@@ -84,13 +84,13 @@ function split(ρi, Q, U, Fp, Fm, Ax, Ay, Az)
     @inbounds v = Q[i, j, k, 3]
     @inbounds w = Q[i, j, k, 4]
     @inbounds p = Q[i, j, k, 5]
-    @inbounds c = Q[i, j, k, 7]
     @inbounds ei = U[i, j, k, 5] - 0.5 * ρ * (u^2 + v^2 + w^2)
     @inbounds A1 = Ax[i, j, k]
     @inbounds A2 = Ay[i, j, k]
     @inbounds A3 = Az[i, j, k]
 
     γ = p/ei + 1
+    c = CUDA.sqrt(γ*p/ρ)
     # γ = 1.4
 
     ss = CUDA.sqrt(A1*A1 + A2*A2 + A3*A3)

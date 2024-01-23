@@ -1,4 +1,3 @@
-using Plots
 using JSON, PyCall
 using Lux, JLD2
 
@@ -7,7 +6,7 @@ using Lux, JLD2
 # Validation
 # Call Cantera
 mech = "./air.yaml"
-TPY = 6000, 9000, "N2:77 O2:23"
+TPY = 5400, 4000, "N2:77 O2:23"
 ct = pyimport("cantera")
 ct_gas = ct.Solution(mech)
 ct_gas.TPY = TPY
@@ -17,7 +16,7 @@ T_evo_ct = zeros(Float64, 10000)
 Y_evo_ct = zeros(Float64, (5, 10000))
 T_evo_ct[1] = ct_gas.T
 Y_evo_ct[:, 1] = ct_gas.Y
-dt = 5e-8
+dt = 1e-7
 
 @time for i = 1:9999
     sim.advance(i*dt)
@@ -66,9 +65,15 @@ max_err = maximum(Err)
 println("Max relative error for T: $max_err")
 
 # fig
-gr()
-p1 = plot([T_evo T_evo_ct], w = 1, lab = ["predict-T" "cantera-T"], ls=[:dot :solid], lw = 2)
-p2 = plot(Y_evo', ls=:solid, lw = 2, lab=nothing)
-p3 = plot(Y_evo_ct', ls=:solid, lw = 2, lab=nothing)
-
-plot(p1, p2, p3, layout=@layout([a; b c]), size=(800,800))
+plt = pyimport("matplotlib.pyplot")
+plt.subplot(1,2,1)
+plt.plot(T_evo, "--")
+plt.plot(T_evo_ct)
+plt.legend(["NN", "cantera"])
+plt.subplot(1,2,2)
+for n = 1:5
+    plt.plot(Y_evo[n,:], "--")
+    plt.plot(Y_evo_ct[n,:])
+end
+plt.legend(["NN", "cantera"])
+plt.show()

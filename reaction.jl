@@ -346,7 +346,7 @@ end
 # mech = "./NN/air.yaml"
 # ct = pyimport("cantera")
 # gas = ct.Solution(mech)
-# T::Float64 = 350
+# T::Float64 = 250
 # P::Float64 = 3596
 # gas.TPY = T, P, "N2:0.767 O2:0.233"
 

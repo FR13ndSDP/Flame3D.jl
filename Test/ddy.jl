@@ -1,34 +1,6 @@
-# using CUDA
+using PyCall
 
-# # @inline function callit(a)
-# #     a[1] = 1
-# #     a[2] = 2
-# #     a[3] = 3
-# #     return
-# # end
-
-# # function kernel(a)
-# #     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-# #     callit(@view a[i,:])
-# #     return
-# # end
-
-# function test(a)
-#     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    
-#     a[i] = 128.6
-#     b = (CUDA.sqrt(a[i]) - sqrt(a[i]))
-#     @cuprintln("$b")
-#     return
-# end
-
-# a_h = zeros(Float64, 128)
-
-# a = cu(a_h)
-# CUDA.@time @cuda threads=128 test(a)
-
-using Plots
-
+plt = pyimport("matplotlib.pyplot")
 a = zeros(Float64, 128)
 
 # for i = 1:128
@@ -36,18 +8,17 @@ a = zeros(Float64, 128)
 # end
 a[1:8] .= 0.0178995
 a[9:end] .= 0.0274578
-# plot(a)
+plt.plot(a, label="Initial")
 
-dt = 1e-5
+dt = 5e-6
 k = 0.0007712910310550843 * ones(Float64, 128)
-# for i = 1:128
-#     k[i] *= rand(Float64)
-# end
+for i = 1:128
+    k[i] *= 1+rand(Float64)
+end
 dx = 0.000158
 
 b = copy(a)
 f = copy(a)
-p = plot()
 
 for _ = 1:2000
     for i = 3:127
@@ -60,7 +31,7 @@ for _ = 1:2000
     a[1:8] .= 0.0178995
     b .= a
 end
-plot!(p, a, lab="m1")
+plt.plot(a, "--", label="half - avg2")
 
 a = zeros(Float64, 128)
 a[1:8] .= 0.0178995
@@ -68,7 +39,7 @@ a[9:end] .= 0.0274578
 b = copy(a)
 for _ = 1:2000
     for i = 3:127
-        f[i] = (k[i]+k[i-1] + k[i-2]+k[i+1])/4 * (b[i]-b[i-1])/dx
+        f[i] = (k[i]+k[i-1])/2 * (15/12*b[i]-15/12*b[i-1] + 1/12*b[i-2]-1/12*b[i+1])/dx
     end
 
     for i = 3:126
@@ -77,7 +48,8 @@ for _ = 1:2000
     a[1:8] .= 0.0178995
     b .= a
 end
-plot!(p, a, lab="m2")
+plt.plot(a, "--", label="half - avg4")
+
 
 a = zeros(Float64, 128)
 a[1:8] .= 0.0178995
@@ -85,7 +57,7 @@ a[9:end] .= 0.0274578
 b = copy(a)
 for _ = 1:2000
     for i = 2:127
-        f[i] = k[i] * (b[i+1]-b[i-1])/(2*dx)
+        f[i] = (k[i]) * (b[i+1]-b[i-1])/(2*dx)
     end
 
     for i = 3:126
@@ -94,7 +66,7 @@ for _ = 1:2000
     a[1:8] .= 0.0178995
     b .= a
 end
-plot!(p, a, lab="m3")
+plt.plot(a, label="two times - 2nd")
 
 a = zeros(Float64, 128)
 a[1:8] .= 0.0178995
@@ -111,7 +83,7 @@ for _ = 1:2000
     a[1:8] .= 0.0178995
     b .= a
 end
-plot!(p, a, lab="m4")
+plt.plot(a, label="two times - 4th")
 
 a = zeros(Float64, 128)
 a[1:8] .= 0.0178995
@@ -128,8 +100,10 @@ for _ = 1:2000
     a[1:8] .= 0.0178995
     b .= a
 end
-plot!(p, a, lab="m5")
+plt.plot(a, label="two times - 6th")
 
+plt.legend()
+plt.show()
 # a = zeros(Float64, 128)
 # a[1:8] .= 0.0178995
 # a[9:end] .= 0.0274578

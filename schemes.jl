@@ -90,26 +90,28 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
     tmp1::Float64 = consts.WENO5[2]
     tmp2::Float64 = consts.WENO5[3]
 
-    c1::Float64 = consts.UP5[1]
-    c2::Float64 = consts.UP5[2]
-    c3::Float64 = consts.UP5[3]
-    c4::Float64 = consts.UP5[4]
-    c5::Float64 = consts.UP5[5]
-    c6::Float64 = consts.UP5[6]
+    c1::Float64 = consts.UP7[1]
+    c2::Float64 = consts.UP7[2]
+    c3::Float64 = consts.UP7[3]
+    c4::Float64 = consts.UP7[4]
+    c5::Float64 = consts.UP7[5]
+    c6::Float64 = consts.UP7[6]
+    c7::Float64 = consts.UP7[7]
 
     # Jameson sensor
     ϕx = (2*ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+2+NG, j+1+NG, k+1+NG] + ϕ[i+NG, j+1+NG, k+1+NG])*0.25
 
     if ϕx < consts.Hybrid[1]
         for n = 1:NV
-            @inbounds V1 = Fp[i-2+NG, j+1+NG, k+1+NG, n]
-            @inbounds V2 = Fp[i-1+NG, j+1+NG, k+1+NG, n]
-            @inbounds V3 = Fp[i+NG,   j+1+NG, k+1+NG, n]
-            @inbounds V4 = Fp[i+1+NG, j+1+NG, k+1+NG, n]
-            @inbounds V5 = Fp[i+2+NG, j+1+NG, k+1+NG, n]
-            @inbounds V6 = Fp[i+3+NG, j+1+NG, k+1+NG, n]
+            @inbounds V1 = Fp[i-3+NG, j+1+NG, k+1+NG, n]
+            @inbounds V2 = Fp[i-2+NG, j+1+NG, k+1+NG, n]
+            @inbounds V3 = Fp[i-1+NG, j+1+NG, k+1+NG, n]
+            @inbounds V4 = Fp[i+NG,   j+1+NG, k+1+NG, n]
+            @inbounds V5 = Fp[i+1+NG, j+1+NG, k+1+NG, n]
+            @inbounds V6 = Fp[i+2+NG, j+1+NG, k+1+NG, n]
+            @inbounds V7 = Fp[i+3+NG, j+1+NG, k+1+NG, n]
             
-            fpx = c1*V1 + c2*V2 + c3*V3 + c4*V4 + c5*V5 + c6*V6
+            fpx = c1*V1 + c2*V2 + c3*V3 + c4*V4 + c5*V5 + c6*V6 + c7*V7
 
             @inbounds V1 = Fm[i-2+NG, j+1+NG, k+1+NG, n]
             @inbounds V2 = Fm[i-1+NG, j+1+NG, k+1+NG, n]
@@ -117,8 +119,9 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
             @inbounds V4 = Fm[i+1+NG, j+1+NG, k+1+NG, n]
             @inbounds V5 = Fm[i+2+NG, j+1+NG, k+1+NG, n]
             @inbounds V6 = Fm[i+3+NG, j+1+NG, k+1+NG, n]
+            @inbounds V7 = Fm[i+4+NG, j+1+NG, k+1+NG, n]
 
-            fmx = c6*V1 + c5*V2 + c4*V3 + c3*V4 + c2*V5 + c1*V6
+            fmx = c7*V1 + c6*V2 + c5*V3 + c4*V4 + c3*V5 + c2*V6 + c1*V7
 
             @inbounds F[i, j, k, n] = fpx + fmx
         end
@@ -206,26 +209,28 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
     tmp1::Float64 = consts.WENO5[2]
     tmp2::Float64 = consts.WENO5[3]
 
-    c1::Float64 = consts.UP5[1]
-    c2::Float64 = consts.UP5[2]
-    c3::Float64 = consts.UP5[3]
-    c4::Float64 = consts.UP5[4]
-    c5::Float64 = consts.UP5[5]
-    c6::Float64 = consts.UP5[6]
+    c1::Float64 = consts.UP7[1]
+    c2::Float64 = consts.UP7[2]
+    c3::Float64 = consts.UP7[3]
+    c4::Float64 = consts.UP7[4]
+    c5::Float64 = consts.UP7[5]
+    c6::Float64 = consts.UP7[6]
+    c7::Float64 = consts.UP7[7]
 
     # Jameson sensor
     ϕy = (2*ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+1+NG, j+2+NG, k+1+NG] + ϕ[i+1+NG, j+NG, k+1+NG])*0.25
 
     if ϕy < consts.Hybrid[1]
         for n = 1:NV
-            @inbounds V1 = Fp[i+1+NG, j-2+NG, k+1+NG, n]
-            @inbounds V2 = Fp[i+1+NG, j-1+NG, k+1+NG, n]
-            @inbounds V3 = Fp[i+1+NG, j+NG,   k+1+NG, n]
-            @inbounds V4 = Fp[i+1+NG, j+1+NG, k+1+NG, n]
-            @inbounds V5 = Fp[i+1+NG, j+2+NG, k+1+NG, n]
-            @inbounds V6 = Fp[i+1+NG, j+3+NG, k+1+NG, n]
+            @inbounds V1 = Fp[i+1+NG, j-3+NG, k+1+NG, n]
+            @inbounds V2 = Fp[i+1+NG, j-2+NG, k+1+NG, n]
+            @inbounds V3 = Fp[i+1+NG, j-1+NG, k+1+NG, n]
+            @inbounds V4 = Fp[i+1+NG, j+NG,   k+1+NG, n]
+            @inbounds V5 = Fp[i+1+NG, j+1+NG, k+1+NG, n]
+            @inbounds V6 = Fp[i+1+NG, j+2+NG, k+1+NG, n]
+            @inbounds V7 = Fp[i+1+NG, j+3+NG, k+1+NG, n]
             
-            fpy = c1*V1 + c2*V2 + c3*V3 + c4*V4 + c5*V5 + c6*V6
+            fpy = c1*V1 + c2*V2 + c3*V3 + c4*V4 + c5*V5 + c6*V6 + c7*V7
 
             @inbounds V1 = Fm[i+1+NG, j-2+NG, k+1+NG, n]
             @inbounds V2 = Fm[i+1+NG, j-1+NG, k+1+NG, n]
@@ -233,8 +238,9 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
             @inbounds V4 = Fm[i+1+NG, j+1+NG, k+1+NG, n]
             @inbounds V5 = Fm[i+1+NG, j+2+NG, k+1+NG, n]
             @inbounds V6 = Fm[i+1+NG, j+3+NG, k+1+NG, n]
+            @inbounds V7 = Fm[i+1+NG, j+4+NG, k+1+NG, n]
 
-            fmy = c6*V1 + c5*V2 + c4*V3 + c3*V4 + c2*V5 + c1*V6
+            fmy = c7*V1 + c6*V2 + c5*V3 + c4*V4 + c3*V5 + c2*V6 + c1*V7
 
             @inbounds F[i, j, k, n] = fpy + fmy
         end
@@ -322,26 +328,28 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
     tmp1::Float64 = consts.WENO5[2]
     tmp2::Float64 = consts.WENO5[3]
 
-    c1::Float64 = consts.UP5[1]
-    c2::Float64 = consts.UP5[2]
-    c3::Float64 = consts.UP5[3]
-    c4::Float64 = consts.UP5[4]
-    c5::Float64 = consts.UP5[5]
-    c6::Float64 = consts.UP5[6]
+    c1::Float64 = consts.UP7[1]
+    c2::Float64 = consts.UP7[2]
+    c3::Float64 = consts.UP7[3]
+    c4::Float64 = consts.UP7[4]
+    c5::Float64 = consts.UP7[5]
+    c6::Float64 = consts.UP7[6]
+    c7::Float64 = consts.UP7[7]
 
     # Jameson sensor
     ϕz = (2*ϕ[i+1+NG, j+1+NG, k+1+NG] + ϕ[i+1+NG, j+1+NG, k+2+NG] + ϕ[i+1+NG, j+1+NG, k+NG])*0.25
 
     if ϕz < consts.Hybrid[1]
         for n = 1:NV
-            @inbounds V1 = Fp[i+1+NG, j+1+NG, k-2+NG, n]
-            @inbounds V2 = Fp[i+1+NG, j+1+NG, k-1+NG, n]
-            @inbounds V3 = Fp[i+1+NG, j+1+NG, k+NG,   n]
-            @inbounds V4 = Fp[i+1+NG, j+1+NG, k+1+NG, n]
-            @inbounds V5 = Fp[i+1+NG, j+1+NG, k+2+NG, n]
-            @inbounds V6 = Fp[i+1+NG, j+1+NG, k+3+NG, n]
+            @inbounds V1 = Fp[i+1+NG, j+1+NG, k-3+NG, n]
+            @inbounds V2 = Fp[i+1+NG, j+1+NG, k-2+NG, n]
+            @inbounds V3 = Fp[i+1+NG, j+1+NG, k-1+NG, n]
+            @inbounds V4 = Fp[i+1+NG, j+1+NG, k+NG,   n]
+            @inbounds V5 = Fp[i+1+NG, j+1+NG, k+1+NG, n]
+            @inbounds V6 = Fp[i+1+NG, j+1+NG, k+2+NG, n]
+            @inbounds V7 = Fp[i+1+NG, j+1+NG, k+3+NG, n]
             
-            fpz = c1*V1 + c2*V2 + c3*V3 + c4*V4 + c5*V5 + c6*V6
+            fpz = c1*V1 + c2*V2 + c3*V3 + c4*V4 + c5*V5 + c6*V6 + c7*V7
 
             @inbounds V1 = Fm[i+1+NG, j+1+NG, k-2+NG, n]
             @inbounds V2 = Fm[i+1+NG, j+1+NG, k-1+NG, n]
@@ -349,8 +357,9 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
             @inbounds V4 = Fm[i+1+NG, j+1+NG, k+1+NG, n]
             @inbounds V5 = Fm[i+1+NG, j+1+NG, k+2+NG, n]
             @inbounds V6 = Fm[i+1+NG, j+1+NG, k+3+NG, n]
+            @inbounds V7 = Fm[i+1+NG, j+1+NG, k+4+NG, n]
 
-            fmz = c6*V1 + c5*V2 + c4*V3 + c3*V4 + c2*V5 + c1*V6
+            fmz = c7*V1 + c6*V2 + c5*V3 + c4*V4 + c3*V5 + c2*V6 + c1*V7
 
             @inbounds F[i, j, k, n] = fpz + fmz
         end

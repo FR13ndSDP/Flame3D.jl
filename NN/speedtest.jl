@@ -10,8 +10,8 @@ w3 = ps[3].weight
 b3 = ps[3].bias
 
 input = CUDA.ones(Float32, 7, 2048*1024)
-Y1 = CUDA.ones(Float32, 128, 2048*1024)
-Y2 = CUDA.ones(Float32, 64, 2048*1024)
+Y1 = CUDA.ones(Float32, 64, 2048*1024)
+Y2 = CUDA.ones(Float32, 256, 2048*1024)
 Y3 = CUDA.ones(Float32, 6, 2048*1024)
 
 # Zero GPU allocation
@@ -30,10 +30,10 @@ function evalModel(Y1, Y2, Y3, w1, w2, w3, b1, b2, b3, input)
     return Y3
 end
 
-CUDA.@time for n=1:200
-    model(input, ps, st)[1]
-end
+# CUDA.@time for n=1:100
+#     model(input, ps, st)[1]
+# end
 
-CUDA.@time for n=1:200
+CUDA.@time for n=1:100
     evalModel(Y1, Y2, Y3, w1, w2, w3, b1, b2, b3, input)
 end

@@ -2,18 +2,18 @@
 using HDF5
 using WriteVTK
 
-const NG::Int64 = 4
-const Nx::Int64 = 1024
-const Ny::Int64 = 128
-const Nz::Int64 = 8
+const NG::UInt8 = 4
+const Nx::Int32 = 2048
+const Ny::Int32 = 256
+const Nz::Int32 = 8
 const Lx::Float64 = 2
-const Ly::Float64 = 0.2
+const Ly::Float64 = 0.1
 const Lz::Float64 = 0.01
-const Nx_tot::Int64 = Nx + 2*NG
-const Ny_tot::Int64 = Ny + 2*NG
-const Nz_tot::Int64 = Nz + 2*NG
-const vis::Bool = false
-const compress_level::Int64 = 3
+const Nx_tot::Int32 = Nx + 2*NG
+const Ny_tot::Int32 = Ny + 2*NG
+const Nz_tot::Int32 = Nz + 2*NG
+const vis::Bool = true
+const compress_level::UInt8 = 3
 
 x = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
 y = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
@@ -21,7 +21,7 @@ z = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
 
 @inbounds for k ∈ 1:Nz, j ∈ 1:Ny, i ∈ 1:Nx 
     x[i+NG, j+NG, k+NG] = (i-1) * (Lx/(Nx-1))
-    y[i+NG, j+NG, k+NG] = Ly * (0.9*((j-1)/(Ny-1))^3 + 0.1*(j-1)/(Ny-1))
+    y[i+NG, j+NG, k+NG] = Ly * (0.75*((j-1)/(Ny-1))^3 + 0.25*(j-1)/(Ny-1))
     z[i+NG, j+NG, k+NG] = (k-1) * (Lz/(Nz-1))
 end
 
