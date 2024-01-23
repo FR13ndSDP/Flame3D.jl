@@ -280,7 +280,7 @@ end
             @inbounds sum1 += X[nn] / D[(n-1)*Nspecs+nn]
         end
         sum1 *= P
-        @inbounds Diff[n] = (1-X[n])/sum1
+        @inbounds Diff[n] = (1-X[n])/(sum1+eps(Float64))
     end
     return λ, μ
 end
