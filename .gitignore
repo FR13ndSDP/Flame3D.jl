@@ -4,4 +4,4 @@
 *.txt
 *.h5
 .vscode/**
-!/NN/luxmodel.jld2
+!/NN/**/luxmodel.jld2
