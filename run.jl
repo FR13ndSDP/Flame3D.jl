@@ -60,14 +60,6 @@ end
 Adapt.@adapt_structure thermoProperty
 Adapt.@adapt_structure constants
 
-thermo = initThermo(mech) # now only NASA7
-consts = constants(287.0, 1.4, 1.458e-6, 110.4, 0.72, 1004.5, 
-                   CuArray([-1/60, 3/20, -3/4]), 
-                   CuArray([1/12, -2/3]),
-                   CuArray([0.01, 0.1]),
-                   CuArray([CUDA.eps(1e-16), 13/12, 1/6]),
-                   CuArray([-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420]))
-
 #initialization on CPU
 function initialize(Q, ρi, consts)
     ct = pyimport("cantera")
@@ -92,4 +84,8 @@ function initialize(Q, ρi, consts)
     end
 end
 
-time_step(thermo, consts)
+MPI.Init()
+
+time_step()
+
+MPI.Finalize()
