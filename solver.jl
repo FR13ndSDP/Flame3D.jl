@@ -91,6 +91,8 @@ function time_step()
         initialize(Q_h, ρi_h, consts)
     end
     
+    ϕ_h = zeros(Float64, Nx_tot, Ny_tot, Nz_tot) # shock sensor
+
     # load mesh metrics
     fid = h5open("metrics.h5", "r", comm, MPI.Info())
     dξdx_h = fid["dξdx"][lo:hi, :, :]
@@ -157,12 +159,23 @@ function time_step()
     Un = copy(U)
     ρn = copy(ρi)
 
+    # MPI buffer 
+    Qsbuf_h = zeros(Float64, NG, Ny_tot, Nz_tot, Nprim)
+    Qrbuf_h = similar(Qsbuf_h)
+    dsbuf_h = zeros(Float64, NG, Ny_tot, Nz_tot, Nspecs)
+    drbuf_h = similar(dsbuf_h)
+
+    Qsbuf_d = CuArray(Qsbuf_h)
+    Qrbuf_d = CuArray(Qrbuf_h)
+    dsbuf_d = CuArray(dsbuf_h)
+    drbuf_d = CuArray(drbuf_h)
+
     # initial
     @cuda threads=nthreads blocks=nblock prim2c(U, Q)
     fillGhost(Q, U, ρi, Yi, thermo, rank)
     fillSpec(ρi)
-    exchange_ghost(Q, Nprim, rank, comm)
-    exchange_ghost(ρi, Nspecs, rank, comm)
+    exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
+    exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
     MPI.Barrier(comm)
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock prim2c(U, Q)
@@ -220,8 +233,8 @@ function time_step()
             @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
             fillGhost(Q, U, ρi, Yi, thermo, rank)
             fillSpec(ρi)
-            exchange_ghost(Q, Nprim, rank, comm)
-            exchange_ghost(ρi, Nspecs, rank, comm)
+            exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
+            exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
             MPI.Barrier(comm)
             @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
         end
@@ -249,8 +262,8 @@ function time_step()
             @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
             fillGhost(Q, U, ρi, Yi, thermo, rank)
             fillSpec(ρi)
-            exchange_ghost(Q, Nprim, rank, comm)
-            exchange_ghost(ρi, Nspecs, rank, comm)
+            exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
+            exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
             MPI.Barrier(comm)
             @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
         end
@@ -264,22 +277,17 @@ function time_step()
             @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
             fillGhost(Q, U, ρi, Yi, thermo, rank)
             fillSpec(ρi)
-            exchange_ghost(Q, Nprim, rank, comm)
-            exchange_ghost(ρi, Nspecs, rank, comm)
+            exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
+            exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
             MPI.Barrier(comm)
             @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
         end
 
         # Output
         if tt % step_out == 0 || abs(Time-dt*tt) <= 1e-15
-            μ_h = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-            λ_h = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-            ϕ_h = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
             copyto!(Q_h, Q)
             copyto!(ρi_h, ρi)
             copyto!(ϕ_h, ϕ)
-            copyto!(μ_h, μ)
-            copyto!(λ_h, λ)
 
             # visualization file, in Float32
             fname::String = string("plt", tt, "-", rank)
@@ -302,9 +310,6 @@ function time_step()
             y_ng = convert(Array{Float32, 3}, @view y_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
             z_ng = convert(Array{Float32, 3}, @view z_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
 
-            μ_ng = convert(Array{Float32, 3}, @view μ_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
-            λ_ng = convert(Array{Float32, 3}, @view λ_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
-
             vtk_grid(fname, x_ng, y_ng, z_ng) do vtk
                 vtk["rho"] = rho
                 vtk["u"] = u
@@ -318,8 +323,6 @@ function time_step()
                 vtk["YN"] = YN
                 vtk["YNO"] = YNO
                 vtk["YN2"] = YN2
-                vtk["mu"] = μ_ng
-                vtk["lambda"] = λ_ng
             end 
 
             # restart file, in Float64
@@ -346,11 +349,6 @@ function time_step()
                     dset2[:, :, :, :, rank + 1] = ρi_h
                 end
             end
-            
-            # release memory
-            μ_h = nothing
-            λ_h = nothing
-            ϕ_h = nothing
         end
     end
     if rank == 0

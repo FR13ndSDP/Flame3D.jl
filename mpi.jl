@@ -1,10 +1,5 @@
 # CUDA-aware MPI not available
-function exchange_ghost(Q, NV, rank, comm)
-    sendbuf_h = zeros(Float64, NG, Ny+2*NG, Nz+2*NG, NV)
-    recvbuf_h = zeros(Float64, NG, Ny+2*NG, Nz+2*NG, NV)
-    sendbuf_d = CuArray(sendbuf_h)
-    recvbuf_d = CuArray(recvbuf_h)
-
+function exchange_ghost(Q, NV, rank, comm, sbuf_h, sbuf_d, rbuf_h, rbuf_d)
     nthreads = (NG, 8, 8)
     nblock = (1, cld((Ny+2*NG), 8), cld((Nz+2*NG), 8))
 
@@ -14,13 +9,13 @@ function exchange_ghost(Q, NV, rank, comm)
 
     if src != MPI.PROC_NULL || dst != MPI.PROC_NULL
         if dst != MPI.PROC_NULL
-            @cuda threads=nthreads blocks=nblock pack_R(sendbuf_d, Q, NV)
-            copyto!(sendbuf_h, sendbuf_d)
+            @cuda threads=nthreads blocks=nblock pack_R(sbuf_d, Q, NV)
+            copyto!(sbuf_h, sbuf_d)
         end
-        MPI.Sendrecv!(sendbuf_h, recvbuf_h, comm; dest=dst, source=src)
+        MPI.Sendrecv!(sbuf_h, rbuf_h, comm; dest=dst, source=src)
         if src != MPI.PROC_NULL
-            copyto!(recvbuf_d, recvbuf_h)
-            @cuda threads=nthreads blocks=nblock unpack_L(recvbuf_d, Q, NV)
+            copyto!(rbuf_d, rbuf_h)
+            @cuda threads=nthreads blocks=nblock unpack_L(rbuf_d, Q, NV)
         end
     end
 
@@ -30,13 +25,13 @@ function exchange_ghost(Q, NV, rank, comm)
 
     if src != MPI.PROC_NULL || dst != MPI.PROC_NULL
         if dst != MPI.PROC_NULL
-            @cuda threads=nthreads blocks=nblock pack_L(sendbuf_d, Q, NV)
-            copyto!(sendbuf_h, sendbuf_d)
+            @cuda threads=nthreads blocks=nblock pack_L(sbuf_d, Q, NV)
+            copyto!(sbuf_h, sbuf_d)
         end
-        MPI.Sendrecv!(sendbuf_h, recvbuf_h, comm; dest=dst, source=src)
+        MPI.Sendrecv!(sbuf_h, rbuf_h, comm; dest=dst, source=src)
         if src != MPI.PROC_NULL
-            copyto!(recvbuf_d, recvbuf_h)
-            @cuda threads=nthreads blocks=nblock unpack_R(recvbuf_d, Q, NV)
+            copyto!(rbuf_d, rbuf_h)
+            @cuda threads=nthreads blocks=nblock unpack_R(rbuf_d, Q, NV)
         end
     end
 end
