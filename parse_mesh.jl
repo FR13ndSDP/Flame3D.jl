@@ -2,27 +2,41 @@
 using HDF5
 using WriteVTK
 
-const NG::UInt8 = 4
-const Nx::Int32 = 2048
-const Ny::Int32 = 256
-const Nz::Int32 = 8
-const Lx::Float64 = 2
-const Ly::Float64 = 0.1
-const Lz::Float64 = 0.01
-const Nx_tot::Int32 = Nx + 2*NG
-const Ny_tot::Int32 = Ny + 2*NG
-const Nz_tot::Int32 = Nz + 2*NG
+const NG::Int64 = 4
+const Nx::Int64 = 512
+const Nx_uniform::Int64 = Nx-20
+const Ny::Int64 = 63
+const Nz::Int64 = 63
+const Lx::Float64 = 0.1
+const Ly::Float64 = 0.02
+const Lz::Float64 = 0.02
+const Nx_tot::Int64 = Nx + 2*NG
+const Ny_tot::Int64 = Ny + 2*NG
+const Nz_tot::Int64 = Nz + 2*NG
 const vis::Bool = true
-const compress_level::UInt8 = 3
+const compress_level::Int64 = 3
 
 x = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
 y = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
 z = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
 
+
+@inbounds for k ∈ 1:Nz, j ∈ 1:Ny
+    y[1+NG, j+NG, k+NG] = tan((j-32)/32) * Ly * 0.5
+    z[1+NG, j+NG, k+NG] = tan((k-32)/32) * Lz * 0.5
+end
+
 @inbounds for k ∈ 1:Nz, j ∈ 1:Ny, i ∈ 1:Nx 
+    y[i+NG, j+NG, k+NG] = y[1+NG, j+NG, k+NG]
+    z[i+NG, j+NG, k+NG] = z[1+NG, j+NG, k+NG]
+end
+
+@inbounds for k ∈ 1:Nz, j ∈ 1:Ny, i ∈ 1:Nx_uniform 
     x[i+NG, j+NG, k+NG] = (i-1) * (Lx/(Nx-1))
-    y[i+NG, j+NG, k+NG] = Ly * (0.75*((j-1)/(Ny-1))^3 + 0.25*(j-1)/(Ny-1))
-    z[i+NG, j+NG, k+NG] = (k-1) * (Lz/(Nz-1))
+end
+
+@inbounds for k ∈ 1:Nz, j ∈ 1:Ny, i ∈ Nx_uniform+1:Nx 
+    x[i+NG, j+NG, k+NG] = x[i-1+NG, j+NG, k+NG] + (Lx/(Nx-1)) * (1 + (i-Nx_uniform)/2)
 end
 
 # get ghost location

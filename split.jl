@@ -1,10 +1,10 @@
 #For N-S, range: 1->N+2*NG
-function fluxSplit(Q, U, Fp, Fm, Ax, Ay, Az)
+function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
 
-    if i > Nx+2*NG || j > Ny+2*NG || k > Nz+2*NG
+    if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
         return
     end
 
@@ -13,7 +13,7 @@ function fluxSplit(Q, U, Fp, Fm, Ax, Ay, Az)
     @inbounds v = Q[i, j, k, 3]
     @inbounds w = Q[i, j, k, 4]
     @inbounds p = Q[i, j, k, 5]
-    @inbounds ei = U[i, j, k, 5] - 0.5 * ρ * (u^2 + v^2 + w^2)
+    @inbounds ei = Q[i, j, k, 7]
     @inbounds A1 = Ax[i, j, k]
     @inbounds A2 = Ay[i, j, k]
     @inbounds A3 = Az[i, j, k]
@@ -70,12 +70,12 @@ function fluxSplit(Q, U, Fp, Fm, Ax, Ay, Az)
 end
 
 # For species, range 1->N+2*NG
-function split(ρi, Q, U, Fp, Fm, Ax, Ay, Az)
+function split(ρi, Q, Fp, Fm, Ax, Ay, Az)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
 
-    if i > Nx+2*NG || j > Ny+2*NG || k > Nz+2*NG
+    if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
         return
     end
 
@@ -84,7 +84,7 @@ function split(ρi, Q, U, Fp, Fm, Ax, Ay, Az)
     @inbounds v = Q[i, j, k, 3]
     @inbounds w = Q[i, j, k, 4]
     @inbounds p = Q[i, j, k, 5]
-    @inbounds ei = U[i, j, k, 5] - 0.5 * ρ * (u^2 + v^2 + w^2)
+    @inbounds ei = Q[i, j, k, 7]
     @inbounds A1 = Ax[i, j, k]
     @inbounds A2 = Ay[i, j, k]
     @inbounds A3 = Az[i, j, k]

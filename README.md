@@ -1,7 +1,8 @@
 # Flame3D.jl
+> **FL**uid **A**nd **M**achine learning **E**ngine **3D**
 
-Toy code for compression corner with lux NN model for real gas and chemical reaction.
+Code for compressible flow simulation with neural network for real gas and chemical reaction.
 
-- `CUDA.jl` for parallelization
-- 3D, with high order scheme
+- `CUDA.jl` and `MPI.jl` for multi-GPU parallelization
+- 3D, with high order scheme (up to 7th order)
 - `Lux.jl` trained model combined with `Cantera`

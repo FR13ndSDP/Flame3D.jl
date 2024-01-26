@@ -4,7 +4,7 @@ function viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dη
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
 
-    if i > Nx+2*NG-2 || j > Ny+2*NG-2 || k > Nz+2*NG-2 || i < 3 || j < 3 || k < 3
+    if i > Nxp+2*NG-2 || j > Ny+2*NG-2 || k > Nz+2*NG-2 || i < 3 || j < 3 || k < 3
         return
     end
 
@@ -32,69 +32,22 @@ function viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dη
     c1::Float64 = consts.CD4[1]
     c2::Float64 = consts.CD4[2]
 
-    d1::Float64 = consts.CD6[1]
-    d2::Float64 = consts.CD6[2]
-    d3::Float64 = consts.CD6[3]
+    @inbounds ∂u∂ξ = c1*(Q[i-2, j, k, 2] - Q[i+2, j, k, 2]) + c2*(Q[i-1, j, k, 2] - Q[i+1, j, k, 2])
+    @inbounds ∂v∂ξ = c1*(Q[i-2, j, k, 3] - Q[i+2, j, k, 3]) + c2*(Q[i-1, j, k, 3] - Q[i+1, j, k, 3])
+    @inbounds ∂w∂ξ = c1*(Q[i-2, j, k, 4] - Q[i+2, j, k, 4]) + c2*(Q[i-1, j, k, 4] - Q[i+1, j, k, 4])
+    @inbounds ∂T∂ξ = c1*(Q[i-2, j, k, 6] - Q[i+2, j, k, 6]) + c2*(Q[i-1, j, k, 6] - Q[i+1, j, k, 6])
 
-    if i == 3 || i == Nx+2*NG-2
-        @inbounds ∂u∂ξ = c1*(Q[i-2, j, k, 2] - Q[i+2, j, k, 2]) + c2*(Q[i-1, j, k, 2] - Q[i+1, j, k, 2])
-        @inbounds ∂v∂ξ = c1*(Q[i-2, j, k, 3] - Q[i+2, j, k, 3]) + c2*(Q[i-1, j, k, 3] - Q[i+1, j, k, 3])
-        @inbounds ∂w∂ξ = c1*(Q[i-2, j, k, 4] - Q[i+2, j, k, 4]) + c2*(Q[i-1, j, k, 4] - Q[i+1, j, k, 4])
-        @inbounds ∂T∂ξ = c1*(Q[i-2, j, k, 6] - Q[i+2, j, k, 6]) + c2*(Q[i-1, j, k, 6] - Q[i+1, j, k, 6])
-    else
-        @inbounds ∂u∂ξ = d1*(Q[i-3, j, k, 2] - Q[i+3, j, k, 2]) + 
-                         d2*(Q[i-2, j, k, 2] - Q[i+2, j, k, 2]) + 
-                         d3*(Q[i-1, j, k, 2] - Q[i+1, j, k, 2])
-        @inbounds ∂v∂ξ = d1*(Q[i-3, j, k, 3] - Q[i+3, j, k, 3]) + 
-                         d2*(Q[i-2, j, k, 3] - Q[i+2, j, k, 3]) + 
-                         d3*(Q[i-1, j, k, 3] - Q[i+1, j, k, 3])
-        @inbounds ∂w∂ξ = d1*(Q[i-3, j, k, 4] - Q[i+3, j, k, 4]) + 
-                         d2*(Q[i-2, j, k, 4] - Q[i+2, j, k, 4]) + 
-                         d3*(Q[i-1, j, k, 4] - Q[i+1, j, k, 4])
-        @inbounds ∂T∂ξ = d1*(Q[i-3, j, k, 6] - Q[i+3, j, k, 6]) + 
-                         d2*(Q[i-2, j, k, 6] - Q[i+2, j, k, 6]) + 
-                         d3*(Q[i-1, j, k, 6] - Q[i+1, j, k, 6])
-    end
+    @inbounds ∂u∂η = c1*(Q[i, j-2, k, 2] - Q[i, j+2, k, 2]) + c2*(Q[i, j-1, k, 2] - Q[i, j+1, k, 2])
+    @inbounds ∂v∂η = c1*(Q[i, j-2, k, 3] - Q[i, j+2, k, 3]) + c2*(Q[i, j-1, k, 3] - Q[i, j+1, k, 3])
+    @inbounds ∂w∂η = c1*(Q[i, j-2, k, 4] - Q[i, j+2, k, 4]) + c2*(Q[i, j-1, k, 4] - Q[i, j+1, k, 4])
+    @inbounds ∂T∂η = c1*(Q[i, j-2, k, 6] - Q[i, j+2, k, 6]) + c2*(Q[i, j-1, k, 6] - Q[i, j+1, k, 6])
 
-    if j == 3 || j == Ny+2*NG-2
-        @inbounds ∂u∂η = c1*(Q[i, j-2, k, 2] - Q[i, j+2, k, 2]) + c2*(Q[i, j-1, k, 2] - Q[i, j+1, k, 2])
-        @inbounds ∂v∂η = c1*(Q[i, j-2, k, 3] - Q[i, j+2, k, 3]) + c2*(Q[i, j-1, k, 3] - Q[i, j+1, k, 3])
-        @inbounds ∂w∂η = c1*(Q[i, j-2, k, 4] - Q[i, j+2, k, 4]) + c2*(Q[i, j-1, k, 4] - Q[i, j+1, k, 4])
-        @inbounds ∂T∂η = c1*(Q[i, j-2, k, 6] - Q[i, j+2, k, 6]) + c2*(Q[i, j-1, k, 6] - Q[i, j+1, k, 6])
-    else
-        @inbounds ∂u∂η = d1*(Q[i, j-3, k, 2] - Q[i, j+3, k, 2]) + 
-                         d2*(Q[i, j-2, k, 2] - Q[i, j+2, k, 2]) + 
-                         d3*(Q[i, j-1, k, 2] - Q[i, j+1, k, 2])
-        @inbounds ∂v∂η = d1*(Q[i, j-3, k, 3] - Q[i, j+3, k, 3]) + 
-                         d2*(Q[i, j-2, k, 3] - Q[i, j+2, k, 3]) + 
-                         d3*(Q[i, j-1, k, 3] - Q[i, j+1, k, 3])
-        @inbounds ∂w∂η = d1*(Q[i, j-3, k, 4] - Q[i, j+3, k, 4]) + 
-                         d2*(Q[i, j-2, k, 4] - Q[i, j+2, k, 4]) + 
-                         d3*(Q[i, j-1, k, 4] - Q[i, j+1, k, 4])
-        @inbounds ∂T∂η = d1*(Q[i, j-3, k, 6] - Q[i, j+3, k, 6]) + 
-                         d2*(Q[i, j-2, k, 6] - Q[i, j+2, k, 6]) + 
-                         d3*(Q[i, j-1, k, 6] - Q[i, j+1, k, 6])
-    end
 
-    if k == 3 || k == Nz+2*NG-2
-        @inbounds ∂u∂ζ = c1*(Q[i, j, k-2, 2] - Q[i, j, k+2, 2]) + c2*(Q[i, j, k-1, 2] - Q[i, j, k+1, 2])
-        @inbounds ∂v∂ζ = c1*(Q[i, j, k-2, 3] - Q[i, j, k+2, 3]) + c2*(Q[i, j, k-1, 3] - Q[i, j, k+1, 3])
-        @inbounds ∂w∂ζ = c1*(Q[i, j, k-2, 4] - Q[i, j, k+2, 4]) + c2*(Q[i, j, k-1, 4] - Q[i, j, k+1, 4])
-        @inbounds ∂T∂ζ = c1*(Q[i, j, k-2, 6] - Q[i, j, k+2, 6]) + c2*(Q[i, j, k-1, 6] - Q[i, j, k+1, 6])
-    else
-        @inbounds ∂u∂ζ = d1*(Q[i, j, k-3, 2] - Q[i, j, k+3, 2]) + 
-                         d2*(Q[i, j, k-2, 2] - Q[i, j, k+2, 2]) + 
-                         d3*(Q[i, j, k-1, 2] - Q[i, j, k+1, 2])
-        @inbounds ∂v∂ζ = d1*(Q[i, j, k-3, 3] - Q[i, j, k+3, 3]) + 
-                         d2*(Q[i, j, k-2, 3] - Q[i, j, k+2, 3]) + 
-                         d3*(Q[i, j, k-1, 3] - Q[i, j, k+1, 3])
-        @inbounds ∂w∂ζ = d1*(Q[i, j, k-3, 4] - Q[i, j, k+3, 4]) + 
-                         d2*(Q[i, j, k-2, 4] - Q[i, j, k+2, 4]) + 
-                         d3*(Q[i, j, k-1, 4] - Q[i, j, k+1, 4])
-        @inbounds ∂T∂ζ = d1*(Q[i, j, k-3, 6] - Q[i, j, k+3, 6]) + 
-                         d2*(Q[i, j, k-2, 6] - Q[i, j, k+2, 6]) + 
-                         d3*(Q[i, j, k-1, 6] - Q[i, j, k+1, 6])
-    end
+    @inbounds ∂u∂ζ = c1*(Q[i, j, k-2, 2] - Q[i, j, k+2, 2]) + c2*(Q[i, j, k-1, 2] - Q[i, j, k+1, 2])
+    @inbounds ∂v∂ζ = c1*(Q[i, j, k-2, 3] - Q[i, j, k+2, 3]) + c2*(Q[i, j, k-1, 3] - Q[i, j, k+1, 3])
+    @inbounds ∂w∂ζ = c1*(Q[i, j, k-2, 4] - Q[i, j, k+2, 4]) + c2*(Q[i, j, k-1, 4] - Q[i, j, k+1, 4])
+    @inbounds ∂T∂ζ = c1*(Q[i, j, k-2, 6] - Q[i, j, k+2, 6]) + c2*(Q[i, j, k-1, 6] - Q[i, j, k+1, 6])
+
 
     @inbounds u = Q[i, j, k, 2]
     @inbounds v = Q[i, j, k, 3]
@@ -152,7 +105,7 @@ function specViscousFlux(Fv_x, Fv_y, Fv_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, d�
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1)* blockDim().z + threadIdx().z
 
-    if i > Nx+2*NG-2 || j > Ny+2*NG-2 || k > Nz+2*NG-2 || i < 3 || j < 3 || k < 3
+    if i > Nxp+2*NG-2 || j > Ny+2*NG-2 || k > Nz+2*NG-2 || i < 3 || j < 3 || k < 3
         return
     end
 

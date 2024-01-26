@@ -52,6 +52,21 @@ end
     return    
 end
 
+# mass fraction to mole fraction
+@inline function ρi2X(ρi, Xi, thermo)
+    ∑X::Float64 = 0
+    for n = 1:Nspecs
+        @inbounds Xi[n] = ρi[n] / thermo.mw[n]
+        @inbounds ∑X += Xi[n]
+    end
+    
+    ∑Xinv::Float64 = 1/∑X
+    for n = 1:Nspecs
+        @inbounds Xi[n] = Xi[n] * ∑Xinv
+    end
+    return    
+end
+
 # mole fraction to mass fraction
 @inline function X2Y(Xi, Yi, thermo)
     XW::Float64 = 0
@@ -68,10 +83,10 @@ end
 @inline function cp_specs(T::Float64, T2::Float64, T3::Float64, T4::Float64, n, thermo)
     if T < thermo.coeffs_sep[n]
         @inbounds cp = thermo.coeffs_lo[n, 1] + thermo.coeffs_lo[n, 2] * T + thermo.coeffs_lo[n, 3] * T2 +
-        @inbounds thermo.coeffs_lo[n, 4] * T3 + thermo.coeffs_lo[n, 5] * T4
+                       thermo.coeffs_lo[n, 4] * T3 + thermo.coeffs_lo[n, 5] * T4
     else
         @inbounds cp = thermo.coeffs_hi[n, 1] + thermo.coeffs_hi[n, 2] * T + thermo.coeffs_hi[n, 3] * T2 +
-        @inbounds thermo.coeffs_hi[n, 4] * T3 + thermo.coeffs_hi[n, 5] * T4
+                       thermo.coeffs_hi[n, 4] * T3 + thermo.coeffs_hi[n, 5] * T4
     end
 
     return cp
@@ -80,11 +95,13 @@ end
 # get enthalpy for species using NASA-7 polynomial, J/kg
 @inline function h_specs(T::Float64, T2::Float64, T3::Float64, T4::Float64, T5::Float64, n, thermo)
     if T < thermo.coeffs_sep[n]
-        @inbounds hi = thermo.coeffs_lo[n, 1] * T + thermo.coeffs_lo[n, 2] * 0.5 * T2 + thermo.coeffs_lo[n, 3] * 0.3333333333333333 * T3 +
-        @inbounds thermo.coeffs_lo[n, 4] * 0.25 * T4 + thermo.coeffs_lo[n, 5] * 0.2 * T5
+        @inbounds hi = thermo.coeffs_lo[n, 1] * T + thermo.coeffs_lo[n, 2] * 0.5 * T2 + 
+                       thermo.coeffs_lo[n, 3] * 0.3333333333333333 * T3 + thermo.coeffs_lo[n, 4] * 0.25 * T4 + 
+                       thermo.coeffs_lo[n, 5] * 0.2 * T5
     else
-        @inbounds hi = thermo.coeffs_hi[n, 1] * T + thermo.coeffs_hi[n, 2] * 0.5 * T2 + thermo.coeffs_hi[n, 3] * 0.3333333333333333 * T3 +
-        @inbounds thermo.coeffs_hi[n, 4] * 0.25 * T4 + thermo.coeffs_hi[n, 5] * 0.2 * T5 + (thermo.coeffs_hi[n, 6] - thermo.coeffs_lo[n, 6])
+        @inbounds hi = thermo.coeffs_hi[n, 1] * T + thermo.coeffs_hi[n, 2] * 0.5 * T2 + 
+                       thermo.coeffs_hi[n, 3] * 0.3333333333333333 * T3 + thermo.coeffs_hi[n, 4] * 0.25 * T4 + 
+                       thermo.coeffs_hi[n, 5] * 0.2 * T5 + (thermo.coeffs_hi[n, 6] - thermo.coeffs_lo[n, 6])
     end
 
     @inbounds hi *= thermo.Ru / thermo.mw[n]
@@ -95,11 +112,13 @@ end
 # get internal energy for species using NASA-7 polynomial
 @inline function ei_specs(T::Float64, T2::Float64, T3::Float64, T4::Float64, T5::Float64, n, thermo)
     if T < thermo.coeffs_sep[n]
-        @inbounds ei = (thermo.coeffs_lo[n, 1] -1) * T + thermo.coeffs_lo[n, 2] * 0.5 * T2 + thermo.coeffs_lo[n, 3] * 0.3333333333333333 * T3 +
-        @inbounds thermo.coeffs_lo[n, 4] * 0.25 * T4 + thermo.coeffs_lo[n, 5] * 0.2 * T5
+        @inbounds ei = (thermo.coeffs_lo[n, 1] -1) * T + thermo.coeffs_lo[n, 2] * 0.5 * T2 + 
+                        thermo.coeffs_lo[n, 3] * 0.3333333333333333 * T3 + thermo.coeffs_lo[n, 4] * 0.25 * T4 +
+                        thermo.coeffs_lo[n, 5] * 0.2 * T5
     else
-        @inbounds ei = (thermo.coeffs_hi[n, 1] -1) * T + thermo.coeffs_hi[n, 2] * 0.5 * T2 + thermo.coeffs_hi[n, 3] * 0.3333333333333333 * T3 +
-        @inbounds thermo.coeffs_hi[n, 4] * 0.25 * T4 + thermo.coeffs_hi[n, 5] * 0.2 * T5 + (thermo.coeffs_hi[n, 6] - thermo.coeffs_lo[n, 6])
+        @inbounds ei = (thermo.coeffs_hi[n, 1] -1) * T + thermo.coeffs_hi[n, 2] * 0.5 * T2 + 
+                        thermo.coeffs_hi[n, 3] * 0.3333333333333333 * T3 + thermo.coeffs_hi[n, 4] * 0.25 * T4 + 
+                        thermo.coeffs_hi[n, 5] * 0.2 * T5 + (thermo.coeffs_hi[n, 6] - thermo.coeffs_lo[n, 6])
     end
 
     return ei
@@ -290,7 +309,7 @@ function mixture(Q, Yi, Xi, μi, Dij, λ, μ, D, thermo)
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
-    if i > Nx+2*NG || j > Ny+2*NG || k > Nz+2*NG
+    if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
         return
     end
 
@@ -343,12 +362,12 @@ function initThermo(mech)
 end
 
 
-# mech = "./NN/air.yaml"
+# mech = "./NN/Air/air.yaml"
 # ct = pyimport("cantera")
 # gas = ct.Solution(mech)
-# T::Float64 = 250
+# T::Float64 = 1000
 # P::Float64 = 3596
-# gas.TPY = T, P, "N2:0.767 O2:0.233"
+# gas.TPY = T, P, "N2:0.77 O2:0.23"
 
 # ρi = gas.Y * gas.density
 # ρi_d = CuArray(ρi)
