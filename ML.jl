@@ -32,8 +32,8 @@ function post_predict(yt_pred, inputs, U, Q, ρi, dt, lambda, thermo)
         return
     end
 
-    T = Q[i+NG, j+NG, k+NG, 6]
-    P = Q[i+NG, j+NG, k+NG, 5]
+    @inbounds T = Q[i+NG, j+NG, k+NG, 6]
+    @inbounds P = Q[i+NG, j+NG, k+NG, 5]
     @inbounds rhoi = @view ρi[i+NG, j+NG, k+NG, :]
 
     # only T > 2000 K calculate reaction
