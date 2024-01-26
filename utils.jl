@@ -82,30 +82,6 @@ function prim2c(U, Q)
     return
 end
 
-# Range: 1 -> N+2*NG
-function prim2c_p(U, Q)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
-
-    if i > 1+NG || j > Ny+2*NG || k > Nz+2*NG
-        return
-    end
-
-    @inbounds ρ = Q[i, j, k, 1]
-    @inbounds u = Q[i, j, k, 2]
-    @inbounds v = Q[i, j, k, 3]
-    @inbounds w = Q[i, j, k, 4]
-    @inbounds ei = Q[i, j, k, 7]
-
-    @inbounds U[i, j, k, 1] = ρ
-    @inbounds U[i, j, k, 2] = u * ρ
-    @inbounds U[i, j, k, 3] = v * ρ
-    @inbounds U[i, j, k, 4] = w * ρ
-    @inbounds U[i, j, k, 5] = ei + 0.5 * ρ * (u^2 + v^2 + w^2)
-    return
-end
-
 function copyOld(Un, U, NV)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y

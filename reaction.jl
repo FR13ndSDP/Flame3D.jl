@@ -170,8 +170,8 @@ end
 
 # get temperature from ρi and internal energy
 @inline function GetT(ein::Float64, ρi, thermo)
-    maxiter::Int32 = 100
-    tol::Float64 = 1e-8
+    maxiter::Int32 = 30
+    tol::Float64 = 1e-3
     tmin::Float64 = thermo.min_temp
     tmax::Float64 = thermo.max_temp
 
