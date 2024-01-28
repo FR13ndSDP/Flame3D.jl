@@ -177,34 +177,41 @@ function time_step()
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock prim2c(U, Q)
 
     if reaction
-        @load "./NN/Air/luxmodel.jld2" model ps st
+        if Luxmodel
+            @load "./NN/Air/luxmodel.jld2" model ps st
 
-        ps = ps |> gpu_device()
+            ps = ps |> gpu_device()
 
-        w1 = ps[1].weight
-        b1 = ps[1].bias
-        w2 = ps[2].weight
-        b2 = ps[2].bias
-        w3 = ps[3].weight
-        b3 = ps[3].bias
+            w1 = ps[1].weight
+            b1 = ps[1].bias
+            w2 = ps[2].weight
+            b2 = ps[2].bias
+            w3 = ps[3].weight
+            b3 = ps[3].bias
 
-        Y1 = CUDA.ones(Float32, 64, Nxp*Ny*Nz)
-        Y2 = CUDA.ones(Float32, 256, Nxp*Ny*Nz)
-        yt_pred = CUDA.ones(Float32, Nspecs+1, Nxp*Ny*Nz)
+            Y1 = CUDA.ones(Float32, 64, Nxp*Ny*Nz)
+            Y2 = CUDA.ones(Float32, 256, Nxp*Ny*Nz)
+            yt_pred = CUDA.ones(Float32, Nspecs+1, Nxp*Ny*Nz)
 
-        j = JSON.parsefile("./NN/Air/norm.json")
-        lambda = j["lambda"]
-        inputs_mean = CuArray(convert(Vector{Float32}, j["inputs_mean"]))
-        inputs_std =  CuArray(convert(Vector{Float32}, j["inputs_std"]))
-        labels_mean = CuArray(convert(Vector{Float32}, j["labels_mean"]))
-        labels_std =  CuArray(convert(Vector{Float32}, j["labels_std"]))
+            j = JSON.parsefile("./NN/Air/norm.json")
+            lambda = j["lambda"]
+            inputs_mean = CuArray(convert(Vector{Float32}, j["inputs_mean"]))
+            inputs_std =  CuArray(convert(Vector{Float32}, j["inputs_std"]))
+            labels_mean = CuArray(convert(Vector{Float32}, j["labels_mean"]))
+            labels_std =  CuArray(convert(Vector{Float32}, j["labels_std"]))
 
-        inputs = CUDA.zeros(Float32, Nspecs+2, Nxp*Ny*Nz)
-        inputs_norm = CUDA.zeros(Float32, Nspecs+2, Nxp*Ny*Nz)
+            inputs = CUDA.zeros(Float32, Nspecs+2, Nxp*Ny*Nz)
+            inputs_norm = CUDA.zeros(Float32, Nspecs+2, Nxp*Ny*Nz)
+        end
+        
+        if Cantera
+            # CPU evaluation needed
+            inputs_h = zeros(Float64, Nspecs+2, Nxp*Ny*Nz)
+            yt_pred_h = zeros(Float64, Nspecs+1, Nxp*Ny*Nz)
 
-        # CPU evaluation needed
-        inputs_h = zeros(Float32, Nspecs+2, Nxp*Ny*Nz)
-        yt_pred_h = zeros(Float32, Nspecs+1, Nxp*Ny*Nz)
+            inputs = CuArray(inputs_h)
+            yt_pred = CuArray(yt_pred_h)
+        end
 
         dt2 = dt/2
     end

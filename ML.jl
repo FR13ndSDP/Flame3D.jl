@@ -104,14 +104,20 @@ function post_eval_cpu(yt_pred, U, Q, ρi, thermo)
     @inbounds ρ = Q[i+NG, j+NG, k+NG, 1]
     @inbounds T = Q[i+NG, j+NG, k+NG, 6]
     @inbounds rhoi = @view ρi[i+NG, j+NG, k+NG, :]
+    ρnew = MVector{Nspecs, Float64}(undef)
 
     for n = 1:Nspecs
         @inbounds Yi = yt_pred[n, i + Nxp*(j-1 + Ny*(k-1))]
-        @inbounds ρi[i+NG, j+NG, k+NG, n] = Yi * ρ
+        @inbounds ρnew[n] = Yi * ρ
     end
 
     @inbounds T1::Float64 = yt_pred[Nspecs+1, i + Nxp*(j-1 + Ny*(k-1))]
-    @inbounds U[i+NG, j+NG, k+NG, 5] += InternalEnergy(T1, rhoi, thermo) - InternalEnergy(T, rhoi, thermo)
+    @inbounds U[i+NG, j+NG, k+NG, 5] += InternalEnergy(T1, ρnew, thermo) - InternalEnergy(T, rhoi, thermo)
+
+    for n = 1:Nspecs
+        @inbounds ρi[i+NG, j+NG, k+NG, n] = ρnew[n]
+    end
+    
     return
 end
 
