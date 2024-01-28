@@ -10,7 +10,9 @@ const Ny = h5read("metrics.h5", "Ny")
 const Nz = h5read("metrics.h5", "Nz")
 
 # global variables, do not change name
-const reaction::Bool = false
+const reaction::Bool = true
+const Luxmodel::Bool = false
+const Cantera::Bool = false
 const dt::Float64 = 5e-8
 const Time::Float64 = 1e-4
 const step_out::Int64 = 500
@@ -86,6 +88,6 @@ end
 
 MPI.Init()
 
-time_step()
+@time time_step()
 
 MPI.Finalize()

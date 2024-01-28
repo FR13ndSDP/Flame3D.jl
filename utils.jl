@@ -1,4 +1,4 @@
-# Range: 1 -> N+2*NG
+# Range: 1+NG -> N+NG
 function c2Prim(U, Q, ρi, thermo)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
@@ -43,6 +43,7 @@ function c2Prim(U, Q, ρi, thermo)
     return
 end
 
+# Range: 1 -> N+2*NG
 function getY(Yi, ρi, Q)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
@@ -82,6 +83,7 @@ function prim2c(U, Q)
     return
 end
 
+# Range: 1+NG -> N+NG
 function copyOld(Un, U, NV)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
@@ -97,6 +99,7 @@ function copyOld(Un, U, NV)
     return
 end
 
+# Range: 1+NG -> N+NG
 function linComb(U, Un, NV, a::Float64, b::Float64)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y

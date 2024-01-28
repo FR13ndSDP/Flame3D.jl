@@ -3,7 +3,7 @@ using HDF5
 using WriteVTK
 
 const NG::Int64 = 4
-const Nx::Int64 = 512
+const Nx::Int64 = 128
 const Nx_uniform::Int64 = Nx-20
 const Ny::Int64 = 63
 const Nz::Int64 = 63

@@ -82,7 +82,7 @@ function NND_z(F, Fp, Fm, NV)
     return
 end
 
-#Range: 1 -> N-1
+#Range: 1 -> N+1
 function WENO_x(F, ϕ, Fp, Fm, NV, consts)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
@@ -203,7 +203,7 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
     return
 end
 
-#Range: 1 -> N-1
+#Range: 1 -> N+1
 function WENO_y(F, ϕ, Fp, Fm, NV, consts)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
@@ -324,7 +324,7 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
     return
 end
 
-#Range: 1 -> N-1
+#Range: 1 -> N+1
 function WENO_z(F, ϕ, Fp, Fm, NV, consts)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y

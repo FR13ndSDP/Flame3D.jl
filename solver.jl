@@ -151,10 +151,6 @@ function time_step()
     μ = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
     λ = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
     D = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs)
-
-    μi = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs) # tmp for both μ and λ
-    Xi = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs)
-    Dij = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs*Nspecs) # tmp for N*N matricies
     
     Un = copy(U)
     ρn = copy(ρi)
@@ -206,6 +202,10 @@ function time_step()
         inputs = CUDA.zeros(Float32, Nspecs+2, Nxp*Ny*Nz)
         inputs_norm = CUDA.zeros(Float32, Nspecs+2, Nxp*Ny*Nz)
 
+        # CPU evaluation needed
+        inputs_h = zeros(Float32, Nspecs+2, Nxp*Ny*Nz)
+        yt_pred_h = zeros(Float32, Nspecs+1, Nxp*Ny*Nz)
+
         dt2 = dt/2
     end
 
@@ -226,17 +226,43 @@ function time_step()
 
         if reaction
             # Reaction Step
-            @cuda threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, Yi, lambda, inputs_mean, inputs_std)
-            evalModel(Y1, Y2, yt_pred, w1, w2, w3, b1, b2, b3, inputs_norm)
-            @. yt_pred = yt_pred * labels_std + labels_mean
-            @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, thermo)
-            @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
-            fillGhost(Q, U, ρi, Yi, thermo, rank)
-            fillSpec(ρi)
-            exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
-            exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
-            MPI.Barrier(comm)
-            @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
+            if Luxmodel
+                @cuda threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, Yi, lambda, inputs_mean, inputs_std)
+                evalModel(Y1, Y2, yt_pred, w1, w2, w3, b1, b2, b3, inputs_norm)
+                @. yt_pred = yt_pred * labels_std + labels_mean
+                @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, thermo)
+                @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
+                fillGhost(Q, U, ρi, Yi, thermo, rank)
+                fillSpec(ρi)
+                exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
+                exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
+                MPI.Barrier(comm)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
+            elseif Cantera
+                # CPU - cantera
+                @cuda threads=nthreads blocks=nblock pre_input_cpu(inputs, Q, Yi)
+                copyto!(inputs_h, inputs)
+                eval_cpu(yt_pred_h, inputs_h, dt2)
+                copyto!(yt_pred, yt_pred_h)
+                @cuda threads=nthreads blocks=nblock post_eval_cpu(yt_pred, U, Q, ρi, thermo)
+                @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
+                fillGhost(Q, U, ρi, Yi, thermo, rank)
+                fillSpec(ρi)
+                exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
+                exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
+                MPI.Barrier(comm)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
+            else
+                # GPU
+                @cuda threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2, thermo)
+                @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
+                fillGhost(Q, U, ρi, Yi, thermo, rank)
+                fillSpec(ρi)
+                exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
+                exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
+                MPI.Barrier(comm)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
+            end
         end
 
         # RK3
@@ -246,7 +272,7 @@ function time_step()
                 @cuda threads=nthreads blocks=nblock copyOld(ρn, ρi, Nspecs)
             end
 
-            @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock mixture(Q, Yi, Xi, μi, Dij, λ, μ, D, thermo)
+            @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock mixture(Q, Yi, λ, μ, D, thermo)
             @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q)
             specAdvance(ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fh, thermo, consts)
             flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fh, consts)
@@ -270,17 +296,43 @@ function time_step()
 
         if reaction
             # Reaction Step
-            @cuda threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, Yi, lambda, inputs_mean, inputs_std)
-            evalModel(Y1, Y2, yt_pred, w1, w2, w3, b1, b2, b3, inputs_norm)
-            @. yt_pred = yt_pred * labels_std + labels_mean
-            @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, thermo)
-            @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
-            fillGhost(Q, U, ρi, Yi, thermo, rank)
-            fillSpec(ρi)
-            exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
-            exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
-            MPI.Barrier(comm)
-            @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
+            if Luxmodel
+                @cuda threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, Yi, lambda, inputs_mean, inputs_std)
+                evalModel(Y1, Y2, yt_pred, w1, w2, w3, b1, b2, b3, inputs_norm)
+                @. yt_pred = yt_pred * labels_std + labels_mean
+                @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, thermo)
+                @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
+                fillGhost(Q, U, ρi, Yi, thermo, rank)
+                fillSpec(ρi)
+                exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
+                exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
+                MPI.Barrier(comm)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
+            elseif Cantera
+                # CPU - cantera
+                @cuda threads=nthreads blocks=nblock pre_input_cpu(inputs, Q, Yi)
+                copyto!(inputs_h, inputs)
+                eval_cpu(yt_pred_h, inputs_h, dt2)
+                copyto!(yt_pred, yt_pred_h)
+                @cuda threads=nthreads blocks=nblock post_eval_cpu(yt_pred, U, Q, ρi, thermo)
+                @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
+                fillGhost(Q, U, ρi, Yi, thermo, rank)
+                fillSpec(ρi)
+                exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
+                exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
+                MPI.Barrier(comm)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
+            else
+                # GPU
+                @cuda threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2, thermo)
+                @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
+                fillGhost(Q, U, ρi, Yi, thermo, rank)
+                fillSpec(ρi)
+                exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
+                exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
+                MPI.Barrier(comm)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
+            end
         end
 
         # Output

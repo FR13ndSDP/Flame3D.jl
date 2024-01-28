@@ -1,4 +1,4 @@
-#Range: 1+NG -> N+NG
+# Range: 1+NG -> N+NG
 function div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J, consts)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
@@ -49,7 +49,7 @@ function div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J, consts)
     return
 end
 
-#Range: 1+NG -> N+NG
+# Range: 1+NG -> N+NG
 function divSpecs(U, Fx, Fy, Fz, Fd_x, Fd_y, Fd_z, dt, J, consts)
     i = (blockIdx().x-1)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1)* blockDim().y + threadIdx().y
