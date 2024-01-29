@@ -169,3 +169,52 @@ function eval_gpu(U, Q, ρi, dt, thermo)
     @inbounds U[i, j, k, 5] += Δei
     return
 end
+
+# For stiff reaction, point implicit
+function eval_gpu_stiff(U, Q, ρi, dt, thermo)
+    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+
+    if i > Nxp+NG || j > Ny+NG || k > Nz+NG || i < NG+1 || j < NG+1 || k < NG+1
+        return
+    end
+
+    sc = MVector{Nspecs, Float64}(undef)
+    Δρ = MVector{Nspecs, Float64}(undef)
+    Δρn = MVector{Nspecs, Float64}(undef)
+    wdot = MVector{Nspecs, Float64}(undef)
+    Arate = MMatrix{Nspecs, Nspecs, Float64}(undef)
+    A1 = MMatrix{Nspecs, Nspecs, Float64}(undef)
+    @inbounds T = Q[i, j, k, 6]
+
+    for n = 1:Nspecs
+        @inbounds sc[n] = ρi[i, j, k, n]/thermo.mw[n] * 1e-6
+    end
+    
+    vproductionRate_Jac(wdot, sc, Arate, T, thermo)
+
+    # I - AⁿΔt
+    for n = 1:Nspecs
+        for l = 1:Nspecs
+            @inbounds A1[n, l] = (n == l ? 1.0 : 0.0) - 
+                                 Arate[n, l] * thermo.mw[n] / thermo.mw[l] * dt
+        end
+    end
+
+    for n = 1:Nspecs
+        @inbounds Δρ[n] = wdot[n] * thermo.mw[n] * 1e6 * dt
+    end
+
+    # solve(x, A, b): Ax=b
+    solve(Δρn, A1, Δρ)
+
+    Δei::Float64 = 0
+    for n = 1:Nspecs
+        @inbounds Δei += -thermo.coeffs_lo[n, 6] *  Δρn[n] * thermo.Ru / thermo.mw[n]
+        @inbounds ρi[i, j, k, n] += Δρ[n]
+    end
+
+    @inbounds U[i, j, k, 5] += Δei
+    return
+end

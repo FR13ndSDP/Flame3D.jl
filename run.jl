@@ -10,20 +10,21 @@ const Ny = h5read("metrics.h5", "Ny")
 const Nz = h5read("metrics.h5", "Nz")
 
 # global variables, do not change name
-const reaction::Bool = true
-const Luxmodel::Bool = false
-const Cantera::Bool = false
-const dt::Float64 = 5e-8
-const Time::Float64 = 1e-4
-const step_out::Int64 = 500
-const chk_out::Bool = true
-const chk_compress_level = 3
-const restart::String = "none"
+const reaction::Bool = true        # if reaction is activated
+const Luxmodel::Bool = false       # if use Neural network model
+const Cantera::Bool = false        # if use Cantera
+const stiff::Bool = false          # if reaction is stiff
+const dt::Float64 = 5e-8           # dt for simulation, make CFL < 1
+const Time::Float64 = 5e-6         # total simulation time
+const step_out::Int64 = 500        # how many steps to save result
+const chk_out::Bool = true         # if checkpoint is made on save
+const chk_compress_level = 3       # checkpoint file compression level 0-3, 0 for no compression
+const restart::String = "none"     # restart use checkpoint, file name "chk**.h5"
 
 const Nspecs::Int64 = 5 # number of species
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
 const Nprim::Int64 = 7 # ρ u v w p T ei
-const mech::String = "./NN/Air/air.yaml"
+const mech::String = "./NN/Air/air.yaml" # reaction mechanism file in cantera format
 const Nprocs::Int64 = 1 # number of GPUs
 const Nxp::Int64 = Nx ÷ Nprocs # make sure it is integer
 const nthreads::Tuple{Int32, Int32, Int32} = (4, 8, 8)

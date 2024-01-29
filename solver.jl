@@ -261,7 +261,11 @@ function time_step()
                 @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
             else
                 # GPU
-                @cuda threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2, thermo)
+                if stiff
+                    @cuda threads=nthreads blocks=nblock eval_gpu_stiff(U, Q, ρi, dt2, thermo)
+                else
+                    @cuda threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2, thermo)
+                end
                 @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
@@ -331,7 +335,11 @@ function time_step()
                 @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
             else
                 # GPU
-                @cuda threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2, thermo)
+                if stiff
+                    @cuda threads=nthreads blocks=nblock eval_gpu_stiff(U, Q, ρi, dt2, thermo)
+                else
+                    @cuda threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2, thermo)
+                end
                 @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)

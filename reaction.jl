@@ -214,14 +214,14 @@ end
     mixture::Float64 = 0.0
   
     for n = 1:Nspecs
-      mixture += sc[n]
-      wdot[n] = 0.0
+        @inbounds mixture += sc[n]
+        @inbounds wdot[n] = 0.0
     end
   
     for m = 1:5
         for n = 1:Nspecs
-            vf[m, n] = 0
-            vr[m, n] = 0
+            @inbounds vf[m, n] = 0
+            @inbounds vr[m, n] = 0
         end
     end
 
@@ -289,12 +289,199 @@ end
     vr[5, 3] = 1
 
     for m = 1:5
-        wf1 = q_f[m]
-        wr1 = q_r[m]
+        @inbounds wf1 = q_f[m]
+        @inbounds wr1 = q_r[m]
     
         for n = 1:Nspecs
-          wdot[n] += (wf1 - wr1) * (vr[m, n] - vf[m, n])
+            @inbounds wdot[n] += (wf1 - wr1) * (vr[m, n] - vf[m, n])
         end
+    end
+    return
+end
+
+@inline function vproductionRate_Jac(wdot, sc, Arate, T, thermo)
+    gi_T = MVector{Nspecs, Float64}(undef)
+    k_f_s = MVector{5, Float64}(undef)
+    Kc_s = MVector{5, Float64}(undef)
+    q_f = MVector{5, Float64}(undef)
+    q_r = MVector{5, Float64}(undef)
+    vf = MMatrix{5, Nspecs, Int64}(undef)
+    vr = MMatrix{5, Nspecs, Int64}(undef)
+
+    lgT = log(T)
+    T2 = T * T
+    T3 = T2 * T
+    T4 = T2 * T2
+    invT = 1.0 / T
+  
+    # Ea, cal/mol to K: y = x * 4.184 / 8.314 ≈ y = x * 0.5032475342795285
+    tmp::Float64 = 0.5032475342795285
+    k_f_s[1] = 3.0e22 * exp(-1.6 * lgT - 224951.50535373 * tmp * invT)
+    k_f_s[2] = 1.0e22 * exp(-1.5 * lgT - 117960.43602294 * tmp * invT)
+    k_f_s[3] = 5.0e15 * exp(-150033.91037285 * tmp * invT)
+    k_f_s[4] = 5.7e12 * exp(0.42 * lgT - 85326.57011377 * tmp * invT)
+    k_f_s[5] = 8.4e12 * exp(-38551.75975143 * tmp * invT)
+  
+    # compute the Gibbs free energy 
+  
+    gibbs(gi_T, lgT, T, T2, T3, T4, thermo)
+  
+    RsT::Float64 = thermo.Ru / 101325.0 * 1e6 * T
+  
+    Kc_s[1] = 1.0/RsT * exp(gi_T[5]- 2 * gi_T[3])
+    Kc_s[2] = 1.0/RsT * exp(gi_T[2]- 2 * gi_T[1])
+    Kc_s[3] = 1.0/RsT * exp(gi_T[4]- (gi_T[1] + gi_T[3]))
+    Kc_s[4] = exp((gi_T[1] + gi_T[5]) - (gi_T[3] + gi_T[4]))
+    Kc_s[5] = exp((gi_T[1] + gi_T[4]) - (gi_T[2] + gi_T[3]))
+  
+    mixture::Float64 = 0.0
+  
+    for n = 1:Nspecs
+        @inbounds mixture += sc[n]
+        @inbounds wdot[n] = 0.0
+        for l = 1:Nspecs
+            @inbounds Arate[n, l] = 0.0
+        end
+    end
+  
+    for m = 1:5
+        for n = 1:Nspecs
+            @inbounds vf[m, n] = 0
+            @inbounds vr[m, n] = 0
+        end
+    end
+
+    # reaction 1: N2 + M <=> 2 N + M
+    phi_f = sc[5]
+    alpha = mixture - 0.76667 * (sc[5] + sc[4] + sc[2])
+    k_f = alpha * k_f_s[1]
+    q_f[1] = phi_f * k_f
+    phi_r = sc[3] * sc[3]
+    Kc = Kc_s[1]
+    k_r = k_f / Kc
+    q_r[1] = phi_r * k_r
+    vf[1, 5] = 1
+    vr[1, 3] = 2
+  
+    # reaction 2: O2 + M <=> 2 O + M
+    phi_f = sc[2]
+    alpha = mixture - 0.8 * (sc[5] + sc[4] + sc[2])
+    k_f = alpha * k_f_s[2]
+    q_f[2] = phi_f * k_f
+    phi_r = sc[1] * sc[1]
+    Kc = Kc_s[2]
+    k_r = k_f / Kc
+    q_r[2] = phi_r * k_r
+    vf[2, 2] = 1
+    vr[2, 1] = 2
+  
+    # reaction 3: NO + M <=> N + O + M
+    phi_f = sc[4]
+    alpha = mixture + 21 * (sc[4] + sc[3] + sc[1])
+    k_f = alpha * k_f_s[3]
+    q_f[3] = phi_f * k_f
+    phi_r = sc[1] * sc[3]
+    Kc = Kc_s[3]
+    k_r = k_f / Kc;
+    q_r[3] = phi_r * k_r
+    vf[3, 4] = 1
+    vr[3, 1] = 1
+    vr[3, 3] = 1
+  
+    # reaction 4: N2 + O <=> NO + N
+    phi_f = sc[1] * sc[5]
+    k_f = k_f_s[4]
+    q_f[4] = phi_f * k_f
+    phi_r = sc[3] * sc[4]
+    Kc = Kc_s[4]
+    k_r = k_f / Kc
+    q_r[4] = phi_r * k_r
+    vf[4, 1] = 1
+    vf[4, 5] = 1
+    vr[4, 3] = 1
+    vr[4, 4] = 1
+  
+    # reaction 5: NO + O <=> O2 + N
+    phi_f = sc[1] * sc[4]
+    k_f = k_f_s[5]
+    q_f[5] = phi_f * k_f
+    phi_r = sc[2] * sc[3]
+    Kc = Kc_s[5]
+    k_r = k_f / Kc
+    q_r[5] = phi_r * k_r
+    vf[5, 1] = 1
+    vf[5, 4] = 1
+    vr[5, 2] = 1
+    vr[5, 3] = 1
+
+    for m = 1:5
+        @inbounds wf1 = q_f[m]
+        @inbounds wr1 = q_r[m]
+    
+        for n = 1:Nspecs
+            @inbounds wdot[n] += (wf1 - wr1) * (vr[m, n] - vf[m, n])
+        end
+
+        for n = 1:Nspecs
+            @inbounds Awf = vf[m, n] * wf1 / (sc[n] + eps(Float64))
+            @inbounds Awr = vr[m, n] * wr1 / (sc[n] + eps(Float64))
+            for l = 1:Nspecs
+                @inbounds Arate[l, n] += (Awf - Awr) * (vr[m, l] - vf[m, l])
+            end
+        end
+    end
+    return
+end
+
+# Solve Ax = b with Gauss Elimination
+@inline function solve(x, A, b)
+    U = MMatrix{Nspecs, Nspecs+1, Float64}(undef)
+
+    # Copy A to U and augment with vector b.
+    for ii = 1:Nspecs
+        @inbounds U[ii, Nspecs+1] = b[ii]
+        for jj = 1:Nspecs
+            @inbounds U[ii, jj] = A[ii, jj]
+        end
+    end
+  
+    # Factorisation stage
+    for kk = 1:Nspecs
+        # Find the best pivot
+        p = kk
+        maxPivot::Float64 = 0.0
+        for ii = kk:Nspecs
+            if (@inbounds abs(U[ii, kk]) > maxPivot)
+                @inbounds maxPivot = abs(U[ii, kk])
+                p = ii
+            end
+        end
+        # Swap rows kk and p
+        if (p != kk) 
+            for ii = kk:Nspecs+1
+                @inbounds tmp = U[p, ii]
+                @inbounds U[p, ii] = U[kk, ii]
+                @inbounds U[kk, ii] = tmp
+            end
+        end
+      
+  
+        # Elimination of variables
+        for ii = kk+1:Nspecs
+            @inbounds m = U[ii, kk] / U[kk, kk]
+            for jj = kk:Nspecs+1
+                @inbounds U[ii, jj] -= m * U[kk, jj]
+            end
+        end
+    end
+  
+    # Back substitution
+    for kk = Nspecs:-1:1
+        @inbounds sum = U[kk, Nspecs+1]
+        for jj = kk+1:Nspecs
+            @inbounds sum -= U[kk, jj] * x[jj]
+        end
+        @inbounds x[kk] = sum / U[kk, kk]
     end
     return
 end
