@@ -149,11 +149,9 @@ function eval_gpu(U, Q, ρi, dt, thermo)
         return
     end
 
-    ρnew = MVector{Nspecs, Float64}(undef)
     sc = MVector{Nspecs, Float64}(undef)
     wdot = MVector{Nspecs, Float64}(undef)
     @inbounds T = Q[i, j, k, 6]
-    @inbounds ρ = @view ρi[i, j, k, :]
 
     for n = 1:Nspecs
         @inbounds sc[n] = ρi[i, j, k, n]/thermo.mw[n] * 1e-6
@@ -161,14 +159,13 @@ function eval_gpu(U, Q, ρi, dt, thermo)
     
     vproductionRate(wdot, sc, T, thermo)
 
+    Δei::Float64 = 0
     for n = 1:Nspecs
-        @inbounds ρnew[n] = ρi[i, j, k, n] + wdot[n] * thermo.mw[n] * 1e6 * dt
+        @inbounds Δρ = wdot[n] * thermo.mw[n] * 1e6 * dt
+        @inbounds Δei += -thermo.coeffs_lo[n, 6] *  Δρ * thermo.Ru / thermo.mw[n]
+        @inbounds ρi[i, j, k, n] += Δρ
     end
 
-    @inbounds U[i, j, k, 5] += InternalEnergy(T, ρnew, thermo) - InternalEnergy(T, ρ, thermo)
-
-    for n = 1:Nspecs
-        @inbounds ρi[i, j, k, n] = ρnew[n]
-    end
+    @inbounds U[i, j, k, 5] += Δei
     return
 end
