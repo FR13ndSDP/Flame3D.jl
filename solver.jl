@@ -47,26 +47,7 @@ function specAdvance(ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z,
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock divSpecs(ρi, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dt, J, consts)
 end
 
-function time_step()
-    comm = MPI.COMM_WORLD
-    rank = MPI.Comm_rank(comm)
-    nGPU = MPI.Comm_size(comm)
-    if nGPU != Nprocs && rank == 0
-        printstyled("Oops, nGPU ≠ $Nprocs\n", color=:red)
-        flush(stdout)
-        return
-    end
-    # set device on each MPI rank
-    device!(rank)
-    # constant parameters
-    thermo = initThermo(mech) # now only NASA7
-    consts = constants(287.0, 1.4, 1.458e-6, 110.4, 0.72, 1004.5, 
-             CuArray([-1/60, 3/20, -3/4]), 
-             CuArray([1/12, -2/3]),
-             CuArray([0.01, 0.1]),
-             CuArray([CUDA.eps(1e-16), 13/12, 1/6]),
-             CuArray([-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420]))
-       
+function time_step(rank, comm, thermo, consts)
     Nx_tot = Nxp+2*NG
     Ny_tot = Ny+2*NG
     Nz_tot = Nz+2*NG
@@ -79,7 +60,7 @@ function time_step()
 
     if restart[1:3] == "chk"
         if rank == 0
-            printstyled("Restart\n", color=:red)
+            printstyled("Restart\n", color=:yellow)
         end
         fid = h5open(restart, "r", comm, MPI.Info())
         Q_h = fid["Q_h"][:, :, :, :, rank+1]
@@ -419,9 +400,9 @@ function time_step()
         end
     end
     if rank == 0
-        println("Done!")
+        printstyled("Done!\n", color=:green)
         flush(stdout)
     end
-    MPI.Finalize()
+    MPI.Barrier(comm)
     return
 end

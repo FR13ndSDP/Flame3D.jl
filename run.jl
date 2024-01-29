@@ -87,8 +87,29 @@ function initialize(Q, ρi, consts)
     end
 end
 
+
+# Run the simulation
 MPI.Init()
 
-@time time_step()
+comm = MPI.COMM_WORLD
+rank = MPI.Comm_rank(comm)
+nGPU = MPI.Comm_size(comm)
+if nGPU != Nprocs && rank == 0
+    printstyled("Oops, nGPU ≠ $Nprocs\n", color=:red)
+    flush(stdout)
+    return
+end
+# set device on each MPI rank
+device!(rank)
+# constant parameters
+const thermo = initThermo(mech) # now only NASA7
+const consts = constants(287.0, 1.4, 1.458e-6, 110.4, 0.72, 1004.5, 
+         CuArray([-1/60, 3/20, -3/4]), 
+         CuArray([1/12, -2/3]),
+         CuArray([0.01, 0.1]),
+         CuArray([CUDA.eps(1e-16), 13/12, 1/6]),
+         CuArray([-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420]))
+
+@time time_step(rank, comm, thermo, consts)
 
 MPI.Finalize()
