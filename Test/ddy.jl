@@ -8,7 +8,7 @@ a = zeros(Float64, 128)
 # end
 a[1:8] .= 0.0178995
 a[9:end] .= 0.0274578
-plt.plot(a, label="Initial")
+# plt.plot(a, label="Initial")
 
 dt = 5e-6
 k = 0.0007712910310550843 * ones(Float64, 128)
@@ -31,7 +31,7 @@ for _ = 1:2000
     a[1:8] .= 0.0178995
     b .= a
 end
-plt.plot(a, "--", label="half - avg2")
+plt.plot(a, "--", label="half - 2nd order")
 
 a = zeros(Float64, 128)
 a[1:8] .= 0.0178995
@@ -48,7 +48,7 @@ for _ = 1:2000
     a[1:8] .= 0.0178995
     b .= a
 end
-plt.plot(a, "--", label="half - avg4")
+plt.plot(a, "--", label="half - 4th order")
 
 
 a = zeros(Float64, 128)
@@ -66,7 +66,7 @@ for _ = 1:2000
     a[1:8] .= 0.0178995
     b .= a
 end
-plt.plot(a, label="two times - 2nd")
+plt.plot(a, label="two times - 2nd order")
 
 a = zeros(Float64, 128)
 a[1:8] .= 0.0178995
@@ -83,7 +83,7 @@ for _ = 1:2000
     a[1:8] .= 0.0178995
     b .= a
 end
-plt.plot(a, label="two times - 4th")
+plt.plot(a, label="two times - 4th order")
 
 a = zeros(Float64, 128)
 a[1:8] .= 0.0178995
@@ -100,8 +100,9 @@ for _ = 1:2000
     a[1:8] .= 0.0178995
     b .= a
 end
-plt.plot(a, label="two times - 6th")
+plt.plot(a, label="two times - 6th order")
 
+plt.title("non-constant heat diffusion")
 plt.legend()
 plt.show()
 # a = zeros(Float64, 128)
