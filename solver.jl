@@ -1,7 +1,8 @@
 using MPI
 using WriteVTK
 using Lux, LuxCUDA
-using LinearAlgebra, CUDA
+using LinearAlgebra, StaticArrays, CUDA
+using CUDA:i32
 using JLD2, JSON, HDF5
 
 CUDA.allowscalar(false)
@@ -11,9 +12,34 @@ include("viscous.jl")
 include("boundary.jl")
 include("utils.jl")
 include("div.jl")
-include("reaction.jl")
-include("ML.jl")
+include("reactions.jl")
+include("thermo.jl")
 include("mpi.jl")
+
+function init(Q, ρi, Yi, ρ, u, v, w, P, T, thermo)
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+
+    if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
+        return
+    end
+
+    for n = 1:Nspecs
+        @inbounds ρi[i, j, k, n] = Yi[n] * ρ
+    end
+
+    @inbounds rhoi = @view ρi[i, j, k, :]
+
+    @inbounds Q[i, j, k, 1] = ρ
+    @inbounds Q[i, j, k, 2] = u
+    @inbounds Q[i, j, k, 3] = v
+    @inbounds Q[i, j, k, 4] = w
+    @inbounds Q[i, j, k, 5] = P
+    @inbounds Q[i, j, k, 6] = T
+    @inbounds Q[i, j, k, 7] = InternalEnergy(T, rhoi, thermo)
+    return
+end
 
 function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fh, consts)
 
@@ -66,10 +92,18 @@ function time_step(rank, comm, thermo, consts)
         Q_h = fid["Q_h"][:, :, :, :, rank+1]
         ρi_h = fid["ρi_h"][:, :, :, :, rank+1]
         close(fid)
+
+        Q  =   CuArray(Q_h)
+        ρi =   CuArray(ρi_h)
     else
         Q_h = zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nprim)
         ρi_h = zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs)
-        initialize(Q_h, ρi_h, consts)
+        Q = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nprim)
+        ρi =CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs)
+        initialize(Q, ρi, thermo)
+
+        copyto!(Q_h, Q)
+        copyto!(ρi_h, ρi)
     end
     
     ϕ_h = zeros(Float64, Nx_tot, Ny_tot, Nz_tot) # shock sensor
@@ -105,8 +139,6 @@ function time_step(rank, comm, thermo, consts)
     J = CuArray(J_h)
 
     # allocate on device
-    Q  =   CuArray(Q_h)
-    ρi =   CuArray(ρi_h)
     Yi =   CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs)
     ϕ  =   CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot) # Shock sensor
     U  =   CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Ncons)
@@ -141,6 +173,10 @@ function time_step(rank, comm, thermo, consts)
     Qrbuf_h = similar(Qsbuf_h)
     dsbuf_h = zeros(Float64, NG, Ny_tot, Nz_tot, Nspecs)
     drbuf_h = similar(dsbuf_h)
+    Mem.pin(Qsbuf_h)
+    Mem.pin(Qrbuf_h)
+    Mem.pin(dsbuf_h)
+    Mem.pin(dsbuf_h)
 
     Qsbuf_d = CuArray(Qsbuf_h)
     Qrbuf_d = CuArray(Qrbuf_h)
@@ -148,7 +184,7 @@ function time_step(rank, comm, thermo, consts)
     drbuf_d = CuArray(drbuf_h)
 
     # initial
-    @cuda threads=nthreads blocks=nblock prim2c(U, Q)
+    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock prim2c(U, Q)
     fillGhost(Q, U, ρi, Yi, thermo, rank)
     fillSpec(ρi)
     exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
@@ -215,11 +251,11 @@ function time_step(rank, comm, thermo, consts)
         if reaction
             # Reaction Step
             if Luxmodel
-                @cuda threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, Yi, lambda, inputs_mean, inputs_std)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, Yi, lambda, inputs_mean, inputs_std)
                 evalModel(Y1, Y2, yt_pred, w1, w2, w3, b1, b2, b3, inputs_norm)
                 @. yt_pred = yt_pred * labels_std + labels_mean
-                @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, thermo)
-                @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, thermo)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
@@ -228,12 +264,12 @@ function time_step(rank, comm, thermo, consts)
                 @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
             elseif Cantera
                 # CPU - cantera
-                @cuda threads=nthreads blocks=nblock pre_input_cpu(inputs, Q, Yi)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock pre_input_cpu(inputs, Q, Yi)
                 copyto!(inputs_h, inputs)
                 eval_cpu(yt_pred_h, inputs_h, dt2)
                 copyto!(yt_pred, yt_pred_h)
-                @cuda threads=nthreads blocks=nblock post_eval_cpu(yt_pred, U, Q, ρi, thermo)
-                @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock post_eval_cpu(yt_pred, U, Q, ρi, thermo)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
@@ -243,11 +279,11 @@ function time_step(rank, comm, thermo, consts)
             else
                 # GPU
                 if stiff
-                    @cuda threads=nthreads blocks=nblock eval_gpu_stiff(U, Q, ρi, dt2, thermo)
+                    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock eval_gpu_stiff(U, Q, ρi, dt2, thermo)
                 else
-                    @cuda threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2, thermo)
+                    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2, thermo)
                 end
-                @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
@@ -260,8 +296,8 @@ function time_step(rank, comm, thermo, consts)
         # RK3
         for KRK = 1:3
             if KRK == 1
-                @cuda threads=nthreads blocks=nblock copyOld(Un, U, Ncons)
-                @cuda threads=nthreads blocks=nblock copyOld(ρn, ρi, Nspecs)
+                copyto!(Un, U)
+                copyto!(ρn, ρi)
             end
 
             @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock mixture(Q, Yi, λ, μ, D, thermo)
@@ -270,14 +306,14 @@ function time_step(rank, comm, thermo, consts)
             flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fh, consts)
 
             if KRK == 2
-                @cuda threads=nthreads blocks=nblock linComb(U, Un, Ncons, 0.25, 0.75)
-                @cuda threads=nthreads blocks=nblock linComb(ρi, ρn, Nspecs, 0.25, 0.75)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock linComb(U, Un, Ncons, 0.25, 0.75)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock linComb(ρi, ρn, Nspecs, 0.25, 0.75)
             elseif KRK == 3
-                @cuda threads=nthreads blocks=nblock linComb(U, Un, Ncons, 2/3, 1/3)
-                @cuda threads=nthreads blocks=nblock linComb(ρi, ρn, Nspecs, 2/3, 1/3)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock linComb(U, Un, Ncons, 2/3, 1/3)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock linComb(ρi, ρn, Nspecs, 2/3, 1/3)
             end
 
-            @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
+            @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
             fillGhost(Q, U, ρi, Yi, thermo, rank)
             fillSpec(ρi)
             exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
@@ -289,11 +325,11 @@ function time_step(rank, comm, thermo, consts)
         if reaction
             # Reaction Step
             if Luxmodel
-                @cuda threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, Yi, lambda, inputs_mean, inputs_std)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, Yi, lambda, inputs_mean, inputs_std)
                 evalModel(Y1, Y2, yt_pred, w1, w2, w3, b1, b2, b3, inputs_norm)
                 @. yt_pred = yt_pred * labels_std + labels_mean
-                @cuda threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, thermo)
-                @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, thermo)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
@@ -302,12 +338,12 @@ function time_step(rank, comm, thermo, consts)
                 @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
             elseif Cantera
                 # CPU - cantera
-                @cuda threads=nthreads blocks=nblock pre_input_cpu(inputs, Q, Yi)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock pre_input_cpu(inputs, Q, Yi)
                 copyto!(inputs_h, inputs)
                 eval_cpu(yt_pred_h, inputs_h, dt2)
                 copyto!(yt_pred, yt_pred_h)
-                @cuda threads=nthreads blocks=nblock post_eval_cpu(yt_pred, U, Q, ρi, thermo)
-                @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock post_eval_cpu(yt_pred, U, Q, ρi, thermo)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
@@ -317,11 +353,11 @@ function time_step(rank, comm, thermo, consts)
             else
                 # GPU
                 if stiff
-                    @cuda threads=nthreads blocks=nblock eval_gpu_stiff(U, Q, ρi, dt2, thermo)
+                    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock eval_gpu_stiff(U, Q, ρi, dt2, thermo)
                 else
-                    @cuda threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2, thermo)
+                    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2, thermo)
                 end
-                @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)

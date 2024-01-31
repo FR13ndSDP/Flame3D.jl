@@ -1,8 +1,8 @@
 # Range: 1+NG -> N+NG
 function c2Prim(U, Q, ρi, thermo)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp+NG || j > Ny+NG || k > Nz+NG || i < NG+1 || j < NG+1 || k < NG+1
         return
@@ -45,9 +45,9 @@ end
 
 # Range: 1 -> N+2*NG
 function getY(Yi, ρi, Q)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
         return
@@ -61,9 +61,9 @@ end
 
 # Range: 1 -> N+2*NG
 function prim2c(U, Q)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
         return
@@ -84,26 +84,10 @@ function prim2c(U, Q)
 end
 
 # Range: 1+NG -> N+NG
-function copyOld(Un, U, NV)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
-
-    if i > Nxp+NG || j > Ny+NG || k > Nz+NG || i < NG+1 || j < NG+1 || k < NG+1
-        return
-    end
-
-    for n = 1:NV
-        @inbounds Un[i, j, k, n] = U[i, j, k, n]
-    end
-    return
-end
-
-# Range: 1+NG -> N+NG
 function linComb(U, Un, NV, a::Float64, b::Float64)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp+NG || j > Ny+NG || k > Nz+NG || i < NG+1 || j < NG+1 || k < NG+1
         return

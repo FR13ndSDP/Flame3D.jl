@@ -37,9 +37,9 @@ function exchange_ghost(Q, NV, rank, comm, sbuf_h, sbuf_d, rbuf_h, rbuf_d)
 end
 
 function pack_R(buf, Q, NV)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > NG || j > Ny+2*NG || k > Nz+2*NG
         return
@@ -52,9 +52,9 @@ function pack_R(buf, Q, NV)
 end
 
 function pack_L(buf, Q, NV)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > NG || j > Ny+2*NG || k > Nz+2*NG
         return
@@ -67,9 +67,9 @@ function pack_L(buf, Q, NV)
 end
 
 function unpack_L(buf, Q, NV)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > NG || j > Ny+2*NG || k > Nz+2*NG
         return
@@ -82,9 +82,9 @@ function unpack_L(buf, Q, NV)
 end
 
 function unpack_R(buf, Q, NV)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > NG || j > Ny+2*NG || k > Nz+2*NG
         return

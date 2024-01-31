@@ -1,8 +1,8 @@
 # Range: 3 -> N+2*NG-2
 function viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fh, consts)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp+2*NG-2 || j > Ny+2*NG-2 || k > Nz+2*NG-2 || i < 3 || j < 3 || k < 3
         return
@@ -101,9 +101,9 @@ end
 
 # Range: 3 -> N+2*NG-2
 function specViscousFlux(Fv_x, Fv_y, Fv_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo, consts)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp+2*NG-2 || j > Ny+2*NG-2 || k > Nz+2*NG-2 || i < 3 || j < 3 || k < 3
         return

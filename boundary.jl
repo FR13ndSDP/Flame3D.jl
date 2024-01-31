@@ -1,7 +1,7 @@
 function fill_x(Q, U, ρi, Yi, thermo, rank)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
     
     if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
         return
@@ -71,9 +71,9 @@ function fill_x(Q, U, ρi, Yi, thermo, rank)
 end
 
 function fill_y(Q, U)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
     
     if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
         return
@@ -98,9 +98,9 @@ function fill_y(Q, U)
 end
 
 function fill_z(Q, U)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
     
     if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
         return
@@ -125,9 +125,9 @@ function fill_z(Q, U)
 end
 
 function fill_y_s(ρi)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
     
     if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
         return
@@ -146,9 +146,9 @@ function fill_y_s(ρi)
 end
 
 function fill_z_s(ρi)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
     
     if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
         return

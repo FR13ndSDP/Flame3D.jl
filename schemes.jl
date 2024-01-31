@@ -1,7 +1,7 @@
 function shockSensor(ϕ, Q)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i < 2 || i > Nxp+2*NG-1 || j < 2 || j > Ny+2*NG-1 || k < 2 || k > Nz+2*NG-1
         return
@@ -29,9 +29,9 @@ end
 
 #Range: 1 -> N+1
 function NND_x(F, Fp, Fm, NV)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp+1 || j > Ny || k > Nz
         return
@@ -47,9 +47,9 @@ function NND_x(F, Fp, Fm, NV)
 end
 
 function NND_y(F, Fp, Fm, NV)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp || j > Ny+1 || k > Nz
         return
@@ -65,9 +65,9 @@ function NND_y(F, Fp, Fm, NV)
 end
 
 function NND_z(F, Fp, Fm, NV)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp || j > Ny || k > Nz+1
         return
@@ -84,9 +84,9 @@ end
 
 #Range: 1 -> N+1
 function WENO_x(F, ϕ, Fp, Fm, NV, consts)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp+1 || j > Ny || k > Nz
         return
@@ -205,9 +205,9 @@ end
 
 #Range: 1 -> N+1
 function WENO_y(F, ϕ, Fp, Fm, NV, consts)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp || j > Ny+1 || k > Nz
         return
@@ -326,9 +326,9 @@ end
 
 #Range: 1 -> N+1
 function WENO_z(F, ϕ, Fp, Fm, NV, consts)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp || j > Ny || k > Nz+1
         return

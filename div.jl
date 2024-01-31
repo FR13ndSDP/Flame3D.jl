@@ -1,8 +1,8 @@
 # Range: 1+NG -> N+NG
 function div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J, consts)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
     if i > Nxp+NG || i < 1+NG || j > Ny+NG || j < 1+NG || k > Nz+NG || k < 1+NG 
         return
     end
@@ -51,9 +51,9 @@ end
 
 # Range: 1+NG -> N+NG
 function divSpecs(U, Fx, Fy, Fz, Fd_x, Fd_y, Fd_z, dt, J, consts)
-    i = (blockIdx().x-1)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1)* blockDim().z + threadIdx().z
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
     if i > Nxp+NG || i < 1+NG || j > Ny+NG || j < 1+NG || k > Nz+NG || k < 1+NG
         return
     end
