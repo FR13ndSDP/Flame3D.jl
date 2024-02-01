@@ -21,20 +21,20 @@ for i in track(range(m), description="gen data..."):
     sample = random.sample(range(1,steps), s_uniform)
 
     # Data range
-    T = np.random.uniform(1000, 8000)
+    T = np.random.uniform(3000, 6000)
     P = np.random.uniform(0.01*ct.one_atm, 0.1*ct.one_atm)
 
     Y = np.zeros(5)
     Y[4] = np.random.uniform(0, 1.0)
     Y[1] = np.random.uniform(0, 0.4)
-    Y[0] = 10**(-np.random.uniform(0, 10))
-    Y[2] = 10**(-np.random.uniform(0, 10))
-    Y[3] = 10**(-np.random.uniform(0, 10))
+    Y[0] = 10**(-np.random.uniform(0, 20))
+    Y[2] = 10**(-np.random.uniform(0, 20))
+    Y[3] = 10**(-np.random.uniform(0, 20))
     Y /= sum(Y)
 
     initial_TPY = T, P, Y
 
-    gas = ct.Solution('air.yaml')
+    gas = ct.Solution('./air.yaml')
     gas.TPY = initial_TPY
 
     r = ct.IdealGasReactor(gas, name='R1')
