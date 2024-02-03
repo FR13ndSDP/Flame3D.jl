@@ -88,7 +88,7 @@ function time_step(rank, comm, thermo, consts)
         if rank == 0
             printstyled("Restart\n", color=:yellow)
         end
-        fid = h5open(restart, "r", comm, MPI.Info())
+        fid = h5open(restart, "r", comm)
         Q_h = fid["Q_h"][:, :, :, :, rank+1]
         ρi_h = fid["ρi_h"][:, :, :, :, rank+1]
         close(fid)
@@ -109,7 +109,7 @@ function time_step(rank, comm, thermo, consts)
     ϕ_h = zeros(Float64, Nx_tot, Ny_tot, Nz_tot) # shock sensor
 
     # load mesh metrics
-    fid = h5open("metrics.h5", "r", comm, MPI.Info())
+    fid = h5open("metrics.h5", "r", comm)
     dξdx_h = fid["dξdx"][lo:hi, :, :]
     dξdy_h = fid["dξdy"][lo:hi, :, :]
     dξdz_h = fid["dξdz"][lo:hi, :, :]
@@ -412,7 +412,7 @@ function time_step(rank, comm, thermo, consts)
             # restart file, in Float64
             if chk_out
                 chkname::String = string("chk", tt, ".h5")
-                h5open(chkname, "w", comm, MPI.Info()) do f
+                h5open(chkname, "w", comm) do f
                     dset1 = create_dataset(
                         f,
                         "Q_h",

@@ -71,12 +71,12 @@ function viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dη
 
     div = dudx + dvdy + dwdz
 
-    τ11 = μi*(2*dudx - c2*div)
+    τ11 = μi*(2*dudx + c2*div)
     τ12 = μi*(dudy + dvdx)
     τ13 = μi*(dudz + dwdx)
-    τ22 = μi*(2*dvdy - c2*div)
+    τ22 = μi*(2*dvdy + c2*div)
     τ23 = μi*(dwdy + dvdz)
-    τ33 = μi*(2*dwdz - c2*div)
+    τ33 = μi*(2*dwdz + c2*div)
 
     @inbounds E1 = u * τ11 + v * τ12 + w * τ13 + λi * dTdx + Fh[i, j, k, 1]
     @inbounds E2 = u * τ12 + v * τ22 + w * τ23 + λi * dTdy + Fh[i, j, k, 2]
