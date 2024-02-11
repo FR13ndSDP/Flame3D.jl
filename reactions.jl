@@ -470,7 +470,7 @@ function initReact(mech)
             low_rate[1, j] = reaction_i.rate.low_rate.pre_exponential_factor * 1e3 ^ (order) # A, [m, mol, s]
             low_rate[2, j] = reaction_i.rate.low_rate.temperature_exponent # b
             low_rate[3, j] = reaction_i.rate.low_rate.activation_energy/ct.gas_constant # E, K
-            len = length(gas.reaction(15).rate.falloff_coeffs)
+            len = length(reaction_i.rate.falloff_coeffs)
             if len == 3
                 Troe_coeffs[1:3, j] = reaction_i.rate.falloff_coeffs
                 Troe_coeffs[4, j] = 1e30
