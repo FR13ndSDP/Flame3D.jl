@@ -19,10 +19,10 @@ function c2Prim(U, Q, ρi, thermo)
         end
         @inbounds ∑ρ += ρi[i, j, k, n]
     end
-    # for n = 1:Nspecs
-    #     @inbounds ρi[i, j, k, n] *= ρ/∑ρ
-    # end
-    @inbounds ρi[i, j, k, Nspecs] += ρ - ∑ρ
+    for n = 1:Nspecs
+        @inbounds ρi[i, j, k, n] *= ρ/∑ρ
+    end
+    # @inbounds ρi[i, j, k, Nspecs] += ρ - ∑ρ
 
     @inbounds u = U[i, j, k, 2]*ρinv # U
     @inbounds v = U[i, j, k, 3]*ρinv # V

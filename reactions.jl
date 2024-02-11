@@ -39,7 +39,7 @@ function post_predict(yt_pred, inputs, U, Q, ρi, dt, lambda, thermo)
     ρnew = MVector{Nspecs, Float64}(undef)
 
     # only T > 2000 K calculate reaction
-    if T > 3000 && P < 10132.5
+    if T > T_criteria
         @inbounds T1 = T + yt_pred[Nspecs+1, i + Nxp*(j-1 + Ny*(k-1))] * dt
 
         for n = 1:Nspecs
@@ -140,7 +140,7 @@ function eval_cpu(outputs, inputs, dt)
 end
 
 # GPU chemical reaction
-function eval_gpu(U, Q, ρi, dt, thermo)
+function eval_gpu(U, Q, ρi, dt, thermo, react)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -149,29 +149,32 @@ function eval_gpu(U, Q, ρi, dt, thermo)
         return
     end
 
-    sc = MVector{Nspecs, Float64}(undef)
-    wdot = @MVector zeros(Float64, Nspecs)
     @inbounds T = Q[i, j, k, 6]
 
-    for n = 1:Nspecs
-        @inbounds sc[n] = ρi[i, j, k, n]/thermo.mw[n] * 1e-6
-    end
-    
-    vproductionRate(wdot, sc, T, thermo)
+    if T > T_criteria
+        sc = MVector{Nspecs, Float64}(undef)
+        wdot = @MVector zeros(Float64, Nspecs)
 
-    Δei::Float64 = 0
-    for n = 1:Nspecs
-        @inbounds Δρ = wdot[n] * thermo.mw[n] * 1e6 * dt
-        @inbounds Δei += -thermo.coeffs_lo[n, 6] *  Δρ * thermo.Ru / thermo.mw[n]
-        @inbounds ρi[i, j, k, n] += Δρ
-    end
+        for n = 1:Nspecs
+            @inbounds sc[n] = ρi[i, j, k, n]/thermo.mw[n] * 1e-6
+        end
+        
+        vproductionRate(wdot, sc, T, thermo, react)
 
-    @inbounds U[i, j, k, 5] += Δei
+        Δei::Float64 = 0
+        for n = 1:Nspecs
+            @inbounds Δρ = wdot[n] * thermo.mw[n] * 1e6 * dt
+            @inbounds Δei += -thermo.coeffs_lo[n, 6] *  Δρ * thermo.Ru / thermo.mw[n]
+            @inbounds ρi[i, j, k, n] += Δρ
+        end
+
+        @inbounds U[i, j, k, 5] += Δei
+    end
     return
 end
 
 # For stiff reaction, point implicit
-function eval_gpu_stiff(U, Q, ρi, dt, thermo)
+function eval_gpu_stiff(U, Q, ρi, dt, thermo, react)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -180,279 +183,187 @@ function eval_gpu_stiff(U, Q, ρi, dt, thermo)
         return
     end
 
-    sc = MVector{Nspecs, Float64}(undef)
-    Δρ = MVector{Nspecs, Float64}(undef)
-    Δρn = MVector{Nspecs, Float64}(undef)
-    wdot = @MVector zeros(Float64, Nspecs)
-    Arate = @MMatrix zeros(Float64, Nspecs, Nspecs)
-    A1 = MMatrix{Nspecs, Nspecs, Float64}(undef)
     @inbounds T = Q[i, j, k, 6]
 
-    for n = 1:Nspecs
-        @inbounds sc[n] = ρi[i, j, k, n]/thermo.mw[n] * 1e-6
-    end
-    
-    vproductionRate_Jac(wdot, sc, Arate, T, thermo)
-
-    # I - AⁿΔt
-    for n = 1:Nspecs
-        for l = 1:Nspecs
-            @inbounds A1[n, l] = (n == l ? 1.0 : 0.0) - 
-                                 Arate[n, l] * thermo.mw[n] / thermo.mw[l] * dt
-        end
-    end
-
-    for n = 1:Nspecs
-        @inbounds Δρ[n] = wdot[n] * thermo.mw[n] * 1e6 * dt
-    end
-
-    # solve(x, A, b): Ax=b
-    solve(Δρn, A1, Δρ)
-
-    Δei::Float64 = 0
-    for n = 1:Nspecs
-        @inbounds Δei += -thermo.coeffs_lo[n, 6] *  Δρn[n] * thermo.Ru / thermo.mw[n]
-        @inbounds ρi[i, j, k, n] += Δρ[n]
-    end
-
-    @inbounds U[i, j, k, 5] += Δei
-    return
-end
-
-# TODO: reaction rate for air.yaml, make it more general
-# O, O2, N, NO, N2
-@inline function vproductionRate(wdot, sc, T, thermo)
-    gi_T = MVector{Nspecs, Float64}(undef)
-    k_f_s = MVector{Nreacs, Float64}(undef)
-    Kc_s = MVector{Nreacs, Float64}(undef)
-    q_f = MVector{Nreacs, Float64}(undef)
-    q_r = MVector{Nreacs, Float64}(undef)
-    vf = @MMatrix zeros(Int64, Nspecs, Nreacs)
-    vr = @MMatrix zeros(Int64, Nspecs, Nreacs)
-
-    lgT = log(T)
-    T2 = T * T
-    T3 = T2 * T
-    T4 = T2 * T2
-    invT = 1.0 / T
-  
-    # Ea, cal/mol to K: y = x * 4.184 / 8.314 ≈ y = x * 0.5032475342795285
-    tmp::Float64 = 0.5032475342795285
-    k_f_s[1] = 3.0e22 * exp(-1.6 * lgT - 224951.50535373 * tmp * invT)
-    k_f_s[2] = 1.0e22 * exp(-1.5 * lgT - 117960.43602294 * tmp * invT)
-    k_f_s[3] = 5.0e15 * exp(-150033.91037285 * tmp * invT)
-    k_f_s[4] = 5.7e12 * exp(0.42 * lgT - 85326.57011377 * tmp * invT)
-    k_f_s[5] = 8.4e12 * exp(-38551.75975143 * tmp * invT)
-  
-    # compute the Gibbs free energy 
-  
-    gibbs(gi_T, lgT, T, T2, T3, T4, thermo)
-  
-    RsT::Float64 = thermo.Ru / thermo.atm * 1e6 * T
-  
-    Kc_s[1] = 1.0/RsT * exp(gi_T[5]- 2 * gi_T[3])
-    Kc_s[2] = 1.0/RsT * exp(gi_T[2]- 2 * gi_T[1])
-    Kc_s[3] = 1.0/RsT * exp(gi_T[4]- (gi_T[1] + gi_T[3]))
-    Kc_s[4] = exp((gi_T[1] + gi_T[5]) - (gi_T[3] + gi_T[4]))
-    Kc_s[5] = exp((gi_T[1] + gi_T[4]) - (gi_T[2] + gi_T[3]))
-  
-    mixture::Float64 = 0.0
-  
-    for n = 1:Nspecs
-        @inbounds mixture += sc[n]
-    end
-
-    # reaction 1: N2 + M <=> 2 N + M
-    phi_f = sc[5]
-    alpha = mixture - 0.76667 * (sc[5] + sc[4] + sc[2])
-    k_f = alpha * k_f_s[1]
-    q_f[1] = phi_f * k_f
-    phi_r = sc[3] * sc[3]
-    Kc = Kc_s[1]
-    k_r = k_f / Kc
-    q_r[1] = phi_r * k_r
-    vf[1, 5] = 1
-    vr[1, 3] = 2
-  
-    # reaction 2: O2 + M <=> 2 O + M
-    phi_f = sc[2]
-    alpha = mixture - 0.8 * (sc[5] + sc[4] + sc[2])
-    k_f = alpha * k_f_s[2]
-    q_f[2] = phi_f * k_f
-    phi_r = sc[1] * sc[1]
-    Kc = Kc_s[2]
-    k_r = k_f / Kc
-    q_r[2] = phi_r * k_r
-    vf[2, 2] = 1
-    vr[2, 1] = 2
-  
-    # reaction 3: NO + M <=> N + O + M
-    phi_f = sc[4]
-    alpha = mixture + 21 * (sc[4] + sc[3] + sc[1])
-    k_f = alpha * k_f_s[3]
-    q_f[3] = phi_f * k_f
-    phi_r = sc[1] * sc[3]
-    Kc = Kc_s[3]
-    k_r = k_f / Kc;
-    q_r[3] = phi_r * k_r
-    vf[3, 4] = 1
-    vr[3, 1] = 1
-    vr[3, 3] = 1
-  
-    # reaction 4: N2 + O <=> NO + N
-    phi_f = sc[1] * sc[5]
-    k_f = k_f_s[4]
-    q_f[4] = phi_f * k_f
-    phi_r = sc[3] * sc[4]
-    Kc = Kc_s[4]
-    k_r = k_f / Kc
-    q_r[4] = phi_r * k_r
-    vf[4, 1] = 1
-    vf[4, 5] = 1
-    vr[4, 3] = 1
-    vr[4, 4] = 1
-  
-    # reaction 5: NO + O <=> O2 + N
-    phi_f = sc[1] * sc[4]
-    k_f = k_f_s[5]
-    q_f[5] = phi_f * k_f
-    phi_r = sc[2] * sc[3]
-    Kc = Kc_s[5]
-    k_r = k_f / Kc
-    q_r[5] = phi_r * k_r
-    vf[5, 1] = 1
-    vf[5, 4] = 1
-    vr[5, 2] = 1
-    vr[5, 3] = 1
-
-    for m = 1:Nreacs
-        @inbounds wf1 = q_f[m]
-        @inbounds wr1 = q_r[m]
-    
-        for n = 1:Nspecs
-            @inbounds wdot[n] += (wf1 - wr1) * (vr[m, n] - vf[m, n])
-        end
-    end
-    return
-end
-
-@inline function vproductionRate_Jac(wdot, sc, Arate, T, thermo)
-    gi_T = MVector{Nspecs, Float64}(undef)
-    k_f_s = MVector{Nreacs, Float64}(undef)
-    Kc_s = MVector{Nreacs, Float64}(undef)
-    q_f = MVector{Nreacs, Float64}(undef)
-    q_r = MVector{Nreacs, Float64}(undef)
-    vf = @MMatrix zeros(Int64, Nspecs, Nreacs)
-    vr = @MMatrix zeros(Int64, Nspecs, Nreacs)
-
-    lgT = log(T)
-    T2 = T * T
-    T3 = T2 * T
-    T4 = T2 * T2
-    invT = 1.0 / T
-  
-    # Ea, cal/mol to K: y = x * 4.184 / 8.314 ≈ y = x * 0.5032475342795285
-    tmp::Float64 = 0.5032475342795285
-    k_f_s[1] = 3.0e22 * exp(-1.6 * lgT - 224951.50535373 * tmp * invT)
-    k_f_s[2] = 1.0e22 * exp(-1.5 * lgT - 117960.43602294 * tmp * invT)
-    k_f_s[3] = 5.0e15 * exp(-150033.91037285 * tmp * invT)
-    k_f_s[4] = 5.7e12 * exp(0.42 * lgT - 85326.57011377 * tmp * invT)
-    k_f_s[5] = 8.4e12 * exp(-38551.75975143 * tmp * invT)
-  
-    # compute the Gibbs free energy 
-  
-    gibbs(gi_T, lgT, T, T2, T3, T4, thermo)
-  
-    RsT::Float64 = thermo.Ru / thermo.atm * 1e6 * T
-  
-    Kc_s[1] = 1.0/RsT * exp(gi_T[5]- 2 * gi_T[3])
-    Kc_s[2] = 1.0/RsT * exp(gi_T[2]- 2 * gi_T[1])
-    Kc_s[3] = 1.0/RsT * exp(gi_T[4]- (gi_T[1] + gi_T[3]))
-    Kc_s[4] = exp((gi_T[1] + gi_T[5]) - (gi_T[3] + gi_T[4]))
-    Kc_s[5] = exp((gi_T[1] + gi_T[4]) - (gi_T[2] + gi_T[3]))
-  
-    mixture::Float64 = 0.0
-  
-    for n = 1:Nspecs
-        @inbounds mixture += sc[n]
-    end
-
-    # reaction 1: N2 + M <=> 2 N + M
-    phi_f = sc[5]
-    alpha = mixture - 0.76667 * (sc[5] + sc[4] + sc[2])
-    k_f = alpha * k_f_s[1]
-    q_f[1] = phi_f * k_f
-    phi_r = sc[3] * sc[3]
-    Kc = Kc_s[1]
-    k_r = k_f / Kc
-    q_r[1] = phi_r * k_r
-    vf[1, 5] = 1
-    vr[1, 3] = 2
-  
-    # reaction 2: O2 + M <=> 2 O + M
-    phi_f = sc[2]
-    alpha = mixture - 0.8 * (sc[5] + sc[4] + sc[2])
-    k_f = alpha * k_f_s[2]
-    q_f[2] = phi_f * k_f
-    phi_r = sc[1] * sc[1]
-    Kc = Kc_s[2]
-    k_r = k_f / Kc
-    q_r[2] = phi_r * k_r
-    vf[2, 2] = 1
-    vr[2, 1] = 2
-  
-    # reaction 3: NO + M <=> N + O + M
-    phi_f = sc[4]
-    alpha = mixture + 21 * (sc[4] + sc[3] + sc[1])
-    k_f = alpha * k_f_s[3]
-    q_f[3] = phi_f * k_f
-    phi_r = sc[1] * sc[3]
-    Kc = Kc_s[3]
-    k_r = k_f / Kc;
-    q_r[3] = phi_r * k_r
-    vf[3, 4] = 1
-    vr[3, 1] = 1
-    vr[3, 3] = 1
-  
-    # reaction 4: N2 + O <=> NO + N
-    phi_f = sc[1] * sc[5]
-    k_f = k_f_s[4]
-    q_f[4] = phi_f * k_f
-    phi_r = sc[3] * sc[4]
-    Kc = Kc_s[4]
-    k_r = k_f / Kc
-    q_r[4] = phi_r * k_r
-    vf[4, 1] = 1
-    vf[4, 5] = 1
-    vr[4, 3] = 1
-    vr[4, 4] = 1
-  
-    # reaction 5: NO + O <=> O2 + N
-    phi_f = sc[1] * sc[4]
-    k_f = k_f_s[5]
-    q_f[5] = phi_f * k_f
-    phi_r = sc[2] * sc[3]
-    Kc = Kc_s[5]
-    k_r = k_f / Kc
-    q_r[5] = phi_r * k_r
-    vf[5, 1] = 1
-    vf[5, 4] = 1
-    vr[5, 2] = 1
-    vr[5, 3] = 1
-
-    for m = 1:Nreacs
-        @inbounds wf1 = q_f[m]
-        @inbounds wr1 = q_r[m]
-    
-        for n = 1:Nspecs
-            @inbounds wdot[n] += (wf1 - wr1) * (vr[m, n] - vf[m, n])
-        end
+    if T > T_criteria
+        sc = MVector{Nspecs, Float64}(undef)
+        Δρ = MVector{Nspecs, Float64}(undef)
+        Δρn = MVector{Nspecs, Float64}(undef)
+        wdot = @MVector zeros(Float64, Nspecs)
+        Arate = @MMatrix zeros(Float64, Nspecs, Nspecs)
+        A1 = MMatrix{Nspecs, Nspecs, Float64}(undef)
 
         for n = 1:Nspecs
-            @inbounds Awf = vf[m, n] * wf1 / (sc[n] + eps(Float64))
-            @inbounds Awr = vr[m, n] * wr1 / (sc[n] + eps(Float64))
+            @inbounds sc[n] = ρi[i, j, k, n]/thermo.mw[n] * 1e-6
+        end
+        
+        vproductionRate_Jac(wdot, sc, Arate, T, thermo, react)
+
+        # I - AⁿΔt
+        for n = 1:Nspecs
             for l = 1:Nspecs
-                @inbounds Arate[l, n] += (Awf - Awr) * (vr[m, l] - vf[m, l])
+                @inbounds A1[n, l] = (n == l ? 1.0 : 0.0) - 
+                                    Arate[n, l] * thermo.mw[n] / thermo.mw[l] * dt
+            end
+        end
+
+        for n = 1:Nspecs
+            @inbounds Δρ[n] = wdot[n] * thermo.mw[n] * 1e6 * dt
+        end
+
+        # solve(x, A, b): Ax=b
+        solve(Δρn, A1, Δρ)
+
+        Δei::Float64 = 0
+        for n = 1:Nspecs
+            @inbounds Δei += -thermo.coeffs_lo[n, 6] *  Δρn[n] * thermo.Ru / thermo.mw[n]
+            @inbounds ρi[i, j, k, n] += Δρn[n]
+        end
+
+        @inbounds U[i, j, k, 5] += Δei
+    end
+    return
+end
+
+@inline function vproductionRate(wdot, sc, T, thermo, react)
+    gi_T = MVector{Nspecs, Float64}(undef)
+    k_f_s = MVector{Nreacs, Float64}(undef)
+    Kc_s = MVector{Nreacs, Float64}(undef)
+
+    lgT = log(T)
+    T2 = T * T
+    T3 = T2 * T
+    T4 = T2 * T2
+    invT = 1.0 / T
+  
+    for n = 1:Nreacs
+        @inbounds k_f_s[n] = react.Arr[1,n] * exp(react.Arr[2,n] * lgT - react.Arr[3,n] * invT)
+    end
+  
+    # compute the Gibbs free energy 
+    gibbs(gi_T, lgT, T, T2, T3, T4, thermo)
+  
+    RsT::Float64 = thermo.Ru / react.atm * 1e6 * T
+  
+    for n = 1:Nreacs
+        Δgi::Float64 = 0
+        for m = 1:Nspecs
+            @inbounds Δgi += gi_T[m] * (react.vf[m, n]-react.vr[m, n])
+        end
+        @inbounds Kc_s[n] = RsT ^ react.sgm[n] * exp(Δgi)
+    end
+  
+    for n = 1:Nreacs
+        @inbounds q_f = k_f_s[n]
+        @inbounds q_r = q_f / Kc_s[n]
+        for m = 1:Nspecs
+            @inbounds q_f *= sc[m] ^ react.vf[m, n]
+            @inbounds q_r *= sc[m] ^ react.vr[m, n]
+        end
+
+        mixture::Float64 = 0.0
+        # three body reaction
+        if react.reaction_type[n] == 2
+            for m = 1:Nspecs
+                @inbounds mixture += react.ef[m, n] * sc[m]
+            end
+            q_f *= mixture
+            q_r *= mixture
+        elseif react.reaction_type[n] == 3
+            for m = 1:Nspecs
+                @inbounds mixture += react.ef[m, n] * sc[m]
+            end
+
+            redP = mixture / k_f_s[n] * react.loP[1,n] * exp(react.loP[2,n] * lgT - react.loP[3,n] * invT)
+            logPred = log10(redP)
+            A = react.Troe[1,n]
+            logFcent = log10((1-A)*exp(-T/react.Troe[2,n]) + A*exp(-T/react.Troe[3,n]) + exp(-react.Troe[4,n]*invT))
+            troe_c = -0.4 - 0.67 * logFcent
+            troe_n = 0.75 - 1.27 * logFcent
+            troe = (troe_c + logPred) / (troe_n - 0.14 * (troe_c + logPred))
+            F_troe = 10.0 ^ (logFcent / (1.0 + troe * troe))
+            k_1 = (redP / (1.0 + redP)) * F_troe
+            q_f *= k_1
+            q_r *= k_1
+        end
+
+        for m = 1:Nspecs
+            @inbounds wdot[m] += (q_f - q_r) * (react.vr[m, n] - react.vf[m, n])
+        end
+    end
+    return
+end
+
+@inline function vproductionRate_Jac(wdot, sc, Arate, T, thermo, react)
+    gi_T = MVector{Nspecs, Float64}(undef)
+    k_f_s = MVector{Nreacs, Float64}(undef)
+    Kc_s = MVector{Nreacs, Float64}(undef)
+
+    lgT = log(T)
+    T2 = T * T
+    T3 = T2 * T
+    T4 = T2 * T2
+    invT = 1.0 / T
+  
+    for n = 1:Nreacs
+        @inbounds k_f_s[n] = react.Arr[1,n] * exp(react.Arr[2,n] * lgT - react.Arr[3,n] * invT)
+    end
+  
+    # compute the Gibbs free energy 
+    gibbs(gi_T, lgT, T, T2, T3, T4, thermo)
+  
+    RsT::Float64 = thermo.Ru / react.atm * 1e6 * T
+  
+    for n = 1:Nreacs
+        Δgi::Float64 = 0
+        for m = 1:Nspecs
+            @inbounds Δgi += gi_T[m] * (react.vf[m, n]-react.vr[m, n])
+        end
+        @inbounds Kc_s[n] = RsT ^ react.sgm[n] * exp(Δgi)
+    end
+  
+    for n = 1:Nreacs
+        @inbounds q_f = k_f_s[n]
+        @inbounds q_r = q_f / Kc_s[n]
+        for m = 1:Nspecs
+            @inbounds q_f *= sc[m] ^ react.vf[m, n]
+            @inbounds q_r *= sc[m] ^ react.vr[m, n]
+        end
+
+        mixture::Float64 = 0.0
+        # three body reaction
+        if react.reaction_type[n] == 2
+            for m = 1:Nspecs
+                @inbounds mixture += react.ef[m, n] * sc[m]
+            end
+            q_f *= mixture
+            q_r *= mixture
+        elseif react.reaction_type[n] == 3
+            for m = 1:Nspecs
+                @inbounds mixture += react.ef[m, n] * sc[m]
+            end
+
+            redP = mixture / k_f_s[n] * react.loP[1,n] * exp(react.loP[2,n] * lgT - react.loP[3,n] * invT)
+            logPred = log10(redP)
+            A = react.Troe[1,n]
+            logFcent = log10((1-A)*exp(-T/react.Troe[2,n]) + A*exp(-T/react.Troe[3,n]) + exp(-react.Troe[4,n]*invT))
+            troe_c = -0.4 - 0.67 * logFcent
+            troe_n = 0.75 - 1.27 * logFcent
+            troe = (troe_c + logPred) / (troe_n - 0.14 * (troe_c + logPred))
+            F_troe = 10.0 ^ (logFcent / (1.0 + troe * troe))
+            k_1 = (redP / (1.0 + redP)) * F_troe
+            q_f *= k_1
+            q_r *= k_1
+        end
+
+        for m = 1:Nspecs
+            @inbounds wdot[m] += (q_f - q_r) * (react.vr[m, n] - react.vf[m, n])
+
+            invsc::Float64 = 1/(sc[m] + eps(Float64))
+            @inbounds Awf = react.vf[m, n] * q_f * invsc
+            @inbounds Awr = react.vr[m, n] * q_r * invsc
+            for l = 1:Nspecs
+                @inbounds Arate[l, m] += (Awf - Awr) * (react.vr[l, n] - react.vf[l, n])
             end
         end
     end
@@ -510,4 +421,77 @@ end
         @inbounds x[kk] = sum / U[kk, kk]
     end
     return
+end
+
+# column major
+function initReact(mech)
+    ct = pyimport("cantera")
+    gas = ct.Solution(mech)
+
+    atm = ct.one_atm
+
+    spec_names = gas.species_names
+    reactant_stoich::Matrix{Int64} = gas.reactant_stoich_coeffs3
+    product_stoich::Matrix{Int64} = gas.product_stoich_coeffs3
+    reaction_type = zeros(Int64, Nreacs)
+    delta_order = zeros(Int64, Nreacs)
+    Arrhenius_rate = zeros(Float64, 3, Nreacs)
+    low_rate = zeros(Float64, 3, Nreacs)
+    Troe_coeffs = zeros(Float64, 4, Nreacs)
+    efficiencies = zeros(Float64, Nspecs, Nreacs)
+
+    for j = 1:Nreacs
+        reaction_i = gas.reaction(j-1)
+
+        if reaction_i.reaction_type == "Arrhenius"
+            order = sum(reactant_stoich[:,j])
+            reaction_type[j] = 1
+            Arrhenius_rate[1, j] = reaction_i.rate.pre_exponential_factor * 1e3 ^ (order-1) # A, [m, mol, s]
+            Arrhenius_rate[2, j] = reaction_i.rate.temperature_exponent # b
+            Arrhenius_rate[3, j] = reaction_i.rate.activation_energy/ct.gas_constant # E, K
+        elseif reaction_i.reaction_type == "three-body-Arrhenius"
+            order = sum(reactant_stoich[:,j]) + 1
+            reaction_type[j] = 2
+            for i = 1:Nspecs
+                efficiencies[i, j] = reaction_i.third_body.efficiency(spec_names[i])
+            end
+            Arrhenius_rate[1, j] = reaction_i.rate.pre_exponential_factor * 1e3 ^ (order-1) # A, [m, mol, s]
+            Arrhenius_rate[2, j] = reaction_i.rate.temperature_exponent # b
+            Arrhenius_rate[3, j] = reaction_i.rate.activation_energy/ct.gas_constant # E, K
+        elseif reaction_i.reaction_type == "falloff-Troe"
+            order = sum(reactant_stoich[:,j])
+            reaction_type[j] = 3
+            for i = 1:Nspecs
+                efficiencies[i, j] = reaction_i.third_body.efficiency(spec_names[i])
+            end
+            Arrhenius_rate[1, j] = reaction_i.rate.high_rate.pre_exponential_factor * 1e3 ^ (order-1) # A, [m, mol, s]
+            Arrhenius_rate[2, j] = reaction_i.rate.high_rate.temperature_exponent # b
+            Arrhenius_rate[3, j] = reaction_i.rate.high_rate.activation_energy/ct.gas_constant # E, K
+            low_rate[1, j] = reaction_i.rate.low_rate.pre_exponential_factor * 1e3 ^ (order) # A, [m, mol, s]
+            low_rate[2, j] = reaction_i.rate.low_rate.temperature_exponent # b
+            low_rate[3, j] = reaction_i.rate.low_rate.activation_energy/ct.gas_constant # E, K
+            len = length(gas.reaction(15).rate.falloff_coeffs)
+            if len == 3
+                Troe_coeffs[1:3, j] = reaction_i.rate.falloff_coeffs
+                Troe_coeffs[4, j] = 1e30
+            elseif len == 4
+                Troe_coeffs[:, j] = reaction_i.rate.falloff_coeffs
+            else
+                error("Not correct Troe coefficients in reaction $j")
+            end
+        else
+            error("Not supported reaction type of reaction $j")
+        end
+
+        d_order::Float64 = 0
+        for i = 1:Nspecs
+            d_order += reactant_stoich[i,j] - product_stoich[i,j]
+        end
+        delta_order[j] = d_order
+    end
+    react = reactionProperty(atm, CuArray(reaction_type), CuArray(delta_order), 
+                             CuArray(reactant_stoich), CuArray(product_stoich), 
+                             CuArray(Arrhenius_rate), CuArray(efficiencies), 
+                             CuArray(low_rate), CuArray(Troe_coeffs))
+    return react
 end

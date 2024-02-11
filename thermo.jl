@@ -1,6 +1,5 @@
-# using CUDA, Adapt, PyCall
-# struct thermoProperty{IT, RT, VT, MT, TT}
-#     Nspecs::IT
+# using CUDA, Adapt, PyCall, StaticArrays
+# struct thermoProperty{RT, VT, MT, TT}
 #     Ru::RT
 #     min_temp::RT
 #     max_temp::RT
@@ -14,7 +13,8 @@
 # end
 # Adapt.@adapt_structure thermoProperty
 
-# const Nspecs = 5
+# CUDA.allowscalar(true)
+# const Nspecs = 20
 
 # get mixture pressure from T and ρi
 @inline function Pmixture(T::Float64, ρi, thermo)
@@ -389,7 +389,6 @@ function initThermo(mech)
     gas = ct.Solution(mech)
 
     Ru = ct.gas_constant * 1e-3
-    atm = ct.one_atm
     mw = gas.molecular_weights * 1e-3
     min_temp = gas.min_temp
     max_temp = gas.max_temp
@@ -401,9 +400,10 @@ function initThermo(mech)
     binarydiffusion_poly = zeros(Float64, Nspecs, Nspecs, 5)
 
     for i = 1:Nspecs
-        coeffs_sep[i] = gas.species(i-1).thermo.coeffs[1]
-        coeffs_hi[i, :] = gas.species(i-1).thermo.coeffs[2:8]
-        coeffs_lo[i, :] = gas.species(i-1).thermo.coeffs[9:end]
+        spec_i = gas.species(i-1)
+        coeffs_sep[i] = spec_i.thermo.coeffs[1]
+        coeffs_hi[i, :] = spec_i.thermo.coeffs[2:8]
+        coeffs_lo[i, :] = spec_i.thermo.coeffs[9:end]
         viscosity_poly[i, :] = gas.get_viscosity_polynomial(i-1)
         conductivity_poly[i, :] = gas.get_thermal_conductivity_polynomial(i-1)
         for j = 1:Nspecs
@@ -411,24 +411,22 @@ function initThermo(mech)
         end
     end
 
-    thermo = thermoProperty(Nspecs, Ru, atm, min_temp, max_temp, CuArray(mw),
+    thermo = thermoProperty(Ru, min_temp, max_temp, CuArray(mw),
                             CuArray(coeffs_sep), CuArray(coeffs_lo), CuArray(coeffs_hi), 
                             CuArray(viscosity_poly), CuArray(conductivity_poly), CuArray(binarydiffusion_poly))
     return thermo
 end
 
 
-# mech = "./NN/Air/air.yaml"
+# mech = "./NN/CH4/drm19.yaml"
 # ct = pyimport("cantera")
 # gas = ct.Solution(mech)
-# T::Float64 = 1000
-# P::Float64 = 3596
-# gas.TPY = T, P, "N2:0.77 O2:0.23"
+# T::Float64 = 290.0
+# P::Float64 = 101325.0
+# gas.TPY = T, P, "CH4:1"
 
 # ρi = gas.Y * gas.density
 # ρi_d = CuArray(ρi)
-# tmp = CUDA.zeros(Float64, Nspecs)
 # thermo = initThermo(mech)
 # ei = InternalEnergy(T, ρi, thermo)
 # @show ei
-# # # @cuda threads=16 GetT(ei, ρi_d, thermo)
