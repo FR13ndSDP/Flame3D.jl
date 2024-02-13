@@ -106,12 +106,12 @@ function post_eval_cpu(yt_pred, U, Q, ρi, thermo)
     @inbounds rhoi = @view ρi[i+NG, j+NG, k+NG, :]
     ρnew = MVector{Nspecs, Float64}(undef)
 
-    for n = 1:Nspecs
+    for n = 3:Nspecs+2
         @inbounds Yi = yt_pred[n, i + Nxp*(j-1 + Ny*(k-1))]
-        @inbounds ρnew[n] = Yi * ρ
+        @inbounds ρnew[n-2] = Yi * ρ
     end
 
-    @inbounds T1::Float64 = yt_pred[Nspecs+1, i + Nxp*(j-1 + Ny*(k-1))]
+    @inbounds T1::Float64 = yt_pred[1, i + Nxp*(j-1 + Ny*(k-1))]
     @inbounds U[i+NG, j+NG, k+NG, 5] += InternalEnergy(T1, ρnew, thermo) - InternalEnergy(T, rhoi, thermo)
 
     for n = 1:Nspecs
@@ -122,20 +122,22 @@ function post_eval_cpu(yt_pred, U, Q, ρi, thermo)
 end
 
 # serial on cpu using cantera: tooooooo slow
-function eval_cpu(outputs, inputs, dt)
+function eval_cpu(inputs, dt)
     ct = pyimport("cantera")
     gas = ct.Solution(mech)
 
-    for i = 1:Nxp*Ny*Nz
-        @inbounds T = inputs[1, i]
-        @inbounds P = inputs[2, i]
-        @inbounds Yi = @view inputs[3:end, i]
-        gas.TPY = T, P, Yi
-        r = ct.IdealGasReactor(gas)
-        sim = ct.ReactorNet([r])
-        sim.advance(dt)
-        outputs[1:Nspecs,i] = gas.Y
-        outputs[end, i] = gas.T
+    @inbounds for i = 1:Nxp*Ny*Nz
+        T = inputs[1, i]
+        if T > T_criteria
+            P = inputs[2, i]
+            Yi = @view inputs[3:end, i]
+            gas.TPY = T, P, Yi
+            r = ct.IdealGasReactor(gas)
+            sim = ct.ReactorNet([r])
+            sim.advance(dt)
+            inputs[3:end,i] = gas.Y
+            inputs[1, i] = gas.T
+        end
     end
 end
 

@@ -237,10 +237,7 @@ function time_step(rank, comm, thermo, consts, react)
         if Cantera
             # CPU evaluation needed
             inputs_h = zeros(Float64, Nspecs+2, Nxp*Ny*Nz)
-            yt_pred_h = zeros(Float64, Nspecs+1, Nxp*Ny*Nz)
-
             inputs = CuArray(inputs_h)
-            yt_pred = CuArray(yt_pred_h)
         end
 
         dt2 = dt/2
@@ -279,9 +276,9 @@ function time_step(rank, comm, thermo, consts, react)
                 # CPU - cantera
                 @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock pre_input_cpu(inputs, Q, Yi)
                 copyto!(inputs_h, inputs)
-                eval_cpu(yt_pred_h, inputs_h, dt2)
-                copyto!(yt_pred, yt_pred_h)
-                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock post_eval_cpu(yt_pred, U, Q, ρi, thermo)
+                eval_cpu(inputs_h, dt2)
+                copyto!(inputs, inputs_h)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock post_eval_cpu(inputs, U, Q, ρi, thermo)
                 @cuda fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
@@ -355,10 +352,10 @@ function time_step(rank, comm, thermo, consts, react)
                 # CPU - cantera
                 @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock pre_input_cpu(inputs, Q, Yi)
                 copyto!(inputs_h, inputs)
-                eval_cpu(yt_pred_h, inputs_h, dt2)
-                copyto!(yt_pred, yt_pred_h)
-                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock post_eval_cpu(yt_pred, U, Q, ρi, thermo)
-                @cuda threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
+                eval_cpu(inputs_h, dt2)
+                copyto!(inputs, inputs_h)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock post_eval_cpu(inputs, U, Q, ρi, thermo)
+                @cuda fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
