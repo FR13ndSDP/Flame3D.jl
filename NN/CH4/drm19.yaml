@@ -285,7 +285,7 @@ species:
   composition: {C: 1, H: 3, O: 1}
   thermo:
     model: NASA7
-    temperature-ranges: [300.0, 1000.0, 3000.0]
+    temperature-ranges: [200.0, 1000.0, 3000.0]
     data:
     - [2.106204, 7.216595e-03, 5.338472e-06, -7.377636e-09, 2.07561e-12,
       978.6011, 13.152177]
@@ -354,7 +354,7 @@ species:
   composition: {N: 2}
   thermo:
     model: NASA7
-    temperature-ranges: [300.0, 1000.0, 5000.0]
+    temperature-ranges: [200.0, 1000.0, 5000.0]
     data:
     - [3.298677, 1.4082404e-03, -3.963222e-06, 5.641515e-09, -2.444854e-12,
       -1020.8999, 3.950372]

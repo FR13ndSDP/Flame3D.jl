@@ -6,40 +6,38 @@ function fill_x(Q, U, ρi, Yi, thermo, rank)
     if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
         return
     end
-    # Mach 2 inlet
+    # inlet
     if rank == 0 && i <= NG+1
         for n = 1:Nspecs
             @inbounds Yi[i, j, k, n] = 0.0
             @inbounds ρi[i, j, k, n] = 0.0
         end
         if (j-36)^2+(k-36)^2 < 25
-            @inbounds Yi[i, j, k, 5] = 0.77
-            @inbounds Yi[i, j, k, 2] = 0.23
-            P = 3596.0
-            T = 5000.0
-            Ma = 1.5
+            @inbounds Yi[i, j, k, 4] = 1.0
+            @inbounds Yi[i, j, k, 11] = 0.0
+            P = 101325.0 * 200
+            T = 300.0
+            Ma = 0.6
             @inbounds Y = @view Yi[i, j, k, :]
             rho = ρmixture(P, T, Y, thermo)
-            @inbounds ρi[i, j, k, 5] = Yi[i, j, k, 5] * rho
-            @inbounds ρi[i, j, k, 2] = Yi[i, j, k, 2] * rho
+            @inbounds ρi[i, j, k, 4] = Yi[i, j, k, 4] * rho
+            @inbounds ρi[i, j, k, 11] = Yi[i, j, k, 11] * rho
             @inbounds rhoi = @view ρi[i, j, k, :]
             ei = InternalEnergy(T, rhoi, thermo)
             γ = P/ei + 1
             u = sqrt(γ*P/rho) * Ma
         else
-            @inbounds Yi[i, j, k, 5] = 0.77
-            @inbounds Yi[i, j, k, 2] = 0.23
-            P = 3596.0
-            T = 1000.0
-            Ma = 0.1
+            @inbounds Yi[i, j, k, 11] = 1.0
+            @inbounds Yi[i, j, k, 4] = 0.0
+            P = 101325.0 * 200
+            T = 300.0
             @inbounds Y = @view Yi[i, j, k, :]
             rho = ρmixture(P, T, Y, thermo)
-            @inbounds ρi[i, j, k, 5] = Yi[i, j, k, 5] * rho
-            @inbounds ρi[i, j, k, 2] = Yi[i, j, k, 2] * rho
+            @inbounds ρi[i, j, k, 11] = Yi[i, j, k, 11] * rho
+            @inbounds ρi[i, j, k, 4] = Yi[i, j, k, 4] * rho
             @inbounds rhoi = @view ρi[i, j, k, :]
             ei = InternalEnergy(T, rhoi, thermo)
-            γ = P/ei + 1
-            u = sqrt(γ*P/rho) * Ma
+            u = 10.0
         end
         @inbounds Q[i, j, k, 1] = rho
         @inbounds Q[i, j, k, 2] = u

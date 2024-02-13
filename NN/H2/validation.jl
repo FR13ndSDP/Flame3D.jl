@@ -5,16 +5,16 @@ using Lux, JLD2
 
 # Validation
 # Call Cantera
-mech = "./drm19.yaml"
-TPY = 2000, 101325*200, "CH4:1 O2:1"
+mech = "./LiDryer.yaml"
+TPY = 1500, 101325*10, "H2:1 O2:1"
 ct = pyimport("cantera")
 ct_gas = ct.Solution(mech)
 ct_gas.TPY = TPY
 r = ct.IdealGasReactor(ct_gas, name="R1")
 sim = ct.ReactorNet([r])
-N = 100
+N = 200
 T_evo_ct = zeros(Float64, N)
-Y_evo_ct = zeros(Float64, (20, N))
+Y_evo_ct = zeros(Float64, (9, N))
 T_evo_ct[1] = ct_gas.T
 Y_evo_ct[:, 1] = ct_gas.Y
 dt = 1e-7
@@ -70,13 +70,11 @@ end
 plt = pyimport("matplotlib.pyplot")
 plt.subplot(1,2,1)
 # plt.plot(T_evo, "--")
-plt.plot(tt, T_evo_ct, "-+")
+plt.plot(tt, T_evo_ct)
 plt.legend(["cantera"])
 plt.subplot(1,2,2)
 plt.plot(tt, Y_evo_ct[1,:])
-plt.plot(tt, Y_evo_ct[4,:])
-plt.plot(tt, Y_evo_ct[6,:])
-plt.plot(tt, Y_evo_ct[13,:])
-plt.plot(tt, Y_evo_ct[11,:])
-plt.legend(["H2", "O2", "H2O", "CO2", "CH4"])
+plt.plot(tt, Y_evo_ct[2,:])
+plt.plot(tt, Y_evo_ct[3,:])
+plt.legend(["H2", "O2", "H2O"])
 plt.show()

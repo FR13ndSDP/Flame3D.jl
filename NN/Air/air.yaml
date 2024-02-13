@@ -117,11 +117,11 @@ reactions:
   type: three-body
   rate-constant: {A: 1.0e+22, b: -1.5, Ea: 117960.43602294}
   efficiencies: {N2: 0.2, NO: 0.2, O2: 0.2}
-- equation: NO + M <=> N + O + M  # Reaction 3
-  type: three-body
-  rate-constant: {A: 5.0e+15, b: 0.0, Ea: 150033.91037285}
-  efficiencies: {NO: 22.0, N: 22.0, O: 22.0}
 - equation: N2 + O <=> NO + N  # Reaction 4
   rate-constant: {A: 5.7e+12, b: 0.42, Ea: 85326.57011377}
 - equation: NO + O <=> O2 + N  # Reaction 5
   rate-constant: {A: 8.4e+12, b: 0.0, Ea: 38551.75975143}
+- equation: N + O + M <=> NO + M # Reaction 6
+  type: three-body
+  rate-constant: {A: 5.0e+15, b: 0.0, Ea: 150033.91037285}
+  efficiencies: {NO: 22.0, N: 22.0, O: 22.0}
