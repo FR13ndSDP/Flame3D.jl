@@ -200,8 +200,8 @@ function eval_gpu_stiff(U, Q, ρi, dt, thermo, react)
         vproductionRate_Jac(wdot, sc, Arate, T, thermo, react)
 
         # I - AⁿΔt
-        for n = 1:Nspecs
-            for l = 1:Nspecs
+        for l = 1:Nspecs
+            for n = 1:Nspecs
                 @inbounds A1[n, l] = (n == l ? 1.0 : 0.0) - 
                                     Arate[n, l] * thermo.mw[n] / thermo.mw[l] * dt
             end
@@ -257,8 +257,14 @@ end
         @inbounds q_f = k_f_s[n]
         @inbounds q_r = q_f / Kc_s[n]
         for m = 1:Nspecs
-            @inbounds q_f *= sc[m] ^ react.vf[m, n]
-            @inbounds q_r *= sc[m] ^ react.vr[m, n]
+            @inbounds vf = react.vf[m, n]
+            @inbounds vr = react.vr[m, n]
+            if vf != 0
+                @inbounds q_f *= sc[m] ^ vf
+            end
+            if vr != 0
+                @inbounds q_r *= sc[m] ^ vr
+            end
         end
 
         mixture::Float64 = 0.0
@@ -274,10 +280,10 @@ end
                 @inbounds mixture += react.ef[m, n] * sc[m]
             end
 
-            redP = mixture / k_f_s[n] * react.loP[1,n] * exp(react.loP[2,n] * lgT - react.loP[3,n] * invT)
+            @inbounds redP = mixture / k_f_s[n] * react.loP[1,n] * exp(react.loP[2,n] * lgT - react.loP[3,n] * invT)
             logPred = log10(redP)
-            A = react.Troe[1,n]
-            logFcent = log10((1-A)*exp(-T/react.Troe[2,n]) + A*exp(-T/react.Troe[3,n]) + exp(-react.Troe[4,n]*invT))
+            @inbounds A = react.Troe[1,n]
+            @inbounds logFcent = log10((1-A)*exp(-T/react.Troe[2,n]) + A*exp(-T/react.Troe[3,n]) + exp(-react.Troe[4,n]*invT))
             troe_c = -0.4 - 0.67 * logFcent
             troe_n = 0.75 - 1.27 * logFcent
             troe = (troe_c + logPred) / (troe_n - 0.14 * (troe_c + logPred))
@@ -326,8 +332,14 @@ end
         @inbounds q_f = k_f_s[n]
         @inbounds q_r = q_f / Kc_s[n]
         for m = 1:Nspecs
-            @inbounds q_f *= sc[m] ^ react.vf[m, n]
-            @inbounds q_r *= sc[m] ^ react.vr[m, n]
+            @inbounds vf = react.vf[m, n]
+            @inbounds vr = react.vr[m, n]
+            if vf != 0
+                @inbounds q_f *= sc[m] ^ vf
+            end
+            if vr != 0
+                @inbounds q_r *= sc[m] ^ vr
+            end
         end
 
         mixture::Float64 = 0.0
@@ -343,10 +355,10 @@ end
                 @inbounds mixture += react.ef[m, n] * sc[m]
             end
 
-            redP = mixture / k_f_s[n] * react.loP[1,n] * exp(react.loP[2,n] * lgT - react.loP[3,n] * invT)
+            @inbounds redP = mixture / k_f_s[n] * react.loP[1,n] * exp(react.loP[2,n] * lgT - react.loP[3,n] * invT)
             logPred = log10(redP)
-            A = react.Troe[1,n]
-            logFcent = log10((1-A)*exp(-T/react.Troe[2,n]) + A*exp(-T/react.Troe[3,n]) + exp(-react.Troe[4,n]*invT))
+            @inbounds A = react.Troe[1,n]
+            @inbounds logFcent = log10((1-A)*exp(-T/react.Troe[2,n]) + A*exp(-T/react.Troe[3,n]) + exp(-react.Troe[4,n]*invT))
             troe_c = -0.4 - 0.67 * logFcent
             troe_n = 0.75 - 1.27 * logFcent
             troe = (troe_c + logPred) / (troe_n - 0.14 * (troe_c + logPred))
@@ -359,7 +371,7 @@ end
         for m = 1:Nspecs
             @inbounds wdot[m] += (q_f - q_r) * (react.vr[m, n] - react.vf[m, n])
 
-            invsc::Float64 = 1/(sc[m] + eps(Float64))
+            @inbounds invsc::Float64 = 1/(sc[m] + eps(Float64))
             @inbounds Awf = react.vf[m, n] * q_f * invsc
             @inbounds Awr = react.vr[m, n] * q_r * invsc
             for l = 1:Nspecs
@@ -371,56 +383,45 @@ end
 end
 
 # Solve Ax = b with Gauss Elimination
-@inline function solve(x, A, b)
-    U = MMatrix{Nspecs, Nspecs+1, Float64}(undef)
+@inline function solve(x, a, b)
+	@inbounds for k = 1:Nspecs-1
+        # find main element      
+        fmax = abs(a[k,k])
+        kk = k
+        @inbounds for i = k+1:Nspecs
+            if abs(a[i,k]) > fmax
+                fmax = abs(a[i,k])
+                kk = i
+            end
+        end
+        # exchange line   
+        @inbounds for j = k:Nspecs
+            t = a[k,j]
+            a[k,j] = a[kk,j]
+            a[kk,j] = t
+        end
+        t = b[k]
+        b[k] = b[kk]
+        b[kk] = t
+        # Elimination
+        @inbounds for i = k+1:Nspecs
+            f = -a[i,k]/a[k,k]
+            @inbounds for j = 1:Nspecs
+                a[i,j] += f*a[k,j]
+            end
+            b[i] += f*b[k]
+        end
+	end
 
-    # Copy A to U and augment with vector b.
-    for ii = 1:Nspecs
-        @inbounds U[ii, Nspecs+1] = b[ii]
-        for jj = 1:Nspecs
-            @inbounds U[ii, jj] = A[ii, jj]
+    # get x    
+	x[Nspecs] = b[Nspecs]/a[Nspecs,Nspecs]
+	@inbounds for i = Nspecs-1:-1:1
+        x[i] = b[i]
+        @inbounds for j = i+1:Nspecs
+            x[i] -= a[i,j]*x[j]
         end
+        x[i] /= a[i,i]
     end
-  
-    # Factorisation stage
-    for kk = 1:Nspecs
-        # Find the best pivot
-        p = kk
-        maxPivot::Float64 = 0.0
-        for ii = kk:Nspecs
-            if (@inbounds abs(U[ii, kk]) > maxPivot)
-                @inbounds maxPivot = abs(U[ii, kk])
-                p = ii
-            end
-        end
-        # Swap rows kk and p
-        if (p != kk) 
-            for ii = kk:Nspecs+1
-                @inbounds tmp = U[p, ii]
-                @inbounds U[p, ii] = U[kk, ii]
-                @inbounds U[kk, ii] = tmp
-            end
-        end
-      
-  
-        # Elimination of variables
-        for ii = kk+1:Nspecs
-            @inbounds m = U[ii, kk] / U[kk, kk]
-            for jj = kk:Nspecs+1
-                @inbounds U[ii, jj] -= m * U[kk, jj]
-            end
-        end
-    end
-  
-    # Back substitution
-    for kk = Nspecs:-1:1
-        @inbounds sum = U[kk, Nspecs+1]
-        for jj = kk+1:Nspecs
-            @inbounds sum -= U[kk, jj] * x[jj]
-        end
-        @inbounds x[kk] = sum / U[kk, kk]
-    end
-    return
 end
 
 # column major
