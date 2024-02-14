@@ -126,7 +126,7 @@ function eval_cpu(inputs, dt)
     ct = pyimport("cantera")
     gas = ct.Solution(mech)
 
-    @inbounds for i = 1:Nxp*Ny*Nz
+    @inbounds @simd for i = 1:Nxp*Ny*Nz
         T = inputs[1, i]
         if T > T_criteria
             P = inputs[2, i]
