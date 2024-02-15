@@ -295,9 +295,9 @@ function time_step(rank, comm, thermo, consts, react)
                         @cuda fastmath=true threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2/sub_step, thermo, react)
                     end
                     @cuda fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
-                    fillGhost(Q, U, ρi, Yi, thermo, rank)
-                    fillSpec(ρi)
                 end
+                fillGhost(Q, U, ρi, Yi, thermo, rank)
+                fillSpec(ρi)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
                 exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
                 MPI.Barrier(comm)
@@ -371,9 +371,9 @@ function time_step(rank, comm, thermo, consts, react)
                         @cuda fastmath=true threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2/sub_step, thermo, react)
                     end
                     @cuda fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
-                    fillGhost(Q, U, ρi, Yi, thermo, rank)
-                    fillSpec(ρi)
                 end
+                fillGhost(Q, U, ρi, Yi, thermo, rank)
+                fillSpec(ρi)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
                 exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
                 MPI.Barrier(comm)
