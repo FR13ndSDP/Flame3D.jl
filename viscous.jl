@@ -134,30 +134,50 @@ function specViscousFlux(Fv_x, Fv_y, Fv_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, d�
     c1::Float64 = consts.CD4[1]
     c2::Float64 = consts.CD4[2]
 
+    # diffusion velocity
+    Vk1 = MVector{Nspecs, Float64}(undef)
+    Vk2 = MVector{Nspecs, Float64}(undef)
+    Vk3 = MVector{Nspecs, Float64}(undef)
+    
     hi = MVector{Nspecs, Float64}(undef)
     h_specs(hi, T, T2, T3, T4, T5, thermo)
 
+    sum1::Float64 = 0
+    sum2::Float64 = 0
+    sum3::Float64 = 0
     for n = 1:Nspecs
-        @inbounds Di = D[i, j, k, n]
+        @inbounds ρDi = D[i, j, k, n] * ρ
         @inbounds ∂Y∂ξ = c1*(Yi[i-2, j, k, n] - Yi[i+2, j, k, n]) + c2*(Yi[i-1, j, k, n] - Yi[i+1, j, k, n])
         @inbounds ∂Y∂η = c1*(Yi[i, j-2, k, n] - Yi[i, j+2, k, n]) + c2*(Yi[i, j-1, k, n] - Yi[i, j+1, k, n])
         @inbounds ∂Y∂ζ = c1*(Yi[i, j, k-2, n] - Yi[i, j, k+2, n]) + c2*(Yi[i, j, k-1, n] - Yi[i, j, k+1, n])
 
-        dYdx = (∂Y∂ξ * ∂ξ∂x + ∂Y∂η * ∂η∂x + ∂Y∂ζ * ∂ζ∂x) * Jac
-        dYdy = (∂Y∂ξ * ∂ξ∂y + ∂Y∂η * ∂η∂y + ∂Y∂ζ * ∂ζ∂y) * Jac
-        dYdz = (∂Y∂ξ * ∂ξ∂z + ∂Y∂η * ∂η∂z + ∂Y∂ζ * ∂ζ∂z) * Jac
+        Vx = (∂Y∂ξ * ∂ξ∂x + ∂Y∂η * ∂η∂x + ∂Y∂ζ * ∂ζ∂x) * Jac * ρDi
+        Vy = (∂Y∂ξ * ∂ξ∂y + ∂Y∂η * ∂η∂y + ∂Y∂ζ * ∂ζ∂y) * Jac * ρDi
+        Vz = (∂Y∂ξ * ∂ξ∂z + ∂Y∂η * ∂η∂z + ∂Y∂ζ * ∂ζ∂z) * Jac * ρDi
 
-        tmp1 = ρ*Di*dYdx
-        tmp2 = ρ*Di*dYdy
-        tmp3 = ρ*Di*dYdz
+        @inbounds Vk1[n] = Vx
+        @inbounds Vk2[n] = Vy
+        @inbounds Vk3[n] = Vz
 
-        @inbounds Fv_x[i-2, j-2, k-2, n] = tmp1 * ∂ξ∂x + tmp2 * ∂ξ∂y + tmp3 * ∂ξ∂z
-        @inbounds Fv_y[i-2, j-2, k-2, n] = tmp2 * ∂η∂x + tmp2 * ∂η∂y + tmp3 * ∂η∂z
-        @inbounds Fv_z[i-2, j-2, k-2, n] = tmp3 * ∂ζ∂x + tmp2 * ∂ζ∂y + tmp3 * ∂ζ∂z
+        sum1 += Vx
+        sum2 += Vy
+        sum3 += Vz
+    end
 
-        @inbounds Fh[i-2, j-2, k-2, 1] += tmp1 * hi[n]
-        @inbounds Fh[i-2, j-2, k-2, 2] += tmp2 * hi[n]
-        @inbounds Fh[i-2, j-2, k-2, 3] += tmp3 * hi[n]
+    for n = 1:Nspecs
+        @inbounds Yn = Yi[i, j, k, n]
+        @inbounds hn = hi[n]
+        @inbounds V1 = Vk1[n] - sum1 * Yn
+        @inbounds V2 = Vk2[n] - sum2 * Yn
+        @inbounds V3 = Vk3[n] - sum3 * Yn
+
+        @inbounds Fv_x[i-2, j-2, k-2, n] = V1 * ∂ξ∂x + V2 * ∂ξ∂y + V3 * ∂ξ∂z
+        @inbounds Fv_y[i-2, j-2, k-2, n] = V1 * ∂η∂x + V2 * ∂η∂y + V3 * ∂η∂z
+        @inbounds Fv_z[i-2, j-2, k-2, n] = V1 * ∂ζ∂x + V2 * ∂ζ∂y + V3 * ∂ζ∂z
+
+        @inbounds Fh[i-2, j-2, k-2, 1] += V1 * hn
+        @inbounds Fh[i-2, j-2, k-2, 2] += V2 * hn
+        @inbounds Fh[i-2, j-2, k-2, 3] += V3 * hn
     end
     return
 end
