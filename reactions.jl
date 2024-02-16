@@ -166,7 +166,7 @@ function eval_gpu(U, Q, ρi, dt, thermo, react)
         Δei::Float64 = 0
         for n = 1:Nspecs
             @inbounds Δρ = wdot[n] * thermo.mw[n] * 1e6 * dt
-            @inbounds Δei += -thermo.coeffs_lo[n, 6] *  Δρ * thermo.Ru / thermo.mw[n]
+            @inbounds Δei += -thermo.coeffs_lo[6, n] *  Δρ * thermo.Ru / thermo.mw[n]
             @inbounds ρi[i, j, k, n] += Δρ
         end
 
@@ -233,9 +233,6 @@ end
     Kc_s = MVector{Nreacs, Float64}(undef)
 
     lgT = log(T)
-    T2 = T * T
-    T3 = T2 * T
-    T4 = T2 * T2
     invT = 1.0 / T
   
     for n = 1:Nreacs
@@ -243,7 +240,7 @@ end
     end
   
     # compute the Gibbs free energy 
-    gibbs(gi_T, lgT, T, T2, T3, T4, thermo)
+    gibbs(gi_T, T, lgT, invT, thermo)
   
     RsT::Float64 = thermo.Ru / react.atm * 1e6 * T
   
@@ -308,9 +305,6 @@ end
     Kc_s = MVector{Nreacs, Float64}(undef)
 
     lgT = log(T)
-    T2 = T * T
-    T3 = T2 * T
-    T4 = T2 * T2
     invT = 1.0 / T
   
     for n = 1:Nreacs
@@ -318,7 +312,7 @@ end
     end
   
     # compute the Gibbs free energy 
-    gibbs(gi_T, lgT, T, T2, T3, T4, thermo)
+    gibbs(gi_T, T, lgT, invT, thermo)
   
     RsT::Float64 = thermo.Ru / react.atm * 1e6 * T
   

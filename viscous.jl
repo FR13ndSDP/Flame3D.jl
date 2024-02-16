@@ -43,12 +43,10 @@ function viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dη
     @inbounds ∂w∂η = c1*(Q[i, j-2, k, 4] - Q[i, j+2, k, 4]) + c2*(Q[i, j-1, k, 4] - Q[i, j+1, k, 4])
     @inbounds ∂T∂η = c1*(Q[i, j-2, k, 6] - Q[i, j+2, k, 6]) + c2*(Q[i, j-1, k, 6] - Q[i, j+1, k, 6])
 
-
     @inbounds ∂u∂ζ = c1*(Q[i, j, k-2, 2] - Q[i, j, k+2, 2]) + c2*(Q[i, j, k-1, 2] - Q[i, j, k+1, 2])
     @inbounds ∂v∂ζ = c1*(Q[i, j, k-2, 3] - Q[i, j, k+2, 3]) + c2*(Q[i, j, k-1, 3] - Q[i, j, k+1, 3])
     @inbounds ∂w∂ζ = c1*(Q[i, j, k-2, 4] - Q[i, j, k+2, 4]) + c2*(Q[i, j, k-1, 4] - Q[i, j, k+1, 4])
     @inbounds ∂T∂ζ = c1*(Q[i, j, k-2, 6] - Q[i, j, k+2, 6]) + c2*(Q[i, j, k-1, 6] - Q[i, j, k+1, 6])
-
 
     @inbounds u = Q[i, j, k, 2]
     @inbounds v = Q[i, j, k, 3]
@@ -122,10 +120,6 @@ function specViscousFlux(Fv_x, Fv_y, Fv_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, d�
     @inbounds Jac = J[i, j, k]
     @inbounds ρ = Q[i, j, k, 1]
     @inbounds T = Q[i, j, k, 6]
-    T2::Float64 = T * T
-    T3::Float64 = T2 * T
-    T4::Float64 = T2 * T2
-    T5::Float64 = T3 * T2
 
     @inbounds Fh[i-2, j-2, k-2, 1] = 0
     @inbounds Fh[i-2, j-2, k-2, 2] = 0
@@ -140,7 +134,7 @@ function specViscousFlux(Fv_x, Fv_y, Fv_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, d�
     Vk3 = MVector{Nspecs, Float64}(undef)
     
     hi = MVector{Nspecs, Float64}(undef)
-    h_specs(hi, T, T2, T3, T4, T5, thermo)
+    h_specs(hi, T, thermo)
 
     sum1::Float64 = 0
     sum2::Float64 = 0

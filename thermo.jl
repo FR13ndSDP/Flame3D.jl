@@ -79,20 +79,24 @@ end
 end
 
 # get cp for species using NASA-7 polynomial
-@inline function cp_specs(cp, T::Float64, T2::Float64, T3::Float64, T4::Float64, thermo)
+@inline function cp_specs(cp, T::Float64, thermo)
+    T2::Float64 = T * T
+    T3::Float64 = T2 * T
+    T4::Float64 = T2 * T2
+
     for n = 1:Nspecs
         if T < thermo.coeffs_sep[n]
-            @inbounds cp[n] = thermo.coeffs_lo[n, 1] +
-                              thermo.coeffs_lo[n, 2] * T + 
-                              thermo.coeffs_lo[n, 3] * T2 +
-                              thermo.coeffs_lo[n, 4] * T3 + 
-                              thermo.coeffs_lo[n, 5] * T4
+            @inbounds cp[n] = thermo.coeffs_lo[1, n] +
+                              thermo.coeffs_lo[2, n] * T + 
+                              thermo.coeffs_lo[3, n] * T2 +
+                              thermo.coeffs_lo[4, n] * T3 + 
+                              thermo.coeffs_lo[5, n] * T4
         else
-            @inbounds cp[n] = thermo.coeffs_hi[n, 1] + 
-                              thermo.coeffs_hi[n, 2] * T + 
-                              thermo.coeffs_hi[n, 3] * T2 +
-                              thermo.coeffs_hi[n, 4] * T3 + 
-                              thermo.coeffs_hi[n, 5] * T4
+            @inbounds cp[n] = thermo.coeffs_hi[1, n] + 
+                              thermo.coeffs_hi[2, n] * T + 
+                              thermo.coeffs_hi[3, n] * T2 +
+                              thermo.coeffs_hi[4, n] * T3 + 
+                              thermo.coeffs_hi[5, n] * T4
         end
     end
 
@@ -100,21 +104,26 @@ end
 end
 
 # get enthalpy for species using NASA-7 polynomial, J/kg
-@inline function h_specs(hi, T::Float64, T2::Float64, T3::Float64, T4::Float64, T5::Float64, thermo)
+@inline function h_specs(hi, T::Float64, thermo)
+    T2::Float64 = 0.5 * T * T # 1/2T^2
+    T3::Float64 = 2/3 * T2 * T # 1/3T^3
+    T4::Float64 = T2 * T2 # 1/4T^4
+    T5::Float64 = 0.8 * T4 * T # 1/5T^5
+
     for n = 1:Nspecs
         if T < thermo.coeffs_sep[n]
-            @inbounds hi[n] = thermo.coeffs_lo[n, 1] * T +
-                              thermo.coeffs_lo[n, 2] * 0.5 * T2 + 
-                              thermo.coeffs_lo[n, 3] * 0.3333333333333333 * T3 + 
-                              thermo.coeffs_lo[n, 4] * 0.25 * T4 + 
-                              thermo.coeffs_lo[n, 5] * 0.2 * T5
+            @inbounds hi[n] = thermo.coeffs_lo[1, n] * T +
+                              thermo.coeffs_lo[2, n] * T2 + 
+                              thermo.coeffs_lo[3, n] * T3 + 
+                              thermo.coeffs_lo[4, n] * T4 + 
+                              thermo.coeffs_lo[5, n] * T5
         else
-            @inbounds hi[n] = thermo.coeffs_hi[n, 1] * T + 
-                              thermo.coeffs_hi[n, 2] * 0.5 * T2 + 
-                              thermo.coeffs_hi[n, 3] * 0.3333333333333333 * T3 + 
-                              thermo.coeffs_hi[n, 4] * 0.25 * T4 + 
-                              thermo.coeffs_hi[n, 5] * 0.2 * T5 + 
-                              (thermo.coeffs_hi[n, 6] - thermo.coeffs_lo[n, 6])
+            @inbounds hi[n] = thermo.coeffs_hi[1, n] * T + 
+                              thermo.coeffs_hi[2, n] * T2 + 
+                              thermo.coeffs_hi[3, n] * T3 + 
+                              thermo.coeffs_hi[4, n] * T4 + 
+                              thermo.coeffs_hi[5, n] * T5 + 
+                              (thermo.coeffs_hi[6, n] - thermo.coeffs_lo[6, n])
         end
 
         @inbounds hi[n] *= thermo.Ru / thermo.mw[n]
@@ -124,21 +133,26 @@ end
 end
 
 # get internal energy for species using NASA-7 polynomial
-@inline function ei_specs(ei, T::Float64, T2::Float64, T3::Float64, T4::Float64, T5::Float64, thermo)
+@inline function ei_specs(ei, T::Float64, thermo)
+    T2::Float64 = 0.5 * T * T # 1/2T^2
+    T3::Float64 = 2/3 * T2 * T # 1/3T^3
+    T4::Float64 = T2 * T2 # 1/4T^4
+    T5::Float64 = 0.8 * T4 * T # 1/5T^5
+
     for n = 1:Nspecs
         if T < thermo.coeffs_sep[n]
-            @inbounds ei[n] = (thermo.coeffs_lo[n, 1] -1) * T + 
-                               thermo.coeffs_lo[n, 2] * 0.5 * T2 + 
-                               thermo.coeffs_lo[n, 3] * 0.3333333333333333 * T3 + 
-                               thermo.coeffs_lo[n, 4] * 0.25 * T4 +
-                               thermo.coeffs_lo[n, 5] * 0.2 * T5
+            @inbounds ei[n] = (thermo.coeffs_lo[1, n] -1) * T + 
+                               thermo.coeffs_lo[2, n] * T2 + 
+                               thermo.coeffs_lo[3, n] * T3 + 
+                               thermo.coeffs_lo[4, n] * T4 +
+                               thermo.coeffs_lo[5, n] * T5
         else
-            @inbounds ei[n] = (thermo.coeffs_hi[n, 1] -1) * T + 
-                               thermo.coeffs_hi[n, 2] * 0.5 * T2 + 
-                               thermo.coeffs_hi[n, 3] * 0.3333333333333333 * T3 + 
-                               thermo.coeffs_hi[n, 4] * 0.25 * T4 + 
-                               thermo.coeffs_hi[n, 5] * 0.2 * T5 + 
-                               (thermo.coeffs_hi[n, 6] - thermo.coeffs_lo[n, 6])
+            @inbounds ei[n] = (thermo.coeffs_hi[1, n] -1) * T + 
+                               thermo.coeffs_hi[2, n] * T2 + 
+                               thermo.coeffs_hi[3, n] * T3 + 
+                               thermo.coeffs_hi[4, n] * T4 + 
+                               thermo.coeffs_hi[5, n] * T5 + 
+                               (thermo.coeffs_hi[6, n] - thermo.coeffs_lo[6, n])
         end
     end
 
@@ -146,26 +160,30 @@ end
 end
 
 # get gibbs free energy, gi/T, gi = g/Ri
-@inline function gibbs(gi, logT::Float64, T::Float64, T2::Float64, T3::Float64, T4::Float64, thermo)
-    invT::Float64 = 1/T
+@inline function gibbs(gi, T::Float64, lgT::Float64, invT::Float64, thermo)
+    mlogT::Float64 = 1-lgT
+    T1::Float64 = 0.5 * T # 1/2T
+    T2::Float64 = 1/6 * T * T # 1/6T^2
+    T3::Float64 = T1 * T2 # 1/12T^3
+    T4::Float64 = 1.8 * T2 * T2 # 1/20T^4
 
     for n = 1:Nspecs
         if T < thermo.coeffs_sep[n]
-            @inbounds gi[n] = thermo.coeffs_lo[n, 1] * (1 - logT) - 
-                              thermo.coeffs_lo[n, 2] * 0.5 * T - 
-                              thermo.coeffs_lo[n, 3] * 0.1666666666666667 * T2 - 
-                              thermo.coeffs_lo[n, 4] * 0.0833333333333333 * T3 -
-                              thermo.coeffs_lo[n, 5] * 0.05 * T4 +
-                              thermo.coeffs_lo[n, 6] * invT - 
-                              thermo.coeffs_lo[n, 7]
+            @inbounds gi[n] = thermo.coeffs_lo[1, n] * mlogT - 
+                              thermo.coeffs_lo[2, n] * T1 - 
+                              thermo.coeffs_lo[3, n] * T2 - 
+                              thermo.coeffs_lo[4, n] * T3 -
+                              thermo.coeffs_lo[5, n] * T4 +
+                              thermo.coeffs_lo[6, n] * invT - 
+                              thermo.coeffs_lo[7, n]
         else
-            @inbounds gi[n] = thermo.coeffs_hi[n, 1] * (1 - logT) - 
-                              thermo.coeffs_hi[n, 2] * 0.5 * T - 
-                              thermo.coeffs_hi[n, 3] * 0.1666666666666667 * T2 - 
-                              thermo.coeffs_hi[n, 4] * 0.0833333333333333 * T3 -
-                              thermo.coeffs_hi[n, 5] * 0.05 * T4 +
-                              thermo.coeffs_hi[n, 6] * invT - 
-                              thermo.coeffs_hi[n, 7]
+            @inbounds gi[n] = thermo.coeffs_hi[1, n] * mlogT - 
+                              thermo.coeffs_hi[2, n] * T1 - 
+                              thermo.coeffs_hi[3, n] * T2 - 
+                              thermo.coeffs_hi[4, n] * T3 -
+                              thermo.coeffs_hi[5, n] * T4 +
+                              thermo.coeffs_hi[6, n] * invT - 
+                              thermo.coeffs_hi[7, n]
         end
     end
 
@@ -174,12 +192,8 @@ end
 
 # J/(m^3 K)
 @inline function CV(T::Float64, rhoi, thermo)
-    T2 = T*T
-    T3 = T2*T
-    T4 = T2*T2
-
     cp = MVector{Nspecs, Float64}(undef)
-    cp_specs(cp, T, T2, T3, T4, thermo)
+    cp_specs(cp, T, thermo)
 
     result::Float64 = 0
     for n = 1:Nspecs
@@ -190,12 +204,8 @@ end
 
 # J/(m^3 K)
 @inline function CP(T::Float64, rhoi, thermo)
-    T2 = T*T
-    T3 = T2*T
-    T4 = T2*T2
-
     cp = MVector{Nspecs, Float64}(undef)
-    cp_specs(cp, T, T2, T3, T4, thermo)
+    cp_specs(cp, T, thermo)
 
     result::Float64 = 0
     for n = 1:Nspecs
@@ -207,13 +217,8 @@ end
 # get mean internal energy in volume unit
 # J/m^3
 @inline function InternalEnergy(T::Float64, rhoi, thermo)
-    T2 = T*T
-    T3 = T2*T
-    T4 = T2*T2
-    T5 = T3*T2
-
     ei = MVector{Nspecs, Float64}(undef)
-    ei_specs(ei, T, T2, T3, T4, T5, thermo)
+    ei_specs(ei, T, thermo)
 
     result::Float64 = 0
     for n = 1:Nspecs
@@ -247,7 +252,7 @@ end
   
     As::Float64=0
     for n = 1:Nspecs
-        @inbounds As += (thermo.coeffs_lo[n, 1]-1) *thermo.Ru/thermo.mw[n]*ρi[n]
+        @inbounds As += (thermo.coeffs_lo[1, n]-1) *thermo.Ru/thermo.mw[n]*ρi[n]
     end
   
     # initial value
@@ -291,7 +296,7 @@ end
 
     # λ
     for n = 1:Nspecs
-        @inbounds μi[n] = sqT * dot5(lgT, lgT2, lgT3, lgT4, @inbounds @view thermo.conduct_poly[n, :])
+        @inbounds μi[n] = sqT * dot5(lgT, lgT2, lgT3, lgT4, @inbounds @view thermo.conduct_poly[:, n])
     end
 
     sum1::Float64 = 0
@@ -305,7 +310,7 @@ end
     # μ
     for n = 1:Nspecs
         # the polynomial fit is done for sqrt(visc/sqrt(T))
-        sqmui = sqsqT * dot5(lgT, lgT2, lgT3, lgT4, @inbounds @view thermo.visc_poly[n, :])
+        sqmui = sqsqT * dot5(lgT, lgT2, lgT3, lgT4, @inbounds @view thermo.visc_poly[:, n])
         @inbounds μi[n] = (sqmui * sqmui)
     end
 
@@ -338,7 +343,7 @@ end
     =#
     for n = 1:Nspecs
         for nn = n:Nspecs
-            tmp = T * sqT *dot5(lgT, lgT2, lgT3, lgT4, @inbounds @view thermo.binarydiff_poly[n, nn, :])
+            tmp = T * sqT *dot5(lgT, lgT2, lgT3, lgT4, @inbounds @view thermo.binarydiff_poly[:, nn, n])
             @inbounds D[(nn-1)*Nspecs+n] = tmp
             @inbounds D[(n-1)*Nspecs+nn] = tmp
         end
@@ -393,21 +398,21 @@ function initThermo(mech)
     min_temp = gas.min_temp
     max_temp = gas.max_temp
     coeffs_sep = zeros(Float64, Nspecs)
-    coeffs_hi = zeros(Float64, Nspecs, 7)
-    coeffs_lo = zeros(Float64, Nspecs, 7)
-    viscosity_poly = zeros(Float64, Nspecs, 5)
-    conductivity_poly = zeros(Float64, Nspecs, 5)
-    binarydiffusion_poly = zeros(Float64, Nspecs, Nspecs, 5)
+    coeffs_hi = zeros(Float64, 7, Nspecs)
+    coeffs_lo = zeros(Float64, 7, Nspecs)
+    viscosity_poly = zeros(Float64, 5, Nspecs)
+    conductivity_poly = zeros(Float64, 5, Nspecs)
+    binarydiffusion_poly = zeros(Float64, 5, Nspecs, Nspecs)
 
-    for i = 1:Nspecs
-        spec_i = gas.species(i-1)
-        coeffs_sep[i] = spec_i.thermo.coeffs[1]
-        coeffs_hi[i, :] = spec_i.thermo.coeffs[2:8]
-        coeffs_lo[i, :] = spec_i.thermo.coeffs[9:end]
-        viscosity_poly[i, :] = gas.get_viscosity_polynomial(i-1)
-        conductivity_poly[i, :] = gas.get_thermal_conductivity_polynomial(i-1)
-        for j = 1:Nspecs
-            binarydiffusion_poly[i, j, :] = gas.get_binary_diff_coeffs_polynomial(i-1, j-1)
+    for j = 1:Nspecs
+        spec_i = gas.species(j-1)
+        coeffs_sep[j] = spec_i.thermo.coeffs[1]
+        coeffs_hi[:, j] = spec_i.thermo.coeffs[2:8]
+        coeffs_lo[:, j] = spec_i.thermo.coeffs[9:end]
+        viscosity_poly[:, j] = gas.get_viscosity_polynomial(j-1)
+        conductivity_poly[:, j] = gas.get_thermal_conductivity_polynomial(j-1)
+        for i = 1:Nspecs
+            binarydiffusion_poly[:, i, j] = gas.get_binary_diff_coeffs_polynomial(i-1, j-1)
         end
     end
 
