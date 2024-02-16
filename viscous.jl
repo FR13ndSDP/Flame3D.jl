@@ -79,9 +79,9 @@ function viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dη
     τ23 = μi*(dwdy + dvdz)
     τ33 = μi*(2*dwdz - c23*div)
 
-    @inbounds E1 = u * τ11 + v * τ12 + w * τ13 + λi * dTdx + Fh[i, j, k, 1]
-    @inbounds E2 = u * τ12 + v * τ22 + w * τ23 + λi * dTdy + Fh[i, j, k, 2]
-    @inbounds E3 = u * τ13 + v * τ23 + w * τ33 + λi * dTdz + Fh[i, j, k, 3]
+    @inbounds E1 = u * τ11 + v * τ12 + w * τ13 + λi * dTdx + Fh[i-2, j-2, k-2, 1]
+    @inbounds E2 = u * τ12 + v * τ22 + w * τ23 + λi * dTdy + Fh[i-2, j-2, k-2, 2]
+    @inbounds E3 = u * τ13 + v * τ23 + w * τ33 + λi * dTdz + Fh[i-2, j-2, k-2, 3]
 
     @inbounds Fv_x[i-2, j-2, k-2, 1] = ∂ξ∂x * τ11 + ∂ξ∂y * τ12 + ∂ξ∂z * τ13
     @inbounds Fv_x[i-2, j-2, k-2, 2] = ∂ξ∂x * τ12 + ∂ξ∂y * τ22 + ∂ξ∂z * τ23
