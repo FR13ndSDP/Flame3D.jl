@@ -33,15 +33,15 @@ function NND_x(F, Fp, Fm, NV)
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
-    if i > Nxp+1 || j > Ny || k > Nz
+    if i > Nxp+NG+1 || j > Ny+NG || k > Nz+NG || i < 1+NG || j < 1+NG || k < 1+NG
         return
     end
     for n = 1:NV
-        @inbounds fp = Fp[i-1+NG, j+NG, k+NG, n] + 0.5*minmod(Fp[i+NG, j+NG, k+NG, n]-Fp[i-1+NG, j+NG, k+NG, n], 
-                                                              Fp[i-1+NG, j+NG, k+NG, n] - Fp[i-2+NG, j+NG, k+NG, n])
-        @inbounds fm = Fm[i+NG, j+NG, k+NG, n] - 0.5*minmod(Fm[i+1+NG, j+NG, k+NG, n]-Fm[i+NG, j+NG, k+NG, n], 
-                                                            Fm[i+NG, j+NG, k+NG, n] - Fm[i-1+NG, j+NG, k+NG, n])
-        @inbounds F[i, j, k, n] = fp + fm
+        @inbounds fp = Fp[i-1, j, k, n] + 0.5*minmod(Fp[i, j, k, n] - Fp[i-1, j, k, n], 
+                                                     Fp[i-1, j, k, n] - Fp[i-2, j, k, n])
+        @inbounds fm = Fm[i, j, k, n] - 0.5*minmod(Fm[i+1, j, k, n] - Fm[i, j, k, n], 
+                                                   Fm[i, j, k, n] - Fm[i-1, j, k, n])
+        @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
     end
     return
 end
@@ -51,15 +51,15 @@ function NND_y(F, Fp, Fm, NV)
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
-    if i > Nxp || j > Ny+1 || k > Nz
+    if i > Nxp+NG || j > Ny+NG+1 || k > Nz+NG || i < 1+NG || j < 1+NG || k < 1+NG
         return
     end
     for n = 1:NV
-        @inbounds fp = Fp[i+NG, j-1+NG, k+NG, n] + 0.5*minmod(Fp[i+NG, j+NG, k+NG, n]-Fp[i+NG, j-1+NG, k+NG, n], 
-                                                              Fp[i+NG, j-1+NG, k+NG, n] - Fp[i+NG, j-2+NG, k+NG, n])
-        @inbounds fm = Fm[i+NG, j+NG, k+NG, n] - 0.5*minmod(Fm[i+NG, j+1+NG, k+NG, n]-Fm[i+NG, j+NG, k+NG, n], 
-                                                            Fm[i+NG, j+NG, k+NG, n] - Fm[i+NG, j-1+NG, k+NG, n])
-        @inbounds F[i, j, k, n] = fp + fm
+        @inbounds fp = Fp[i, j-1, k, n] + 0.5*minmod(Fp[i, j, k, n] - Fp[i, j-1, k, n], 
+                                                     Fp[i, j-1, k, n] - Fp[i, j-2, k, n])
+        @inbounds fm = Fm[i, j, k, n] - 0.5*minmod(Fm[i, j+1, k, n] - Fm[i, j, k, n], 
+                                                   Fm[i, j, k, n] - Fm[i, j-1, k, n])
+        @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
     end
     return
 end
@@ -69,15 +69,15 @@ function NND_z(F, Fp, Fm, NV)
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
-    if i > Nxp || j > Ny || k > Nz+1
+    if i > Nxp+NG || j > Ny+NG || k > Nz+NG+1 || i < 1+NG || j < 1+NG || k < 1+NG
         return
     end
     for n = 1:NV
-        @inbounds fp = Fp[i+NG, j+NG, k-1+NG, n] + 0.5*minmod(Fp[i+NG, j+NG, k+NG, n]-Fp[i+NG, j+NG, k-1+NG, n], 
-                                                              Fp[i+NG, j+NG, k-1+NG, n] - Fp[i+NG, j+NG, k-2+NG, n])
-        @inbounds fm = Fm[i+NG, j+NG, k+NG, n] - 0.5*minmod(Fm[i+NG, j+NG, k+1+NG, n]-Fm[i+NG, j+NG, k+NG, n], 
-                                                            Fm[i+NG, j+NG, k+NG, n] - Fm[i+NG, j+NG, k-1+NG, n])
-        @inbounds F[i, j, k, n] = fp + fm
+        @inbounds fp = Fp[i, j, k-1, n] + 0.5*minmod(Fp[i, j, k, n] - Fp[i, j, k-1, n], 
+                                                     Fp[i, j, k-1, n] - Fp[i, j, k-2, n])
+        @inbounds fm = Fm[i, j, k, n] - 0.5*minmod(Fm[i, j, k+1, n] - Fm[i, j, k, n], 
+                                                   Fm[i, j, k, n] - Fm[i, j, k-1, n])
+        @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
     end
     return
 end
@@ -88,7 +88,7 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
-    if i > Nxp+1 || j > Ny || k > Nz
+    if i > Nxp+NG+1 || j > Ny+NG || k > Nz+NG || i < 1+NG || j < 1+NG || k < 1+NG
         return
     end
 
@@ -105,39 +105,39 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
     c7::Float64 = consts.UP7[7]
 
     # Jameson sensor
-    ϕx = max(ϕ[i-1+NG, j+NG, k+NG], ϕ[i+NG, j+NG, k+NG])
+    ϕx = max(ϕ[i-1, j, k], ϕ[i, j, k])
 
     if ϕx < consts.Hybrid[1]
         for n = 1:NV
-            @inbounds V1 = Fp[i-4+NG, j+NG, k+NG, n]
-            @inbounds V2 = Fp[i-3+NG, j+NG, k+NG, n]
-            @inbounds V3 = Fp[i-2+NG, j+NG, k+NG, n]
-            @inbounds V4 = Fp[i-1+NG, j+NG, k+NG, n]
-            @inbounds V5 = Fp[i+NG,   j+NG, k+NG, n]
-            @inbounds V6 = Fp[i+1+NG, j+NG, k+NG, n]
-            @inbounds V7 = Fp[i+2+NG, j+NG, k+NG, n]
+            @inbounds V1 = Fp[i-4, j, k, n]
+            @inbounds V2 = Fp[i-3, j, k, n]
+            @inbounds V3 = Fp[i-2, j, k, n]
+            @inbounds V4 = Fp[i-1, j, k, n]
+            @inbounds V5 = Fp[i,   j, k, n]
+            @inbounds V6 = Fp[i+1, j, k, n]
+            @inbounds V7 = Fp[i+2, j, k, n]
             
             fpx = c1*V1 + c2*V2 + c3*V3 + c4*V4 + c5*V5 + c6*V6 + c7*V7
 
-            @inbounds V1 = Fm[i-3+NG, j+NG, k+NG, n]
-            @inbounds V2 = Fm[i-2+NG, j+NG, k+NG, n]
-            @inbounds V3 = Fm[i-1+NG, j+NG, k+NG, n]
-            @inbounds V4 = Fm[i+NG,   j+NG, k+NG, n]
-            @inbounds V5 = Fm[i+1+NG, j+NG, k+NG, n]
-            @inbounds V6 = Fm[i+2+NG, j+NG, k+NG, n]
-            @inbounds V7 = Fm[i+3+NG, j+NG, k+NG, n]
+            @inbounds V1 = Fm[i-3, j, k, n]
+            @inbounds V2 = Fm[i-2, j, k, n]
+            @inbounds V3 = Fm[i-1, j, k, n]
+            @inbounds V4 = Fm[i,   j, k, n]
+            @inbounds V5 = Fm[i+1, j, k, n]
+            @inbounds V6 = Fm[i+2, j, k, n]
+            @inbounds V7 = Fm[i+3, j, k, n]
 
             fmx = c7*V1 + c6*V2 + c5*V3 + c4*V4 + c3*V5 + c2*V6 + c1*V7
 
-            @inbounds F[i, j, k, n] = fpx + fmx
+            @inbounds F[i-NG, j-NG, k-NG, n] = fpx + fmx
         end
     elseif ϕx < consts.Hybrid[2]
         for n = 1:NV
-            @inbounds V1 = Fp[i-3+NG, j+NG, k+NG, n]
-            @inbounds V2 = Fp[i-2+NG, j+NG, k+NG, n]
-            @inbounds V3 = Fp[i-1+NG, j+NG, k+NG, n]
-            @inbounds V4 = Fp[i+NG,   j+NG, k+NG, n]
-            @inbounds V5 = Fp[i+1+NG, j+NG, k+NG, n]
+            @inbounds V1 = Fp[i-3, j, k, n]
+            @inbounds V2 = Fp[i-2, j, k, n]
+            @inbounds V3 = Fp[i-1, j, k, n]
+            @inbounds V4 = Fp[i,   j, k, n]
+            @inbounds V5 = Fp[i+1, j, k, n]
             # FP
             s11 = tmp1*(V1-2*V2+V3)^2 + 0.25*(V1-4*V2+3*V3)^2
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V2-V4)^2
@@ -161,11 +161,11 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
             v3 = 2*V3+5*V4-V5
             fpx = tmp2*invsum*(a1*v1+a2*v2+a3*v3)
 
-            @inbounds V1 = Fm[i-2+NG, j+NG, k+NG, n]
-            @inbounds V2 = Fm[i-1+NG, j+NG, k+NG, n]
-            @inbounds V3 = Fm[i+NG,   j+NG, k+NG, n]
-            @inbounds V4 = Fm[i+1+NG, j+NG, k+NG, n]
-            @inbounds V5 = Fm[i+2+NG, j+NG, k+NG, n]
+            @inbounds V1 = Fm[i-2, j, k, n]
+            @inbounds V2 = Fm[i-1, j, k, n]
+            @inbounds V3 = Fm[i,   j, k, n]
+            @inbounds V4 = Fm[i+1, j, k, n]
+            @inbounds V5 = Fm[i+2, j, k, n]
             # FM
             s11 = tmp1*(V5-2*V4+V3)^2 + 0.25*(V5-4*V4+3*V3)^2
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V4-V2)^2
@@ -189,15 +189,15 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
             v3 = 2*V3+5*V2-V1
             fmx = tmp2*invsum*(a1*v1+a2*v2+a3*v3)
             
-            @inbounds F[i, j, k, n] = fpx + fmx
+            @inbounds F[i-NG, j-NG, k-NG, n] = fpx + fmx
         end
     else
         for n = 1:NV
-            @inbounds fp = Fp[i-1+NG, j+NG, k+NG, n] + 0.5*minmod(Fp[i+NG, j+NG, k+NG, n]-Fp[i-1+NG, j+NG, k+NG, n], 
-                                                                  Fp[i-1+NG, j+NG, k+NG, n] - Fp[i-2+NG, j+NG, k+NG, n])
-            @inbounds fm = Fm[i+NG, j+NG, k+NG, n] - 0.5*minmod(Fm[i+1+NG, j+NG, k+NG, n]-Fm[i+NG, j+NG, k+NG, n], 
-                                                                Fm[i+NG, j+NG, k+NG, n] - Fm[i-1+NG, j+NG, k+NG, n])
-            @inbounds F[i, j, k, n] = fp + fm
+            @inbounds fp = Fp[i-1, j, k, n] + 0.5*minmod(Fp[i, j, k, n] - Fp[i-1, j, k, n], 
+                                                         Fp[i-1, j, k, n] - Fp[i-2, j, k, n])
+            @inbounds fm = Fm[i, j, k, n] - 0.5*minmod(Fm[i+1, j, k, n] - Fm[i, j, k, n], 
+                                                       Fm[i, j, k, n] - Fm[i-1, j, k, n])
+            @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
         end
     end
     return
@@ -209,7 +209,7 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
-    if i > Nxp || j > Ny+1 || k > Nz
+    if i > Nxp+NG || j > Ny+NG+1 || k > Nz+NG || i < 1+NG || j < 1+NG || k < 1+NG
         return
     end
 
@@ -226,39 +226,39 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
     c7::Float64 = consts.UP7[7]
 
     # Jameson sensor
-    ϕy = max(ϕ[i+NG, j-1+NG, k+NG], ϕ[i+NG, j+NG, k+NG])
+    ϕy = max(ϕ[i, j-1, k], ϕ[i, j, k])
 
     if ϕy < consts.Hybrid[1]
         for n = 1:NV
-            @inbounds V1 = Fp[i+NG, j-4+NG, k+NG, n]
-            @inbounds V2 = Fp[i+NG, j-3+NG, k+NG, n]
-            @inbounds V3 = Fp[i+NG, j-2+NG, k+NG, n]
-            @inbounds V4 = Fp[i+NG, j-1+NG, k+NG, n]
-            @inbounds V5 = Fp[i+NG, j+NG,   k+NG, n]
-            @inbounds V6 = Fp[i+NG, j+1+NG, k+NG, n]
-            @inbounds V7 = Fp[i+NG, j+2+NG, k+NG, n]
+            @inbounds V1 = Fp[i, j-4, k, n]
+            @inbounds V2 = Fp[i, j-3, k, n]
+            @inbounds V3 = Fp[i, j-2, k, n]
+            @inbounds V4 = Fp[i, j-1, k, n]
+            @inbounds V5 = Fp[i, j,   k, n]
+            @inbounds V6 = Fp[i, j+1, k, n]
+            @inbounds V7 = Fp[i, j+2, k, n]
             
             fpy = c1*V1 + c2*V2 + c3*V3 + c4*V4 + c5*V5 + c6*V6 + c7*V7
 
-            @inbounds V1 = Fm[i+NG, j-3+NG, k+NG, n]
-            @inbounds V2 = Fm[i+NG, j-2+NG, k+NG, n]
-            @inbounds V3 = Fm[i+NG, j-1+NG, k+NG, n]
-            @inbounds V4 = Fm[i+NG, j+NG,   k+NG, n]
-            @inbounds V5 = Fm[i+NG, j+1+NG, k+NG, n]
-            @inbounds V6 = Fm[i+NG, j+2+NG, k+NG, n]
-            @inbounds V7 = Fm[i+NG, j+3+NG, k+NG, n]
+            @inbounds V1 = Fm[i, j-3, k, n]
+            @inbounds V2 = Fm[i, j-2, k, n]
+            @inbounds V3 = Fm[i, j-1, k, n]
+            @inbounds V4 = Fm[i, j,   k, n]
+            @inbounds V5 = Fm[i, j+1, k, n]
+            @inbounds V6 = Fm[i, j+2, k, n]
+            @inbounds V7 = Fm[i, j+3, k, n]
 
             fmy = c7*V1 + c6*V2 + c5*V3 + c4*V4 + c3*V5 + c2*V6 + c1*V7
 
-            @inbounds F[i, j, k, n] = fpy + fmy
+            @inbounds F[i-NG, j-NG, k-NG, n] = fpy + fmy
         end
     elseif ϕy < consts.Hybrid[2]
         for n = 1:NV
-            @inbounds V1 = Fp[i+NG, j-3+NG, k+NG, n]
-            @inbounds V2 = Fp[i+NG, j-2+NG, k+NG, n]
-            @inbounds V3 = Fp[i+NG, j-1+NG, k+NG, n]
-            @inbounds V4 = Fp[i+NG, j+NG,   k+NG, n]
-            @inbounds V5 = Fp[i+NG, j+1+NG, k+NG, n]
+            @inbounds V1 = Fp[i, j-3, k, n]
+            @inbounds V2 = Fp[i, j-2, k, n]
+            @inbounds V3 = Fp[i, j-1, k, n]
+            @inbounds V4 = Fp[i, j,   k, n]
+            @inbounds V5 = Fp[i, j+1, k, n]
             # FP
             s11 = tmp1*(V1-2*V2+V3)^2 + 0.25*(V1-4*V2+3*V3)^2
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V2-V4)^2
@@ -282,11 +282,11 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
             v3 = 2*V3+5*V4-V5
             fpy = tmp2*invsum*(a1*v1+a2*v2+a3*v3)
 
-            @inbounds V1 = Fm[i+NG, j-2+NG, k+NG, n]
-            @inbounds V2 = Fm[i+NG, j-1+NG, k+NG, n]
-            @inbounds V3 = Fm[i+NG, j+NG,   k+NG, n]
-            @inbounds V4 = Fm[i+NG, j+1+NG, k+NG, n]
-            @inbounds V5 = Fm[i+NG, j+2+NG, k+NG, n]
+            @inbounds V1 = Fm[i, j-2, k, n]
+            @inbounds V2 = Fm[i, j-1, k, n]
+            @inbounds V3 = Fm[i, j,   k, n]
+            @inbounds V4 = Fm[i, j+1, k, n]
+            @inbounds V5 = Fm[i, j+2, k, n]
             # FM
             s11 = tmp1*(V5-2*V4+V3)^2 + 0.25*(V5-4*V4+3*V3)^2
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V4-V2)^2
@@ -310,15 +310,15 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
             v3 = 2*V3+5*V2-V1
             fmy = tmp2*invsum*(a1*v1+a2*v2+a3*v3)
             
-            @inbounds F[i, j, k, n] = fpy + fmy
+            @inbounds F[i-NG, j-NG, k-NG, n] = fpy + fmy
         end
     else
         for n = 1:NV
-            @inbounds fp = Fp[i+NG, j-1+NG, k+NG, n] + 0.5*minmod(Fp[i+NG, j+NG, k+NG, n]-Fp[i+NG, j-1+NG, k+NG, n], 
-                                                                  Fp[i+NG, j-1+NG, k+NG, n] - Fp[i+NG, j-2+NG, k+NG, n])
-            @inbounds fm = Fm[i+NG, j+NG, k+NG, n] - 0.5*minmod(Fm[i+NG, j+1+NG, k+NG, n]-Fm[i+NG, j+NG, k+NG, n], 
-                                                                Fm[i+NG, j+NG, k+NG, n] - Fm[i+NG, j-1+NG, k+NG, n])
-            @inbounds F[i, j, k, n] = fp + fm
+            @inbounds fp = Fp[i, j-1, k, n] + 0.5*minmod(Fp[i, j, k, n] - Fp[i, j-1, k, n], 
+                                                         Fp[i, j-1, k, n] - Fp[i, j-2, k, n])
+            @inbounds fm = Fm[i, j, k, n] - 0.5*minmod(Fm[i, j+1, k, n] - Fm[i, j, k, n], 
+                                                       Fm[i, j, k, n] - Fm[i, j-1, k, n])
+            @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
         end
     end
     return
@@ -330,7 +330,7 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
-    if i > Nxp || j > Ny || k > Nz+1
+    if i > Nxp+NG || j > Ny+NG || k > Nz+NG+1 || i < 1+NG || j < 1+NG || k < 1+NG
         return
     end
 
@@ -347,39 +347,39 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
     c7::Float64 = consts.UP7[7]
 
     # Jameson sensor
-    ϕz = max(ϕ[i+NG, j+NG, k-1+NG], ϕ[i+NG, j+NG, k+NG])
+    ϕz = max(ϕ[i, j, k-1], ϕ[i, j, k])
 
     if ϕz < consts.Hybrid[1]
         for n = 1:NV
-            @inbounds V1 = Fp[i+NG, j+NG, k-4+NG, n]
-            @inbounds V2 = Fp[i+NG, j+NG, k-3+NG, n]
-            @inbounds V3 = Fp[i+NG, j+NG, k-2+NG, n]
-            @inbounds V4 = Fp[i+NG, j+NG, k-1+NG, n]
-            @inbounds V5 = Fp[i+NG, j+NG, k+NG,   n]
-            @inbounds V6 = Fp[i+NG, j+NG, k+1+NG, n]
-            @inbounds V7 = Fp[i+NG, j+NG, k+2+NG, n]
+            @inbounds V1 = Fp[i, j, k-4, n]
+            @inbounds V2 = Fp[i, j, k-3, n]
+            @inbounds V3 = Fp[i, j, k-2, n]
+            @inbounds V4 = Fp[i, j, k-1, n]
+            @inbounds V5 = Fp[i, j, k,   n]
+            @inbounds V6 = Fp[i, j, k+1, n]
+            @inbounds V7 = Fp[i, j, k+2, n]
             
             fpz = c1*V1 + c2*V2 + c3*V3 + c4*V4 + c5*V5 + c6*V6 + c7*V7
 
-            @inbounds V1 = Fm[i+NG, j+NG, k-3+NG, n]
-            @inbounds V2 = Fm[i+NG, j+NG, k-2+NG, n]
-            @inbounds V3 = Fm[i+NG, j+NG, k-1+NG, n]
-            @inbounds V4 = Fm[i+NG, j+NG, k+NG,   n]
-            @inbounds V5 = Fm[i+NG, j+NG, k+1+NG, n]
-            @inbounds V6 = Fm[i+NG, j+NG, k+2+NG, n]
-            @inbounds V7 = Fm[i+NG, j+NG, k+3+NG, n]
+            @inbounds V1 = Fm[i, j, k-3, n]
+            @inbounds V2 = Fm[i, j, k-2, n]
+            @inbounds V3 = Fm[i, j, k-1, n]
+            @inbounds V4 = Fm[i, j, k,   n]
+            @inbounds V5 = Fm[i, j, k+1, n]
+            @inbounds V6 = Fm[i, j, k+2, n]
+            @inbounds V7 = Fm[i, j, k+3, n]
 
             fmz = c7*V1 + c6*V2 + c5*V3 + c4*V4 + c3*V5 + c2*V6 + c1*V7
 
-            @inbounds F[i, j, k, n] = fpz + fmz
+            @inbounds F[i-NG, j-NG, k-NG, n] = fpz + fmz
         end
     elseif ϕz < consts.Hybrid[2]
         for n = 1:NV
-            @inbounds V1 = Fp[i+NG, j+NG, k-3+NG, n]
-            @inbounds V2 = Fp[i+NG, j+NG, k-2+NG, n]
-            @inbounds V3 = Fp[i+NG, j+NG, k-1+NG, n]
-            @inbounds V4 = Fp[i+NG, j+NG, k+NG,   n]
-            @inbounds V5 = Fp[i+NG, j+NG, k+1+NG, n]
+            @inbounds V1 = Fp[i, j, k-3, n]
+            @inbounds V2 = Fp[i, j, k-2, n]
+            @inbounds V3 = Fp[i, j, k-1, n]
+            @inbounds V4 = Fp[i, j, k,   n]
+            @inbounds V5 = Fp[i, j, k+1, n]
             # FP
             s11 = tmp1*(V1-2*V2+V3)^2 + 0.25*(V1-4*V2+3*V3)^2
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V2-V4)^2
@@ -403,11 +403,11 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
             v3 = 2*V3+5*V4-V5
             fpy = tmp2*invsum*(a1*v1+a2*v2+a3*v3)
 
-            @inbounds V1 = Fm[i+NG, j+NG, k-2+NG, n]
-            @inbounds V2 = Fm[i+NG, j+NG, k-1+NG, n]
-            @inbounds V3 = Fm[i+NG, j+NG, k+NG,   n]
-            @inbounds V4 = Fm[i+NG, j+NG, k+1+NG, n]
-            @inbounds V5 = Fm[i+NG, j+NG, k+2+NG, n]
+            @inbounds V1 = Fm[i, j, k-2, n]
+            @inbounds V2 = Fm[i, j, k-1, n]
+            @inbounds V3 = Fm[i, j, k,   n]
+            @inbounds V4 = Fm[i, j, k+1, n]
+            @inbounds V5 = Fm[i, j, k+2, n]
             # FM
             s11 = tmp1*(V5-2*V4+V3)^2 + 0.25*(V5-4*V4+3*V3)^2
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V4-V2)^2
@@ -431,15 +431,15 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
             v3 = 2*V3+5*V2-V1
             fmy = tmp2*invsum*(a1*v1+a2*v2+a3*v3)
             
-            @inbounds F[i, j, k, n] = fpy + fmy
+            @inbounds F[i-NG, j-NG, k-NG, n] = fpy + fmy
         end
     else
         for n = 1:NV
-            @inbounds fp = Fp[i+NG, j+NG, k-1+NG, n] + 0.5*minmod(Fp[i+NG, j+NG, k+NG, n]-Fp[i+NG, j+NG, k-1+NG, n], 
-                                                                  Fp[i+NG, j+NG, k-1+NG, n] - Fp[i+NG, j+NG, k-2+NG, n])
-            @inbounds fm = Fm[i+NG, j+NG, k+NG, n] - 0.5*minmod(Fm[i+NG, j+NG, k+1+NG, n]-Fm[i+NG, j+NG, k+NG, n], 
-                                                                Fm[i+NG, j+NG, k+NG, n] - Fm[i+NG, j+NG, k-1+NG, n])
-            @inbounds F[i, j, k, n] = fp + fm
+            @inbounds fp = Fp[i, j, k-1, n] + 0.5*minmod(Fp[i, j, k, n] - Fp[i, j, k-1, n], 
+                                                         Fp[i, j, k-1, n] - Fp[i, j, k-2, n])
+            @inbounds fm = Fm[i, j, k, n] - 0.5*minmod(Fm[i, j, k+1, n] - Fm[i, j, k, n], 
+                                                       Fm[i, j, k, n] - Fm[i, j, k-1, n])
+            @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
         end  
     end
     return

@@ -13,28 +13,28 @@ function fill_x(Q, U, ρi, Yi, thermo, rank)
             @inbounds ρi[i, j, k, n] = 0.0
         end
         if (j-36)^2+(k-36)^2 < 25
-            @inbounds Yi[i, j, k, 4] = 1.0
-            @inbounds Yi[i, j, k, 11] = 0.0
+            @inbounds Yi[i, j, k, 1] = 0.0
+            @inbounds Yi[i, j, k, 2] = 1.0
             P = 101325.0 * 200
             T = 300.0
             Ma = 0.6
             @inbounds Y = @view Yi[i, j, k, :]
             rho = ρmixture(P, T, Y, thermo)
-            @inbounds ρi[i, j, k, 4] = Yi[i, j, k, 4] * rho
-            @inbounds ρi[i, j, k, 11] = Yi[i, j, k, 11] * rho
+            @inbounds ρi[i, j, k, 2] = Yi[i, j, k, 2] * rho
+            @inbounds ρi[i, j, k, 1] = Yi[i, j, k, 1] * rho
             @inbounds rhoi = @view ρi[i, j, k, :]
             ei = InternalEnergy(T, rhoi, thermo)
             γ = P/ei + 1
             u = sqrt(γ*P/rho) * Ma
         else
-            @inbounds Yi[i, j, k, 11] = 1.0
-            @inbounds Yi[i, j, k, 4] = 0.0
+            @inbounds Yi[i, j, k, 1] = 1.0
+            @inbounds Yi[i, j, k, 2] = 0.0
             P = 101325.0 * 200
             T = 300.0
             @inbounds Y = @view Yi[i, j, k, :]
             rho = ρmixture(P, T, Y, thermo)
-            @inbounds ρi[i, j, k, 11] = Yi[i, j, k, 11] * rho
-            @inbounds ρi[i, j, k, 4] = Yi[i, j, k, 4] * rho
+            @inbounds ρi[i, j, k, 1] = Yi[i, j, k, 1] * rho
+            @inbounds ρi[i, j, k, 2] = Yi[i, j, k, 2] * rho
             @inbounds rhoi = @view ρi[i, j, k, :]
             ei = InternalEnergy(T, rhoi, thermo)
             u = 10.0
@@ -176,4 +176,58 @@ end
 function fillSpec(ρi)
     @cuda threads=nthreads blocks=nblock fill_y_s(ρi)
     @cuda threads=nthreads blocks=nblock fill_z_s(ρi)
+end
+
+function init(Q, ρi, ρ, u, v, w, P, T, T_ignite, ρ_ig, thermo)
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+
+    if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
+        return
+    end
+
+    for n = 1:Nspecs
+        @inbounds ρi[i, j, k, n] = 0.0
+    end
+
+    # ignite area
+    if (j-36)^2+(k-36)^2 < 25 && i <= 50 && i >= 10
+        rho = ρ_ig
+        temp = T_ignite
+    else
+        rho = ρ
+        temp = T
+    end
+
+    # fill H2
+    @inbounds ρi[i, j, k, 1] = rho 
+    @inbounds rhoi = @view ρi[i, j, k, :]
+
+    @inbounds Q[i, j, k, 1] = rho
+    @inbounds Q[i, j, k, 2] = u
+    @inbounds Q[i, j, k, 3] = v
+    @inbounds Q[i, j, k, 4] = w
+    @inbounds Q[i, j, k, 5] = P
+    @inbounds Q[i, j, k, 6] = temp
+    @inbounds Q[i, j, k, 7] = InternalEnergy(temp, rhoi, thermo)
+    return
+end
+
+#initialization on GPU
+function initialize(Q, ρi, thermo)
+    ct = pyimport("cantera")
+    gas = ct.Solution(mech)
+    T::Float64 = 300.0
+    T_ignite::Float64 = 1800.0
+    P::Float64 = 101325.0 * 200
+    gas.TPY = T, P, "H2:1"
+    ρ::Float64 = gas.density
+    gas.TPY = T_ignite, P, "H2:1"
+    ρ_ig::Float64 = gas.density
+    u::Float64 = 10.0
+    v::Float64 = 0.0
+    w::Float64 = 0.0
+    
+    @cuda threads=nthreads blocks=nblock init(Q, ρi, ρ, u, v, w, P, T, T_ignite, ρ_ig, thermo)
 end
