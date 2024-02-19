@@ -3,13 +3,18 @@ using HDF5
 using WriteVTK
 
 const NG::Int64 = 4
-const Nx::Int64 = 512
+const Nx::Int64 = 300
 const Nx_uniform::Int64 = Nx-20
-const Ny::Int64 = 63
-const Nz::Int64 = 63
-const Lx::Float64 = 0.1
-const Ly::Float64 = 0.02
-const Lz::Float64 = 0.02
+const Ny::Int64 = 127
+const Nz::Int64 = 127
+const Lx::Float64 = 0.02
+const ymin::Float64 = -0.0032
+const ymax::Float64 = 0.0032
+const ystar::Float64 = 0
+const zmin::Float64 = -0.0032
+const zmax::Float64 = 0.0032
+const zstar::Float64 = 0
+const α::Float64 = 4e-4
 const Nx_tot::Int64 = Nx + 2*NG
 const Ny_tot::Int64 = Ny + 2*NG
 const Nz_tot::Int64 = Nz + 2*NG
@@ -20,10 +25,14 @@ x = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
 y = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
 z = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
 
+c1 = asinh((ymin-ystar)/α)
+c2 = asinh((ymax-ystar)/α)
+c3 = asinh((zmin-zstar)/α)
+c4 = asinh((zmax-zstar)/α)
 
 @inbounds for k ∈ 1:Nz, j ∈ 1:Ny
-    y[1+NG, j+NG, k+NG] = tan((j-32)/32) * Ly * 0.5
-    z[1+NG, j+NG, k+NG] = tan((k-32)/32) * Lz * 0.5
+    y[1+NG, j+NG, k+NG] = ystar + α * sinh(c1*(1-(j-1)/(Ny-1)) +c2*(j-1)/(Ny-1))
+    z[1+NG, j+NG, k+NG] = zstar + α * sinh(c3*(1-(k-1)/(Nz-1)) +c4*(k-1)/(Nz-1))
 end
 
 @inbounds for k ∈ 1:Nz, j ∈ 1:Ny, i ∈ 1:Nx 
@@ -36,7 +45,7 @@ end
 end
 
 @inbounds for k ∈ 1:Nz, j ∈ 1:Ny, i ∈ Nx_uniform+1:Nx 
-    x[i+NG, j+NG, k+NG] = x[i-1+NG, j+NG, k+NG] + (Lx/(Nx-1)) * (1 + (i-Nx_uniform)/2)
+    x[i+NG, j+NG, k+NG] = x[i-1+NG, j+NG, k+NG] + (Lx/(Nx-1)) * (0.5 + (i-Nx_uniform)/2)
 end
 
 # get ghost location

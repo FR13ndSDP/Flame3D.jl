@@ -7,6 +7,8 @@ Code for compressible flow simulation with neural network for real gas and chemi
 - 3D, with high order scheme (up to 7th order)
 - `Lux.jl` trained model combined with `Cantera`
 
+![comb](./Utils/view.png)
+
 ## Usage
 
 Generate mesh and metrics with

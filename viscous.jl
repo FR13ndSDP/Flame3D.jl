@@ -1,4 +1,4 @@
-function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fh)
+function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fh, consts)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -7,8 +7,8 @@ function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
         return
     end
 
-    c23::Float64 = 2/3
-    c12::Float64 = 1/12
+    c23::Float64 = consts.CD4[1]
+    c12::Float64 = consts.CD4[2]
 
     @inbounds ∂ξ∂x = (dξdx[i-1, j, k] + dξdx[i, j, k]) * 0.5
     @inbounds ∂ξ∂y = (dξdy[i-1, j, k] + dξdy[i, j, k]) * 0.5
@@ -21,24 +21,31 @@ function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     @inbounds ∂ζ∂z = (dζdz[i-1, j, k] + dζdz[i, j, k]) * 0.5
 
     @inbounds Jac = (J[i-1, j, k] + J[i, j, k]) * 0.5
-    @inbounds T =   (Q[i-1, j, k, 6] + Q[i, j, k, 6]) * 0.5
     @inbounds μi =  (μ[i-1, j, k] + μ[i, j, k]) * 0.5 
     @inbounds λi =  (λ[i-1, j, k] + λ[i, j, k]) * 0.5
 
-    @inbounds ∂u∂ξ = 1.25*(Q[i, j, k, 2] - Q[i-1, j, k, 2])-c12*(Q[i+1, j, k, 2] - Q[i-2, j, k, 2])
-    @inbounds ∂v∂ξ = 1.25*(Q[i, j, k, 3] - Q[i-1, j, k, 3])-c12*(Q[i+1, j, k, 3] - Q[i-2, j, k, 3])
-    @inbounds ∂w∂ξ = 1.25*(Q[i, j, k, 4] - Q[i-1, j, k, 4])-c12*(Q[i+1, j, k, 4] - Q[i-2, j, k, 4])
-    @inbounds ∂T∂ξ = 1.25*(Q[i, j, k, 6] - Q[i-1, j, k, 6])-c12*(Q[i+1, j, k, 6] - Q[i-2, j, k, 6])
+    @inbounds ∂u∂ξ = 1.25*(Q[i, j, k, 2] - Q[i-1, j, k, 2]) - c12*(Q[i+1, j, k, 2] - Q[i-2, j, k, 2])
+    @inbounds ∂v∂ξ = 1.25*(Q[i, j, k, 3] - Q[i-1, j, k, 3]) - c12*(Q[i+1, j, k, 3] - Q[i-2, j, k, 3])
+    @inbounds ∂w∂ξ = 1.25*(Q[i, j, k, 4] - Q[i-1, j, k, 4]) - c12*(Q[i+1, j, k, 4] - Q[i-2, j, k, 4])
+    @inbounds ∂T∂ξ = 1.25*(Q[i, j, k, 6] - Q[i-1, j, k, 6]) - c12*(Q[i+1, j, k, 6] - Q[i-2, j, k, 6])
 
-    @inbounds ∂u∂η = 0.25*(Q[i, j+1, k, 2] + Q[i-1, j+1, k, 2] - Q[i, j-1, k, 2] - Q[i-1, j-1, k, 2])
-    @inbounds ∂v∂η = 0.25*(Q[i, j+1, k, 3] + Q[i-1, j+1, k, 3] - Q[i, j-1, k, 3] - Q[i-1, j-1, k, 3])
-    @inbounds ∂w∂η = 0.25*(Q[i, j+1, k, 4] + Q[i-1, j+1, k, 4] - Q[i, j-1, k, 4] - Q[i-1, j-1, k, 4])
-    @inbounds ∂T∂η = 0.25*(Q[i, j+1, k, 6] + Q[i-1, j+1, k, 6] - Q[i, j-1, k, 6] - Q[i-1, j-1, k, 6])
+    @inbounds ∂u∂η = 0.5*(c23*(Q[i, j+1, k, 2] + Q[i-1, j+1, k, 2] - Q[i, j-1, k, 2] - Q[i-1, j-1, k, 2]) -
+                          c12*(Q[i, j+2, k, 2] + Q[i-1, j+2, k, 2] - Q[i, j-2, k, 2] - Q[i-1, j-2, k, 2]))
+    @inbounds ∂v∂η = 0.5*(c23*(Q[i, j+1, k, 3] + Q[i-1, j+1, k, 3] - Q[i, j-1, k, 3] - Q[i-1, j-1, k, 3]) -
+                          c12*(Q[i, j+2, k, 3] + Q[i-1, j+2, k, 3] - Q[i, j-2, k, 3] - Q[i-1, j-2, k, 3]))
+    @inbounds ∂w∂η = 0.5*(c23*(Q[i, j+1, k, 4] + Q[i-1, j+1, k, 4] - Q[i, j-1, k, 4] - Q[i-1, j-1, k, 4]) -
+                          c12*(Q[i, j+2, k, 4] + Q[i-1, j+2, k, 4] - Q[i, j-2, k, 4] - Q[i-1, j-2, k, 4]))
+    @inbounds ∂T∂η = 0.5*(c23*(Q[i, j+1, k, 6] + Q[i-1, j+1, k, 6] - Q[i, j-1, k, 6] - Q[i-1, j-1, k, 6]) -
+                          c12*(Q[i, j+2, k, 6] + Q[i-1, j+2, k, 6] - Q[i, j-2, k, 6] - Q[i-1, j-2, k, 6]))
 
-    @inbounds ∂u∂ζ = 0.25*(Q[i, j, k+1, 2] + Q[i-1, j, k+1, 2] - Q[i, j, k-1, 2] - Q[i-1, j, k-1, 2])
-    @inbounds ∂v∂ζ = 0.25*(Q[i, j, k+1, 3] + Q[i-1, j, k+1, 3] - Q[i, j, k-1, 3] - Q[i-1, j, k-1, 3])
-    @inbounds ∂w∂ζ = 0.25*(Q[i, j, k+1, 4] + Q[i-1, j, k+1, 4] - Q[i, j, k-1, 4] - Q[i-1, j, k-1, 4])
-    @inbounds ∂T∂ζ = 0.25*(Q[i, j, k+1, 6] + Q[i-1, j, k+1, 6] - Q[i, j, k-1, 6] - Q[i-1, j, k-1, 6])
+    @inbounds ∂u∂ζ = 0.5*(c23*(Q[i, j, k+1, 2] + Q[i-1, j, k+1, 2] - Q[i, j, k-1, 2] - Q[i-1, j, k-1, 2]) - 
+                          c12*(Q[i, j, k+2, 2] + Q[i-1, j, k+2, 2] - Q[i, j, k-2, 2] - Q[i-1, j, k-2, 2]))
+    @inbounds ∂v∂ζ = 0.5*(c23*(Q[i, j, k+1, 3] + Q[i-1, j, k+1, 3] - Q[i, j, k-1, 3] - Q[i-1, j, k-1, 3]) - 
+                          c12*(Q[i, j, k+2, 3] + Q[i-1, j, k+2, 3] - Q[i, j, k-2, 3] - Q[i-1, j, k-2, 3]))
+    @inbounds ∂w∂ζ = 0.5*(c23*(Q[i, j, k+1, 4] + Q[i-1, j, k+1, 4] - Q[i, j, k-1, 4] - Q[i-1, j, k-1, 4]) - 
+                          c12*(Q[i, j, k+2, 4] + Q[i-1, j, k+2, 4] - Q[i, j, k-2, 4] - Q[i-1, j, k-2, 4]))
+    @inbounds ∂T∂ζ = 0.5*(c23*(Q[i, j, k+1, 6] + Q[i-1, j, k+1, 6] - Q[i, j, k-1, 6] - Q[i-1, j, k-1, 6]) - 
+                          c12*(Q[i, j, k+2, 6] + Q[i-1, j, k+2, 6] - Q[i, j, k-2, 6] - Q[i-1, j, k-2, 6]))
 
     @inbounds u = (Q[i-1, j, k, 2] + Q[i, j, k, 2]) * 0.5
     @inbounds v = (Q[i-1, j, k, 3] + Q[i, j, k, 3]) * 0.5
@@ -80,7 +87,7 @@ function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     return
 end
 
-function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fh)
+function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fh, consts)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -89,8 +96,8 @@ function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
         return
     end
 
-    c23::Float64 = 2/3
-    c12::Float64 = 1/12
+    c23::Float64 = consts.CD4[1]
+    c12::Float64 = consts.CD4[2]
 
     @inbounds ∂ξ∂x = (dξdx[i, j-1, k] + dξdx[i, j, k]) * 0.5
     @inbounds ∂ξ∂y = (dξdy[i, j-1, k] + dξdy[i, j, k]) * 0.5
@@ -103,24 +110,31 @@ function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     @inbounds ∂ζ∂z = (dζdz[i, j-1, k] + dζdz[i, j, k]) * 0.5
 
     @inbounds Jac = (J[i, j-1, k] + J[i, j, k]) * 0.5
-    @inbounds T =   (Q[i, j-1, k, 6] + Q[i, j, k, 6]) * 0.5
     @inbounds μi =  (μ[i, j-1, k] + μ[i, j, k]) * 0.5 
     @inbounds λi =  (λ[i, j-1, k] + λ[i, j, k]) * 0.5
 
-    @inbounds ∂u∂ξ = 0.25*(Q[i+1, j, k, 2] + Q[i+1, j-1, k, 2] - Q[i-1, j, k, 2] - Q[i-1, j-1, k, 2])
-    @inbounds ∂v∂ξ = 0.25*(Q[i+1, j, k, 3] + Q[i+1, j-1, k, 3] - Q[i-1, j, k, 3] - Q[i-1, j-1, k, 3])
-    @inbounds ∂w∂ξ = 0.25*(Q[i+1, j, k, 4] + Q[i+1, j-1, k, 4] - Q[i-1, j, k, 4] - Q[i-1, j-1, k, 4])
-    @inbounds ∂T∂ξ = 0.25*(Q[i+1, j, k, 6] + Q[i+1, j-1, k, 6] - Q[i-1, j, k, 6] - Q[i-1, j-1, k, 6])
+    @inbounds ∂u∂ξ = 0.5*(c23*(Q[i+1, j, k, 2] + Q[i+1, j-1, k, 2] - Q[i-1, j, k, 2] - Q[i-1, j-1, k, 2]) -
+                          c12*(Q[i+2, j, k, 2] + Q[i+2, j-1, k, 2] - Q[i-2, j, k, 2] - Q[i-2, j-1, k, 2]))
+    @inbounds ∂v∂ξ = 0.5*(c23*(Q[i+1, j, k, 3] + Q[i+1, j-1, k, 3] - Q[i-1, j, k, 3] - Q[i-1, j-1, k, 3]) -
+                          c12*(Q[i+2, j, k, 3] + Q[i+2, j-1, k, 3] - Q[i-2, j, k, 3] - Q[i-2, j-1, k, 3]))
+    @inbounds ∂w∂ξ = 0.5*(c23*(Q[i+1, j, k, 4] + Q[i+1, j-1, k, 4] - Q[i-1, j, k, 4] - Q[i-1, j-1, k, 4]) -
+                          c12*(Q[i+2, j, k, 4] + Q[i+2, j-1, k, 4] - Q[i-2, j, k, 4] - Q[i-2, j-1, k, 4]))
+    @inbounds ∂T∂ξ = 0.5*(c23*(Q[i+1, j, k, 6] + Q[i+1, j-1, k, 6] - Q[i-1, j, k, 6] - Q[i-1, j-1, k, 6]) -
+                          c12*(Q[i+2, j, k, 6] + Q[i+2, j-1, k, 6] - Q[i-2, j, k, 6] - Q[i-2, j-1, k, 6]))
 
-    @inbounds ∂u∂η = 1.25*(Q[i, j, k, 2] - Q[i, j-1, k, 2])-c12*(Q[i, j+1, k, 2] - Q[i, j-2, k, 2])
-    @inbounds ∂v∂η = 1.25*(Q[i, j, k, 3] - Q[i, j-1, k, 3])-c12*(Q[i, j+1, k, 3] - Q[i, j-2, k, 3])
-    @inbounds ∂w∂η = 1.25*(Q[i, j, k, 4] - Q[i, j-1, k, 4])-c12*(Q[i, j+1, k, 4] - Q[i, j-2, k, 4])
-    @inbounds ∂T∂η = 1.25*(Q[i, j, k, 6] - Q[i, j-1, k, 6])-c12*(Q[i, j+1, k, 6] - Q[i, j-2, k, 6])
+    @inbounds ∂u∂η = 1.25*(Q[i, j, k, 2] - Q[i, j-1, k, 2]) - c12*(Q[i, j+1, k, 2] - Q[i, j-2, k, 2])
+    @inbounds ∂v∂η = 1.25*(Q[i, j, k, 3] - Q[i, j-1, k, 3]) - c12*(Q[i, j+1, k, 3] - Q[i, j-2, k, 3])
+    @inbounds ∂w∂η = 1.25*(Q[i, j, k, 4] - Q[i, j-1, k, 4]) - c12*(Q[i, j+1, k, 4] - Q[i, j-2, k, 4])
+    @inbounds ∂T∂η = 1.25*(Q[i, j, k, 6] - Q[i, j-1, k, 6]) - c12*(Q[i, j+1, k, 6] - Q[i, j-2, k, 6])
 
-    @inbounds ∂u∂ζ = 0.25*(Q[i, j, k+1, 2] + Q[i, j-1, k+1, 2] - Q[i, j, k-1, 2] - Q[i, j-1, k-1, 2])
-    @inbounds ∂v∂ζ = 0.25*(Q[i, j, k+1, 3] + Q[i, j-1, k+1, 3] - Q[i, j, k-1, 3] - Q[i, j-1, k-1, 3])
-    @inbounds ∂w∂ζ = 0.25*(Q[i, j, k+1, 4] + Q[i, j-1, k+1, 4] - Q[i, j, k-1, 4] - Q[i, j-1, k-1, 4])
-    @inbounds ∂T∂ζ = 0.25*(Q[i, j, k+1, 6] + Q[i, j-1, k+1, 6] - Q[i, j, k-1, 6] - Q[i, j-1, k-1, 6])
+    @inbounds ∂u∂ζ = 0.5*(c23*(Q[i, j, k+1, 2] + Q[i, j-1, k+1, 2] - Q[i, j, k-1, 2] - Q[i, j-1, k-1, 2]) -
+                          c12*(Q[i, j, k+2, 2] + Q[i, j-1, k+2, 2] - Q[i, j, k-2, 2] - Q[i, j-1, k-2, 2])) 
+    @inbounds ∂v∂ζ = 0.5*(c23*(Q[i, j, k+1, 3] + Q[i, j-1, k+1, 3] - Q[i, j, k-1, 3] - Q[i, j-1, k-1, 3]) - 
+                          c12*(Q[i, j, k+2, 3] + Q[i, j-1, k+2, 3] - Q[i, j, k-2, 3] - Q[i, j-1, k-2, 3])) 
+    @inbounds ∂w∂ζ = 0.5*(c23*(Q[i, j, k+1, 4] + Q[i, j-1, k+1, 4] - Q[i, j, k-1, 4] - Q[i, j-1, k-1, 4]) - 
+                          c12*(Q[i, j, k+2, 4] + Q[i, j-1, k+2, 4] - Q[i, j, k-2, 4] - Q[i, j-1, k-2, 4])) 
+    @inbounds ∂T∂ζ = 0.5*(c23*(Q[i, j, k+1, 6] + Q[i, j-1, k+1, 6] - Q[i, j, k-1, 6] - Q[i, j-1, k-1, 6]) - 
+                          c12*(Q[i, j, k+2, 6] + Q[i, j-1, k+2, 6] - Q[i, j, k-2, 6] - Q[i, j-1, k-2, 6])) 
 
     @inbounds u = (Q[i, j-1, k, 2] + Q[i, j, k, 2]) * 0.5
     @inbounds v = (Q[i, j-1, k, 3] + Q[i, j, k, 3]) * 0.5
@@ -162,7 +176,7 @@ function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     return
 end
 
-function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fh)
+function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fh, consts)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -171,8 +185,8 @@ function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
         return
     end
 
-    c23::Float64 = 2/3
-    c12::Float64 = 1/12
+    c23::Float64 = consts.CD4[1]
+    c12::Float64 = consts.CD4[2]
 
     @inbounds ∂ξ∂x = (dξdx[i, j, k-1] + dξdx[i, j, k]) * 0.5
     @inbounds ∂ξ∂y = (dξdy[i, j, k-1] + dξdy[i, j, k]) * 0.5
@@ -185,24 +199,31 @@ function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     @inbounds ∂ζ∂z = (dζdz[i, j, k-1] + dζdz[i, j, k]) * 0.5
 
     @inbounds Jac = (J[i, j, k-1] + J[i, j, k]) * 0.5
-    @inbounds T =   (Q[i, j, k-1, 6] + Q[i, j, k, 6]) * 0.5
     @inbounds μi =  (μ[i, j, k-1] + μ[i, j, k]) * 0.5 
     @inbounds λi =  (λ[i, j, k-1] + λ[i, j, k]) * 0.5
 
-    @inbounds ∂u∂ξ = 0.25*(Q[i+1, j, k, 2] + Q[i+1, j, k-1, 2] - Q[i-1, j, k, 2] - Q[i-1, j, k-1, 2])
-    @inbounds ∂v∂ξ = 0.25*(Q[i+1, j, k, 3] + Q[i+1, j, k-1, 3] - Q[i-1, j, k, 3] - Q[i-1, j, k-1, 3])
-    @inbounds ∂w∂ξ = 0.25*(Q[i+1, j, k, 4] + Q[i+1, j, k-1, 4] - Q[i-1, j, k, 4] - Q[i-1, j, k-1, 4])
-    @inbounds ∂T∂ξ = 0.25*(Q[i+1, j, k, 6] + Q[i+1, j, k-1, 6] - Q[i-1, j, k, 6] - Q[i-1, j, k-1, 6])
+    @inbounds ∂u∂ξ = 0.5*(c23*(Q[i+1, j, k, 2] + Q[i+1, j, k-1, 2] - Q[i-1, j, k, 2] - Q[i-1, j, k-1, 2]) -
+                          c12*(Q[i+2, j, k, 2] + Q[i+2, j, k-1, 2] - Q[i-2, j, k, 2] - Q[i-2, j, k-1, 2]))
+    @inbounds ∂v∂ξ = 0.5*(c23*(Q[i+1, j, k, 3] + Q[i+1, j, k-1, 3] - Q[i-1, j, k, 3] - Q[i-1, j, k-1, 3]) -
+                          c12*(Q[i+2, j, k, 3] + Q[i+2, j, k-1, 3] - Q[i-2, j, k, 3] - Q[i-2, j, k-1, 3]))
+    @inbounds ∂w∂ξ = 0.5*(c23*(Q[i+1, j, k, 4] + Q[i+1, j, k-1, 4] - Q[i-1, j, k, 4] - Q[i-1, j, k-1, 4]) -
+                          c12*(Q[i+2, j, k, 4] + Q[i+2, j, k-1, 4] - Q[i-2, j, k, 4] - Q[i-2, j, k-1, 4]))
+    @inbounds ∂T∂ξ = 0.5*(c23*(Q[i+1, j, k, 6] + Q[i+1, j, k-1, 6] - Q[i-1, j, k, 6] - Q[i-1, j, k-1, 6]) -
+                          c12*(Q[i+2, j, k, 6] + Q[i+2, j, k-1, 6] - Q[i-2, j, k, 6] - Q[i-2, j, k-1, 6]))
 
-    @inbounds ∂u∂η = 0.25*(Q[i, j+1, k, 2] + Q[i, j+1, k-1, 2] - Q[i, j-1, k, 2] - Q[i, j-1, k-1, 2])
-    @inbounds ∂v∂η = 0.25*(Q[i, j+1, k, 3] + Q[i, j+1, k-1, 3] - Q[i, j-1, k, 3] - Q[i, j-1, k-1, 3])
-    @inbounds ∂w∂η = 0.25*(Q[i, j+1, k, 4] + Q[i, j+1, k-1, 4] - Q[i, j-1, k, 4] - Q[i, j-1, k-1, 4])
-    @inbounds ∂T∂η = 0.25*(Q[i, j+1, k, 6] + Q[i, j+1, k-1, 6] - Q[i, j-1, k, 6] - Q[i, j-1, k-1, 6])
+    @inbounds ∂u∂η = 0.5*(c23*(Q[i, j+1, k, 2] + Q[i, j+1, k-1, 2] - Q[i, j-1, k, 2] - Q[i, j-1, k-1, 2]) -
+                          c12*(Q[i, j+2, k, 2] + Q[i, j+2, k-1, 2] - Q[i, j-2, k, 2] - Q[i, j-2, k-1, 2]))
+    @inbounds ∂v∂η = 0.5*(c23*(Q[i, j+1, k, 3] + Q[i, j+1, k-1, 3] - Q[i, j-1, k, 3] - Q[i, j-1, k-1, 3]) -
+                          c12*(Q[i, j+2, k, 3] + Q[i, j+2, k-1, 3] - Q[i, j-2, k, 3] - Q[i, j-2, k-1, 3]))
+    @inbounds ∂w∂η = 0.5*(c23*(Q[i, j+1, k, 4] + Q[i, j+1, k-1, 4] - Q[i, j-1, k, 4] - Q[i, j-1, k-1, 4]) -
+                          c12*(Q[i, j+2, k, 4] + Q[i, j+2, k-1, 4] - Q[i, j-2, k, 4] - Q[i, j-2, k-1, 4]))
+    @inbounds ∂T∂η = 0.5*(c23*(Q[i, j+1, k, 6] + Q[i, j+1, k-1, 6] - Q[i, j-1, k, 6] - Q[i, j-1, k-1, 6]) -
+                          c12*(Q[i, j+2, k, 6] + Q[i, j+2, k-1, 6] - Q[i, j-2, k, 6] - Q[i, j-2, k-1, 6]))
 
-    @inbounds ∂u∂ζ = 1.25*(Q[i, j, k, 2] - Q[i, j, k-1, 2])-c12*(Q[i, j, k+1, 2] - Q[i, j, k-2, 2])
-    @inbounds ∂v∂ζ = 1.25*(Q[i, j, k, 3] - Q[i, j, k-1, 3])-c12*(Q[i, j, k+1, 3] - Q[i, j, k-2, 3])
-    @inbounds ∂w∂ζ = 1.25*(Q[i, j, k, 4] - Q[i, j, k-1, 4])-c12*(Q[i, j, k+1, 4] - Q[i, j, k-2, 4])
-    @inbounds ∂T∂ζ = 1.25*(Q[i, j, k, 6] - Q[i, j, k-1, 6])-c12*(Q[i, j, k+1, 6] - Q[i, j, k-2, 6])
+    @inbounds ∂u∂ζ = 1.25*(Q[i, j, k, 2] - Q[i, j, k-1, 2]) - c12*(Q[i, j, k+1, 2] - Q[i, j, k-2, 2])
+    @inbounds ∂v∂ζ = 1.25*(Q[i, j, k, 3] - Q[i, j, k-1, 3]) - c12*(Q[i, j, k+1, 3] - Q[i, j, k-2, 3])
+    @inbounds ∂w∂ζ = 1.25*(Q[i, j, k, 4] - Q[i, j, k-1, 4]) - c12*(Q[i, j, k+1, 4] - Q[i, j, k-2, 4])
+    @inbounds ∂T∂ζ = 1.25*(Q[i, j, k, 6] - Q[i, j, k-1, 6]) - c12*(Q[i, j, k+1, 6] - Q[i, j, k-2, 6])
 
     @inbounds u = (Q[i, j, k-1, 2] + Q[i, j, k, 2]) * 0.5
     @inbounds v = (Q[i, j, k-1, 3] + Q[i, j, k, 3]) * 0.5
@@ -244,7 +265,7 @@ function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     return
 end
 
-function specViscousFlux_x(Fv_x, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo)
+function specViscousFlux_x(Fv_x, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo, consts)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -253,7 +274,7 @@ function specViscousFlux_x(Fv_x, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz
         return
     end
 
-    c12::Float64 = 1/12
+    c12::Float64 = consts.CD4[2]
 
     @inbounds ∂ξ∂x = (dξdx[i-1, j, k] + dξdx[i, j, k]) * 0.5
     @inbounds ∂ξ∂y = (dξdy[i-1, j, k] + dξdy[i, j, k]) * 0.5
@@ -319,7 +340,7 @@ function specViscousFlux_x(Fv_x, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz
     return
 end
 
-function specViscousFlux_y(Fv_y, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo)
+function specViscousFlux_y(Fv_y, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo, consts)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -328,7 +349,7 @@ function specViscousFlux_y(Fv_y, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz
         return
     end
 
-    c12::Float64 = 1/12
+    c12::Float64 = consts.CD4[2]
 
     @inbounds ∂ξ∂x = (dξdx[i, j-1, k] + dξdx[i, j, k]) * 0.5
     @inbounds ∂ξ∂y = (dξdy[i, j-1, k] + dξdy[i, j, k]) * 0.5
@@ -394,7 +415,7 @@ function specViscousFlux_y(Fv_y, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz
     return
 end
 
-function specViscousFlux_z(Fv_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo)
+function specViscousFlux_z(Fv_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo, consts)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -403,7 +424,7 @@ function specViscousFlux_z(Fv_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz
         return
     end
 
-    c12::Float64 = 1/12
+    c12::Float64 = consts.CD4[2]
 
     @inbounds ∂ξ∂x = (dξdx[i, j, k-1] + dξdx[i, j, k]) * 0.5
     @inbounds ∂ξ∂y = (dξdy[i, j, k-1] + dξdy[i, j, k]) * 0.5

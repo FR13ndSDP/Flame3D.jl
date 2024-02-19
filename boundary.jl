@@ -12,32 +12,32 @@ function fill_x(Q, U, ρi, Yi, thermo, rank)
             @inbounds Yi[i, j, k, n] = 0.0
             @inbounds ρi[i, j, k, n] = 0.0
         end
-        if (j-36)^2+(k-36)^2 < 25
-            @inbounds Yi[i, j, k, 1] = 0.0
-            @inbounds Yi[i, j, k, 2] = 1.0
-            P = 101325.0 * 200
-            T = 300.0
-            Ma = 0.6
+        if (j-68)^2+(k-68)^2 < 225
+            @inbounds Yi[i, j, k, 1] = 0.15
+            @inbounds Yi[i, j, k, 9] = 0.85
+            P = 101325.0
+            T = 305.0
+            Ma = 2
             @inbounds Y = @view Yi[i, j, k, :]
             rho = ρmixture(P, T, Y, thermo)
-            @inbounds ρi[i, j, k, 2] = Yi[i, j, k, 2] * rho
+            @inbounds ρi[i, j, k, 9] = Yi[i, j, k, 9] * rho
             @inbounds ρi[i, j, k, 1] = Yi[i, j, k, 1] * rho
             @inbounds rhoi = @view ρi[i, j, k, :]
             ei = InternalEnergy(T, rhoi, thermo)
             γ = P/ei + 1
-            u = sqrt(γ*P/rho) * Ma
+            u = 900 #sqrt(γ*P/rho) * Ma
         else
-            @inbounds Yi[i, j, k, 1] = 1.0
-            @inbounds Yi[i, j, k, 2] = 0.0
-            P = 101325.0 * 200
-            T = 300.0
+            @inbounds Yi[i, j, k, 9] = 0.767
+            @inbounds Yi[i, j, k, 2] = 0.233
+            P = 101325.0
+            T = 1150.0
             @inbounds Y = @view Yi[i, j, k, :]
             rho = ρmixture(P, T, Y, thermo)
-            @inbounds ρi[i, j, k, 1] = Yi[i, j, k, 1] * rho
+            @inbounds ρi[i, j, k, 9] = Yi[i, j, k, 9] * rho
             @inbounds ρi[i, j, k, 2] = Yi[i, j, k, 2] * rho
             @inbounds rhoi = @view ρi[i, j, k, :]
             ei = InternalEnergy(T, rhoi, thermo)
-            u = 10.0
+            u = 20.0
         end
         @inbounds Q[i, j, k, 1] = rho
         @inbounds Q[i, j, k, 2] = u
@@ -192,20 +192,25 @@ function init(Q, ρi, ρ, u, v, w, P, T, T_ignite, ρ_ig, thermo)
     end
 
     # ignite area
-    if (j-36)^2+(k-36)^2 < 25 && i <= 50 && i >= 10
+    if (j-68)^2+(k-68)^2 < 225
         rho = ρ_ig
         temp = T_ignite
+        @inbounds ρi[i, j, k, 1] = rho * 0.15
+        @inbounds ρi[i, j, k, 9] = rho * 0.85
+        uu = 900
     else
         rho = ρ
         temp = T
+        @inbounds ρi[i, j, k, 2] = rho * 0.233
+        @inbounds ρi[i, j, k, 9] = rho * 0.767
+        uu = u
     end
 
     # fill H2
-    @inbounds ρi[i, j, k, 1] = rho 
     @inbounds rhoi = @view ρi[i, j, k, :]
 
     @inbounds Q[i, j, k, 1] = rho
-    @inbounds Q[i, j, k, 2] = u
+    @inbounds Q[i, j, k, 2] = uu
     @inbounds Q[i, j, k, 3] = v
     @inbounds Q[i, j, k, 4] = w
     @inbounds Q[i, j, k, 5] = P
@@ -218,14 +223,14 @@ end
 function initialize(Q, ρi, thermo)
     ct = pyimport("cantera")
     gas = ct.Solution(mech)
-    T::Float64 = 300.0
-    T_ignite::Float64 = 1800.0
-    P::Float64 = 101325.0 * 200
-    gas.TPY = T, P, "H2:1"
+    T::Float64 = 1150.0
+    T_ignite::Float64 = 305.0
+    P::Float64 = 101325.0
+    gas.TPY = T, P, "O2:0.233 N2:0.767"
     ρ::Float64 = gas.density
-    gas.TPY = T_ignite, P, "H2:1"
+    gas.TPY = T_ignite, P, "H2:0.15 N2:0.85"
     ρ_ig::Float64 = gas.density
-    u::Float64 = 10.0
+    u::Float64 = 20.0
     v::Float64 = 0.0
     w::Float64 = 0.0
     

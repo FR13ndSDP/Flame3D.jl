@@ -1,9 +1,9 @@
+# Compute finite difference coefficients
 import numpy as np
-import fractions as frac
 import math as m
 
 # n for stencils in fu
-# k for start index
+# k for start index, e.g. CD4: (-2, -1, 0, 1, 2) -> coeff(5, -2, 1)
 def coeff(N, k, order):
     base = np.ones(N)
     for i in range(N):

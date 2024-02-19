@@ -10,16 +10,16 @@ const Ny = h5read("metrics.h5", "Ny")
 const Nz = h5read("metrics.h5", "Nz")
 
 # global variables, do not change name
-const reaction::Bool = true   # if reaction is activated
+const reaction::Bool = false       # if reaction is activated
 const Luxmodel::Bool = false       # if use Neural network model
 const Cantera::Bool = false        # if use Cantera
-const stiff::Bool = true          # if reaction is stiff
-const sub_step::Int64 = 5          # reaction substep
+const stiff::Bool = true           # if reaction is stiff
+const sub_step::Int64 = 1          # reaction substep
 const T_criteria::Float64 = 500.0  # reaction temperature criteria 
-const dt::Float64 = 2e-8           # dt for simulation, make CFL < 1
+const dt::Float64 = 1e-8           # dt for simulation, make CFL < 1
 const Time::Float64 = 1e-4         # total simulation time
-const step_out::Int64 = 500        # how many steps to save result
-const chk_out::Bool = false        # if checkpoint is made on save
+const step_out::Int64 = 100        # how many steps to save result
+const chk_out::Bool = true         # if checkpoint is made on save
 const chk_compress_level = 3       # checkpoint file compression level 0-3, 0 for no compression
 const restart::String = "none"     # restart use checkpoint, file name "chk**.h5"
 
@@ -67,7 +67,6 @@ struct constants{T, VT}
     T_s::T
     Pr::T
     Cp::T
-    CD6::VT
     CD4::VT
     Hybrid::VT
     WENO5::VT # eps, tmp1, tmp2
@@ -95,9 +94,8 @@ device!(rank)
 const thermo = initThermo(mech) # now only NASA7
 const react = initReact(mech)
 const consts = constants(287.0, 1.4, 1.458e-6, 110.4, 0.72, 1004.5, 
-         CuArray([-1/60, 3/20, -3/4]), 
-         CuArray([1/12, -2/3]),
-         CuArray([1e-8, 0.2]),
+         CuArray([2/3, 1/12]),
+         CuArray([1e-4, 0.2]),
          CuArray([CUDA.eps(1e-16), 13/12, 1/6]),
          CuArray([-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420]))
 
