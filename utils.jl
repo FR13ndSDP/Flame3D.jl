@@ -10,26 +10,23 @@ function c2Prim(U, Q, ρi, thermo)
 
     # correction
     @inbounds ρ = max(U[i, j, k, 1], CUDA.eps(Float64))
+    @inbounds rho = @view ρi[i, j, k, :]
     @inbounds ρinv = 1/ρ 
-    ∑ρ = 0
+    ∑ρ::Float64 = 0.0
     for n = 1:Nspecs
-        @inbounds ρn = ρi[i, j, k, n]
-        if ρn < 0
-            @inbounds ρi[i, j, k, n] = 0
-        end
-        @inbounds ∑ρ += ρi[i, j, k, n]
+        @inbounds rho[n] = max(rho[n], 0.0)
+        @inbounds ∑ρ += rho[n]
     end
     for n = 1:Nspecs
-        @inbounds ρi[i, j, k, n] *= ρ/∑ρ
+        @inbounds rho[n] *= ρ/∑ρ
     end
-    # @inbounds ρi[i, j, k, Nspecs] += ρ - ∑ρ
+    # @inbounds rho[Nspecs] += ρ - ∑ρ
 
     @inbounds u = U[i, j, k, 2]*ρinv # U
     @inbounds v = U[i, j, k, 3]*ρinv # V
     @inbounds w = U[i, j, k, 4]*ρinv # W
     @inbounds ei = max((U[i, j, k, 5] - 0.5*ρ*(u^2 + v^2 + w^2)), CUDA.eps(Float64))
 
-    @inbounds rho = @view ρi[i, j, k, :]
     T::Float64 = max(GetT(ei, rho, thermo), CUDA.eps(Float64))
     p::Float64 = max(Pmixture(T, rho, thermo), CUDA.eps(Float64))
 
