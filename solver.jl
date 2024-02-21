@@ -264,7 +264,6 @@ function time_step(rank, comm, thermo, consts, react)
                     else
                         @cuda fastmath=true threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2/sub_step, thermo, react)
                     end
-                    @cuda fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
                 end
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
@@ -340,7 +339,6 @@ function time_step(rank, comm, thermo, consts, react)
                     else
                         @cuda fastmath=true threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2/sub_step, thermo, react)
                     end
-                    @cuda fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
                 end
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
@@ -372,6 +370,7 @@ function time_step(rank, comm, thermo, consts, react)
             YH2O = convert(Array{Float32, 3}, @view ρi_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 3])
             YH   = convert(Array{Float32, 3}, @view ρi_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 4])
             YOH  = convert(Array{Float32, 3}, @view ρi_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 6])
+            YN2  = convert(Array{Float32, 3}, @view ρi_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 9])
 
             ϕ_ng = convert(Array{Float32, 3}, @view ϕ_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
             x_ng = convert(Array{Float32, 3}, @view x_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
@@ -391,6 +390,7 @@ function time_step(rank, comm, thermo, consts, react)
                 vtk["YH2O"] = YH2O
                 vtk["YH"] = YH
                 vtk["YOH"] = YOH
+                vtk["YN2"] = YN2
             end 
 
             # restart file, in Float64

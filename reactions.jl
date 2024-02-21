@@ -156,9 +156,10 @@ function eval_gpu(U, Q, ρi, dt, thermo, react)
     if T > T_criteria
         sc = MVector{Nspecs, Float64}(undef)
         wdot = @MVector zeros(Float64, Nspecs)
+        @inbounds rho = @view ρi[i, j, k, :]
 
         for n = 1:Nspecs
-            @inbounds sc[n] = ρi[i, j, k, n]/thermo.mw[n] * 1e-6
+            @inbounds sc[n] = rho[n]/thermo.mw[n] * 1e-6
         end
         
         vproductionRate(wdot, sc, T, thermo, react)
@@ -167,10 +168,28 @@ function eval_gpu(U, Q, ρi, dt, thermo, react)
         for n = 1:Nspecs
             @inbounds Δρ = wdot[n] * thermo.mw[n] * 1e6 * dt
             @inbounds Δei += -thermo.coeffs_lo[6, n] *  Δρ * thermo.Ru / thermo.mw[n]
-            @inbounds ρi[i, j, k, n] += Δρ
+            @inbounds rho[n] += Δρ
         end
 
         @inbounds U[i, j, k, 5] += Δei
+
+        # update primitives
+        @inbounds ρ = max(Q[i, j, k, 1], CUDA.eps(Float64))
+        ∑ρ::Float64 = 0.0
+        for n = 1:Nspecs
+            @inbounds rho[n] = max(rho[n], 0.0)
+            @inbounds ∑ρ += rho[n]
+        end
+        for n = 1:Nspecs
+            @inbounds rho[n] *= ρ/∑ρ
+        end
+        # @inbounds rho[Nspecs] += ρ - ∑ρ
+
+        @inbounds Q[i, j, k, 7] += Δei
+        T = max(GetT(Q[i, j, k, 7], rho, thermo), CUDA.eps(Float64))
+        p = max(Pmixture(T, rho, thermo), CUDA.eps(Float64))
+        @inbounds Q[i, j, k, 5] = p
+        @inbounds Q[i, j, k, 6] = T
     end
     return
 end
@@ -194,9 +213,10 @@ function eval_gpu_stiff(U, Q, ρi, dt, thermo, react)
         wdot = @MVector zeros(Float64, Nspecs)
         Arate = @MMatrix zeros(Float64, Nspecs, Nspecs)
         A1 = MMatrix{Nspecs, Nspecs, Float64}(undef)
+        @inbounds rho = @view ρi[i, j, k, :]
 
         for n = 1:Nspecs
-            @inbounds sc[n] = ρi[i, j, k, n]/thermo.mw[n] * 1e-6
+            @inbounds sc[n] = rho[n]/thermo.mw[n] * 1e-6
         end
         
         vproductionRate_Jac(wdot, sc, Arate, T, thermo, react)
@@ -219,10 +239,28 @@ function eval_gpu_stiff(U, Q, ρi, dt, thermo, react)
         Δei::Float64 = 0
         for n = 1:Nspecs
             @inbounds Δei += -thermo.coeffs_lo[n, 6] *  Δρn[n] * thermo.Ru / thermo.mw[n]
-            @inbounds ρi[i, j, k, n] += Δρn[n]
+            @inbounds rho[n] += Δρn[n]
         end
 
         @inbounds U[i, j, k, 5] += Δei
+
+        # update primitives
+        @inbounds ρ = max(Q[i, j, k, 1], CUDA.eps(Float64))
+        ∑ρ::Float64 = 0.0
+        for n = 1:Nspecs
+            @inbounds rho[n] = max(rho[n], 0.0)
+            @inbounds ∑ρ += rho[n]
+        end
+        for n = 1:Nspecs
+            @inbounds rho[n] *= ρ/∑ρ
+        end
+        # @inbounds rho[Nspecs] += ρ - ∑ρ
+
+        @inbounds Q[i, j, k, 7] += Δei
+        T = max(GetT(Q[i, j, k, 7], rho, thermo), CUDA.eps(Float64))
+        p = max(Pmixture(T, rho, thermo), CUDA.eps(Float64))
+        @inbounds Q[i, j, k, 5] = p
+        @inbounds Q[i, j, k, 6] = T
     end
     return
 end
@@ -480,7 +518,7 @@ function initReact(mech)
             error("Not supported reaction type of reaction $j")
         end
 
-        d_order::Float64 = 0
+        d_order::Int64 = 0
         for i = 1:Nspecs
             d_order += reactant_stoich[i,j] - product_stoich[i,j]
         end
