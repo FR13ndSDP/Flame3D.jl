@@ -330,7 +330,7 @@ end
 
     μ::Float64 = 0
     for n = 1:Nspecs
-        tmp = 0
+        tmp::Float64 = 0.0
         for l = 1:Nspecs
             @inbounds tmp += X[l] * D[(n-1)*Nspecs+l]
         end
@@ -350,7 +350,7 @@ end
     end
  
     for n = 1:Nspecs
-        sum1 = 0
+        sum1 = 0.0
         for nn = 1:Nspecs
             if nn == n
                 continue
