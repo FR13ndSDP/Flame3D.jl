@@ -117,7 +117,7 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
             @inbounds V6 = Fp[i+1, j, k, n]
             @inbounds V7 = Fp[i+2, j, k, n]
             
-            fpx = c1*V1 + c2*V2 + c3*V3 + c4*V4 + c5*V5 + c6*V6 + c7*V7
+            fp = c1*V1 + c2*V2 + c3*V3 + c4*V4 + c5*V5 + c6*V6 + c7*V7
 
             @inbounds V1 = Fm[i-3, j, k, n]
             @inbounds V2 = Fm[i-2, j, k, n]
@@ -127,9 +127,9 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
             @inbounds V6 = Fm[i+2, j, k, n]
             @inbounds V7 = Fm[i+3, j, k, n]
 
-            fmx = c7*V1 + c6*V2 + c5*V3 + c4*V4 + c3*V5 + c2*V6 + c1*V7
+            fm = c7*V1 + c6*V2 + c5*V3 + c4*V4 + c3*V5 + c2*V6 + c1*V7
 
-            @inbounds F[i-NG, j-NG, k-NG, n] = fpx + fmx
+            @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
         end
     elseif ϕx < consts.Hybrid[2]
         for n = 1:NV
@@ -143,23 +143,20 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V2-V4)^2
             s33 = tmp1*(V3-2*V4+V5)^2 + 0.25*(3*V3-4*V4+V5)^2
 
-            # s11 = 1/(eps+s11)^2
-            # s22 = 1/(eps+s22)^2
-            # s33 = 1/(eps+s33)^2
+            # s11 = 0.1/(eps+s11)^2
+            # s22 = 0.6/(eps+s22)^2
+            # s33 = 0.3/(eps+s33)^2
             τ = CUDA.abs(s11-s33)
-            s11 = 1 + (τ/(eps+s11))^2
-            s22 = 1 + (τ/(eps+s22))^2
-            s33 = 1 + (τ/(eps+s33))^2
+            s11 = (1 + (τ/(eps+s11))^2) * 0.1
+            s22 = (1 + (τ/(eps+s22))^2) * 0.6
+            s33 = (1 + (τ/(eps+s33))^2) * 0.3
 
-            a1 = s11
-            a2 = 6*s22
-            a3 = 3*s33
-            invsum = 1/(a1+a2+a3)
+            invsum = 1/(s11+s22+s33)
 
             v1 = 2*V1-7*V2+11*V3
             v2 = -V2+5*V3+2*V4
             v3 = 2*V3+5*V4-V5
-            fpx = tmp2*invsum*(a1*v1+a2*v2+a3*v3)
+            fp = tmp2*invsum*(s11*v1+s22*v2+s33*v3)
 
             @inbounds V1 = Fm[i-2, j, k, n]
             @inbounds V2 = Fm[i-1, j, k, n]
@@ -171,25 +168,22 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V4-V2)^2
             s33 = tmp1*(V3-2*V2+V1)^2 + 0.25*(3*V3-4*V2+V1)^2
 
-            # s11 = 1/(eps+s11)^2
-            # s22 = 1/(eps+s22)^2
-            # s33 = 1/(eps+s33)^2
+            # s11 = 0.1/(eps+s11)^2
+            # s22 = 0.6/(eps+s22)^2
+            # s33 = 0.3/(eps+s33)^2
             τ = CUDA.abs(s11-s33)
-            s11 = 1 + (τ/(eps+s11))^2
-            s22 = 1 + (τ/(eps+s22))^2
-            s33 = 1 + (τ/(eps+s33))^2
+            s11 = (1 + (τ/(eps+s11))^2) * 0.1
+            s22 = (1 + (τ/(eps+s22))^2) * 0.6
+            s33 = (1 + (τ/(eps+s33))^2) * 0.3
 
-            a1 = s11
-            a2 = 6*s22
-            a3 = 3*s33
-            invsum = 1/(a1+a2+a3)
+            invsum = 1/(s11+s22+s33)
 
             v1 = 11*V3-7*V4+2*V5
             v2 = -V4+5*V3+2*V2
             v3 = 2*V3+5*V2-V1
-            fmx = tmp2*invsum*(a1*v1+a2*v2+a3*v3)
+            fm = tmp2*invsum*(s11*v1+s22*v2+s33*v3)
             
-            @inbounds F[i-NG, j-NG, k-NG, n] = fpx + fmx
+            @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
         end
     else
         for n = 1:NV
@@ -238,7 +232,7 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
             @inbounds V6 = Fp[i, j+1, k, n]
             @inbounds V7 = Fp[i, j+2, k, n]
             
-            fpy = c1*V1 + c2*V2 + c3*V3 + c4*V4 + c5*V5 + c6*V6 + c7*V7
+            fp = c1*V1 + c2*V2 + c3*V3 + c4*V4 + c5*V5 + c6*V6 + c7*V7
 
             @inbounds V1 = Fm[i, j-3, k, n]
             @inbounds V2 = Fm[i, j-2, k, n]
@@ -248,9 +242,9 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
             @inbounds V6 = Fm[i, j+2, k, n]
             @inbounds V7 = Fm[i, j+3, k, n]
 
-            fmy = c7*V1 + c6*V2 + c5*V3 + c4*V4 + c3*V5 + c2*V6 + c1*V7
+            fm = c7*V1 + c6*V2 + c5*V3 + c4*V4 + c3*V5 + c2*V6 + c1*V7
 
-            @inbounds F[i-NG, j-NG, k-NG, n] = fpy + fmy
+            @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
         end
     elseif ϕy < consts.Hybrid[2]
         for n = 1:NV
@@ -264,23 +258,20 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V2-V4)^2
             s33 = tmp1*(V3-2*V4+V5)^2 + 0.25*(3*V3-4*V4+V5)^2
 
-            # s11 = 1/(eps+s11)^2
-            # s22 = 1/(eps+s22)^2
-            # s33 = 1/(eps+s33)^2
+            # s11 = 0.1/(eps+s11)^2
+            # s22 = 0.6/(eps+s22)^2
+            # s33 = 0.3/(eps+s33)^2
             τ = CUDA.abs(s11-s33)
-            s11 = 1 + (τ/(eps+s11))^2
-            s22 = 1 + (τ/(eps+s22))^2
-            s33 = 1 + (τ/(eps+s33))^2
+            s11 = (1 + (τ/(eps+s11))^2) * 0.1
+            s22 = (1 + (τ/(eps+s22))^2) * 0.6
+            s33 = (1 + (τ/(eps+s33))^2) * 0.3
 
-            a1 = s11
-            a2 = 6*s22
-            a3 = 3*s33
-            invsum = 1/(a1+a2+a3)
+            invsum = 1/(s11+s22+s33)
 
             v1 = 2*V1-7*V2+11*V3
             v2 = -V2+5*V3+2*V4
             v3 = 2*V3+5*V4-V5
-            fpy = tmp2*invsum*(a1*v1+a2*v2+a3*v3)
+            fp = tmp2*invsum*(s11*v1+s22*v2+s33*v3)
 
             @inbounds V1 = Fm[i, j-2, k, n]
             @inbounds V2 = Fm[i, j-1, k, n]
@@ -292,25 +283,22 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V4-V2)^2
             s33 = tmp1*(V3-2*V2+V1)^2 + 0.25*(3*V3-4*V2+V1)^2
 
-            # s11 = 1/(eps+s11)^2
-            # s22 = 1/(eps+s22)^2
-            # s33 = 1/(eps+s33)^2
+            # s11 = 0.1/(eps+s11)^2
+            # s22 = 0.6/(eps+s22)^2
+            # s33 = 0.3/(eps+s33)^2
             τ = CUDA.abs(s11-s33)
-            s11 = 1 + (τ/(eps+s11))^2
-            s22 = 1 + (τ/(eps+s22))^2
-            s33 = 1 + (τ/(eps+s33))^2
+            s11 = (1 + (τ/(eps+s11))^2) * 0.1
+            s22 = (1 + (τ/(eps+s22))^2) * 0.6
+            s33 = (1 + (τ/(eps+s33))^2) * 0.3
 
-            a1 = s11
-            a2 = 6*s22
-            a3 = 3*s33
-            invsum = 1/(a1+a2+a3)
+            invsum = 1/(s11+s22+s33)
 
             v1 = 11*V3-7*V4+2*V5
             v2 = -V4+5*V3+2*V2
             v3 = 2*V3+5*V2-V1
-            fmy = tmp2*invsum*(a1*v1+a2*v2+a3*v3)
+            fm = tmp2*invsum*(s11*v1+s22*v2+s33*v3)
             
-            @inbounds F[i-NG, j-NG, k-NG, n] = fpy + fmy
+            @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
         end
     else
         for n = 1:NV
@@ -359,7 +347,7 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
             @inbounds V6 = Fp[i, j, k+1, n]
             @inbounds V7 = Fp[i, j, k+2, n]
             
-            fpz = c1*V1 + c2*V2 + c3*V3 + c4*V4 + c5*V5 + c6*V6 + c7*V7
+            fp = c1*V1 + c2*V2 + c3*V3 + c4*V4 + c5*V5 + c6*V6 + c7*V7
 
             @inbounds V1 = Fm[i, j, k-3, n]
             @inbounds V2 = Fm[i, j, k-2, n]
@@ -369,9 +357,9 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
             @inbounds V6 = Fm[i, j, k+2, n]
             @inbounds V7 = Fm[i, j, k+3, n]
 
-            fmz = c7*V1 + c6*V2 + c5*V3 + c4*V4 + c3*V5 + c2*V6 + c1*V7
+            fm = c7*V1 + c6*V2 + c5*V3 + c4*V4 + c3*V5 + c2*V6 + c1*V7
 
-            @inbounds F[i-NG, j-NG, k-NG, n] = fpz + fmz
+            @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
         end
     elseif ϕz < consts.Hybrid[2]
         for n = 1:NV
@@ -385,23 +373,20 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V2-V4)^2
             s33 = tmp1*(V3-2*V4+V5)^2 + 0.25*(3*V3-4*V4+V5)^2
 
-            # s11 = 1/(eps+s11)^2
-            # s22 = 1/(eps+s22)^2
-            # s33 = 1/(eps+s33)^2
+            # s11 = 0.1/(eps+s11)^2
+            # s22 = 0.6/(eps+s22)^2
+            # s33 = 0.3/(eps+s33)^2
             τ = CUDA.abs(s11-s33)
-            s11 = 1 + (τ/(eps+s11))^2
-            s22 = 1 + (τ/(eps+s22))^2
-            s33 = 1 + (τ/(eps+s33))^2
+            s11 = (1 + (τ/(eps+s11))^2) * 0.1
+            s22 = (1 + (τ/(eps+s22))^2) * 0.6
+            s33 = (1 + (τ/(eps+s33))^2) * 0.3
 
-            a1 = s11
-            a2 = 6*s22
-            a3 = 3*s33
-            invsum = 1/(a1+a2+a3)
+            invsum = 1/(s11+s22+s33)
 
             v1 = 2*V1-7*V2+11*V3
             v2 = -V2+5*V3+2*V4
             v3 = 2*V3+5*V4-V5
-            fpy = tmp2*invsum*(a1*v1+a2*v2+a3*v3)
+            fp = tmp2*invsum*(s11*v1+s22*v2+s33*v3)
 
             @inbounds V1 = Fm[i, j, k-2, n]
             @inbounds V2 = Fm[i, j, k-1, n]
@@ -413,25 +398,22 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25*(V4-V2)^2
             s33 = tmp1*(V3-2*V2+V1)^2 + 0.25*(3*V3-4*V2+V1)^2
 
-            # s11 = 1/(eps+s11)^2
-            # s22 = 1/(eps+s22)^2
-            # s33 = 1/(eps+s33)^2
+            # s11 = 0.1/(eps+s11)^2
+            # s22 = 0.6/(eps+s22)^2
+            # s33 = 0.3/(eps+s33)^2
             τ = CUDA.abs(s11-s33)
-            s11 = 1 + (τ/(eps+s11))^2
-            s22 = 1 + (τ/(eps+s22))^2
-            s33 = 1 + (τ/(eps+s33))^2
+            s11 = (1 + (τ/(eps+s11))^2) * 0.1
+            s22 = (1 + (τ/(eps+s22))^2) * 0.6
+            s33 = (1 + (τ/(eps+s33))^2) * 0.3
 
-            a1 = s11
-            a2 = 6*s22
-            a3 = 3*s33
-            invsum = 1/(a1+a2+a3)
+            invsum = 1/(s11+s22+s33)
 
             v1 = 11*V3-7*V4+2*V5
             v2 = -V4+5*V3+2*V2
             v3 = 2*V3+5*V2-V1
-            fmy = tmp2*invsum*(a1*v1+a2*v2+a3*v3)
+            fm = tmp2*invsum*(s11*v1+s22*v2+s33*v3)
             
-            @inbounds F[i-NG, j-NG, k-NG, n] = fpy + fmy
+            @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
         end
     else
         for n = 1:NV

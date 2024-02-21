@@ -95,8 +95,8 @@ const thermo = initThermo(mech) # now only NASA7
 const react = initReact(mech)
 const consts = constants(287.0, 1.4, 1.458e-6, 110.4, 0.72, 1004.5, 
          CuArray([2/3, 1/12]),
-         CuArray([1e-4, 0.2]),
-         CuArray([CUDA.eps(1e-16), 13/12, 1/6]),
+         CuArray([1e-8, 0.2]),
+         CuArray([1e-14, 13/12, 1/6]),
          CuArray([-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420]))
 
 @time time_step(rank, comm, thermo, consts, react)
