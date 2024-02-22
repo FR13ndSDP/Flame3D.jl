@@ -185,11 +185,13 @@ function eval_gpu(U, Q, ρi, dt, thermo, react)
         end
         # @inbounds rho[Nspecs] += ρ - ∑ρ
 
-        @inbounds Q[i, j, k, 7] += Δei
-        T = max(GetT(Q[i, j, k, 7], rho, thermo), CUDA.eps(Float64))
+        @inbounds ein = Q[i, j, k, 7]
+        ein += Δei
+        T = max(GetT(ein, rho, thermo), CUDA.eps(Float64))
         p = max(Pmixture(T, rho, thermo), CUDA.eps(Float64))
         @inbounds Q[i, j, k, 5] = p
         @inbounds Q[i, j, k, 6] = T
+        @inbounds Q[i, j, k, 7] = ein
     end
     return
 end
@@ -256,11 +258,13 @@ function eval_gpu_stiff(U, Q, ρi, dt, thermo, react)
         end
         # @inbounds rho[Nspecs] += ρ - ∑ρ
 
-        @inbounds Q[i, j, k, 7] += Δei
-        T = max(GetT(Q[i, j, k, 7], rho, thermo), CUDA.eps(Float64))
+        @inbounds ein = Q[i, j, k, 7]
+        ein += Δei
+        T = max(GetT(ein, rho, thermo), CUDA.eps(Float64))
         p = max(Pmixture(T, rho, thermo), CUDA.eps(Float64))
         @inbounds Q[i, j, k, 5] = p
         @inbounds Q[i, j, k, 6] = T
+        @inbounds Q[i, j, k, 7] = ein
     end
     return
 end
@@ -273,8 +277,8 @@ end
     lgT = log(T)
     invT = 1.0 / T
   
-    for n = 1:Nreacs
-        @inbounds k_f_s[n] = react.Arr[1,n] * exp(react.Arr[2,n] * lgT - react.Arr[3,n] * invT)
+    @inbounds @fastmath for n = 1:Nreacs
+        k_f_s[n] = react.Arr[1,n] * exp(react.Arr[2,n] * lgT - react.Arr[3,n] * invT)
     end
   
     # compute the Gibbs free energy 
@@ -287,7 +291,7 @@ end
         for m = 1:Nspecs
             @inbounds Δgi += gi_T[m] * (react.vf[m, n]-react.vr[m, n])
         end
-        @inbounds Kc_s[n] = RsT ^ react.sgm[n] * exp(Δgi)
+        @inbounds Kc_s[n] = RsT ^ react.sgm[n] * @fastmath(exp(Δgi))
     end
   
     for n = 1:Nreacs
@@ -317,10 +321,10 @@ end
                 @inbounds mixture += react.ef[m, n] * sc[m]
             end
 
-            @inbounds redP = mixture / k_f_s[n] * react.loP[1,n] * exp(react.loP[2,n] * lgT - react.loP[3,n] * invT)
-            logPred = log10(redP)
+            @inbounds @fastmath redP = mixture / k_f_s[n] * react.loP[1,n] * exp(react.loP[2,n] * lgT - react.loP[3,n] * invT)
+            @fastmath @fastmath logPred = log10(redP)
             @inbounds A = react.Troe[1,n]
-            @inbounds logFcent = log10((1-A)*exp(-T/react.Troe[2,n]) + A*exp(-T/react.Troe[3,n]) + exp(-react.Troe[4,n]*invT))
+            @inbounds @fastmath logFcent = log10((1-A)*exp(-T/react.Troe[2,n]) + A*exp(-T/react.Troe[3,n]) + exp(-react.Troe[4,n]*invT))
             troe_c = -0.4 - 0.67 * logFcent
             troe_n = 0.75 - 1.27 * logFcent
             troe = (troe_c + logPred) / (troe_n - 0.14 * (troe_c + logPred))
@@ -345,8 +349,8 @@ end
     lgT = log(T)
     invT = 1.0 / T
   
-    for n = 1:Nreacs
-        @inbounds k_f_s[n] = react.Arr[1,n] * exp(react.Arr[2,n] * lgT - react.Arr[3,n] * invT)
+    @inbounds @fastmath for n = 1:Nreacs
+        k_f_s[n] = react.Arr[1,n] * exp(react.Arr[2,n] * lgT - react.Arr[3,n] * invT)
     end
   
     # compute the Gibbs free energy 
@@ -359,7 +363,7 @@ end
         for m = 1:Nspecs
             @inbounds Δgi += gi_T[m] * (react.vf[m, n]-react.vr[m, n])
         end
-        @inbounds Kc_s[n] = RsT ^ react.sgm[n] * exp(Δgi)
+        @inbounds Kc_s[n] = RsT ^ react.sgm[n] * @fastmath(exp(Δgi))
     end
   
     for n = 1:Nreacs
@@ -389,10 +393,10 @@ end
                 @inbounds mixture += react.ef[m, n] * sc[m]
             end
 
-            @inbounds redP = mixture / k_f_s[n] * react.loP[1,n] * exp(react.loP[2,n] * lgT - react.loP[3,n] * invT)
-            logPred = log10(redP)
+            @inbounds @fastmath redP = mixture / k_f_s[n] * react.loP[1,n] * exp(react.loP[2,n] * lgT - react.loP[3,n] * invT)
+            @fastmath logPred = log10(redP)
             @inbounds A = react.Troe[1,n]
-            @inbounds logFcent = log10((1-A)*exp(-T/react.Troe[2,n]) + A*exp(-T/react.Troe[3,n]) + exp(-react.Troe[4,n]*invT))
+            @inbounds @fastmath logFcent = log10((1-A)*exp(-T/react.Troe[2,n]) + A*exp(-T/react.Troe[3,n]) + exp(-react.Troe[4,n]*invT))
             troe_c = -0.4 - 0.67 * logFcent
             troe_n = 0.75 - 1.27 * logFcent
             troe = (troe_c + logPred) / (troe_n - 0.14 * (troe_c + logPred))
@@ -423,8 +427,9 @@ end
         fmax = abs(a[k,k])
         kk = k
         @inbounds for i = k+1:Nspecs
-            if abs(a[i,k]) > fmax
-                fmax = abs(a[i,k])
+            absa = abs(a[i, k])
+            if absa > fmax
+                fmax = absa
                 kk = i
             end
         end
@@ -448,7 +453,7 @@ end
 	end
 
     # get x    
-	x[Nspecs] = b[Nspecs]/a[Nspecs,Nspecs]
+	@inbounds x[Nspecs] = b[Nspecs]/a[Nspecs,Nspecs]
 	@inbounds for i = Nspecs-1:-1:1
         x[i] = b[i]
         @inbounds for j = i+1:Nspecs

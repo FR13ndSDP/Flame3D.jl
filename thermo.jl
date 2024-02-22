@@ -271,7 +271,7 @@ end
             dt = 100.0
         elseif dt < -100.0
             dt = -100.0
-        elseif (CUDA.abs(dt) < tol)
+        elseif (abs(dt) < tol)
             break
         elseif (t1+dt == t1)
             break
@@ -287,9 +287,9 @@ end
 
 # compute mixture viscosity and heat conduct coeff
 @inline function mixtureProperties(T, P, X, μi, D, Diff, thermo)
-    sqT::Float64 = CUDA.sqrt(T)
-    sqsqT::Float64 = CUDA.sqrt(sqT)
-    lgT = log(T)
+    @fastmath sqT::Float64 = sqrt(T)
+    @fastmath sqsqT::Float64 = sqrt(sqT)
+    @fastmath lgT = log(T)
     lgT2 = lgT * lgT
     lgT3 = lgT * lgT2
     lgT4 = lgT2 * lgT2
@@ -320,8 +320,8 @@ end
             @inbounds wratioln = thermo.mw[l]/thermo.mw[n]
             @inbounds vrationl = μi[n]/μi[l]
 
-            @inbounds factor1 = 1 + CUDA.sqrt(vrationl * CUDA.sqrt(wratioln))
-            @inbounds tmp = factor1*factor1 / CUDA.sqrt(8+8*thermo.mw[n]/thermo.mw[l])
+            @inbounds @fastmath factor1 = 1 + sqrt(vrationl * sqrt(wratioln))
+            @inbounds @fastmath tmp = factor1*factor1 / sqrt(8+8*thermo.mw[n]/thermo.mw[l])
             @inbounds D[(n-1)*Nspecs+l] = tmp
             @inbounds D[(l-1)*Nspecs+n] = tmp / (vrationl * wratioln)
         end

@@ -19,10 +19,10 @@ function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
     @inbounds A3 = Az[i, j, k]
 
     γ = p/ei + 1
-    c = CUDA.sqrt(γ*p/ρ)
+    @fastmath c = sqrt(γ*p/ρ)
     # γ = 1.4
 
-    ss = CUDA.sqrt(A1*A1 + A2*A2 + A3*A3)
+    @fastmath ss = sqrt(A1*A1 + A2*A2 + A3*A3)
     E1 = A1*u + A2*v + A3*w
     E2 = E1 - c*ss
     E3 = E1 + c*ss
@@ -33,9 +33,9 @@ function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
     A2 *= ss
     A3 *= ss
 
-    E1P = (E1 + CUDA.abs(E1)) * 0.5
-    E2P = (E2 + CUDA.abs(E2)) * 0.5
-    E3P = (E3 + CUDA.abs(E3)) * 0.5
+    E1P = (E1 + abs(E1)) * 0.5
+    E2P = (E2 + abs(E2)) * 0.5
+    E3P = (E3 + abs(E3)) * 0.5
 
     E1M = E1 - E1P
     E2M = E2 - E2P
@@ -90,10 +90,10 @@ function split(ρi, Q, Fp, Fm, Ax, Ay, Az)
     @inbounds A3 = Az[i, j, k]
 
     γ = p/ei + 1
-    c = CUDA.sqrt(γ*p/ρ)
+    @fastmath c = sqrt(γ*p/ρ)
     # γ = 1.4
 
-    ss = CUDA.sqrt(A1*A1 + A2*A2 + A3*A3)
+    @fastmath ss = sqrt(A1*A1 + A2*A2 + A3*A3)
     E1 = A1*u + A2*v + A3*w
     E2 = E1 - c*ss
     E3 = E1 + c*ss
@@ -104,9 +104,9 @@ function split(ρi, Q, Fp, Fm, Ax, Ay, Az)
     A2 *= ss
     A3 *= ss
 
-    E1P = (E1 + CUDA.abs(E1)) * 0.5
-    E2P = (E2 + CUDA.abs(E2)) * 0.5
-    E3P = (E3 + CUDA.abs(E3)) * 0.5
+    E1P = (E1 + abs(E1)) * 0.5
+    E2P = (E2 + abs(E2)) * 0.5
+    E3P = (E3 + abs(E3)) * 0.5
 
     E1M = E1 - E1P
     E2M = E2 - E2P
