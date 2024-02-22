@@ -29,12 +29,17 @@ For more details, checkout the comments in `run.jl`.
 ### Taylor Green Vortex
 $Re=1600$ vortex breakdown with 7th order upwind scheme for advection and 4th order central scheme for viscous term. Results are compared with reference spectral method code.
 
-![TGV](./Utils/TGV.png)
+![TGV](./Assets/TGV.png)
 
 ### 0D reaction
 $H_2-O_2$ reaction at $10$ atm, $1500$ K, use Li-Dryer mechanism and 1st order implicit method for ODE integration. Results are compared with cantera.
 
-![0D](./Utils/0D.png)
+![0D](./Assets/0D.png)
 
 ### Combustion
-![JET](./Utils/JET.png)
+![JET](./Assets/JET.png)
+
+### Machine Learning
+$Ma=1.5, T=5000\ \rm{K}, P = 3596\ \rm{Pa}$ air jet, a Neural network model for chemical reaction is compared with the numerical method.
+![NN](./Assets/NN-air.png)
+![NN](./Assets/NN-T.png)
