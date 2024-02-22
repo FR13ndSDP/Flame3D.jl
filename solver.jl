@@ -356,7 +356,7 @@ function time_step(rank, comm, thermo, consts, react)
             copyto!(ϕ_h, ϕ)
 
             # visualization file, in Float32
-            fname::String = string("plt", tt, "-", rank)
+            fname::String = string("plt", rank, "-", tt)
 
             rho = convert(Array{Float32, 3}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1])
             u =   convert(Array{Float32, 3}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2])
