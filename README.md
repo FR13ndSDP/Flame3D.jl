@@ -41,6 +41,7 @@ $H_2-O_2$ reaction at $10$ atm, $1500$ K, use Li-Dryer mechanism and 1st order i
 
 ### Machine Learning
 $Ma=1.5, T=5000\ \rm{K}, P = 3596\ \rm{Pa}$ air jet, a Neural network model for chemical reaction is compared with the numerical method.
+
 ![NN-air](./Assets/NN-air.png)
 
 ![NN-T](./Assets/NN-T.png)
