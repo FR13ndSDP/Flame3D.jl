@@ -27,7 +27,14 @@ For more details, checkout the comments in `run.jl`.
 ## Validation cases
 
 ### Taylor Green Vortex
+$Re=1600$ vortex breakdown with 7th order upwind scheme for advection and 4th order central scheme for viscous term. Results are compared with reference spectral method code.
+
 ![TGV](./Utils/TGV.png)
+
+### 0D reaction
+$H_2-O_2$ reaction at $10$ atm, $1500$ K, use Li-Dryer mechanism and 1st order implicit method for ODE integration. Results are compared with cantera.
+
+![0D](./Utils/0D.png)
 
 ### Combustion
 ![JET](./Utils/JET.png)
