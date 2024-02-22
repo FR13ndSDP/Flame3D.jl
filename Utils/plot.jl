@@ -1,10 +1,13 @@
 using ReadVTK
 using PyCall
 
-fname = "../plt1300-0.vts"
+fname = "../plt0-1300.vts"
 
 plt = pyimport("matplotlib.pyplot")
-plt.rcParams["font.family"] = "monospace"
+plt.rc("text", usetex= true)
+plt.rc("font", family= "sans-serif")
+# plt.rc("font", sans-serif = "Helvetica")
+plt.rc("font", size=20)
 
 vtk = VTKFile(get_example_file(fname))
 
@@ -26,20 +29,16 @@ rho = reshape(rho, (Nx, Ny, Nz))
 YH2O = reshape(YH2O, (Nx, Ny, Nz))
 
 
-fig = plt.figure()
-ax = fig.add_subplot(211)
-bx = fig.add_subplot(212)
-a = ax.contourf(x[1:Nx-20, :, cld(Nz, 2)], y[1:Nx-20, :, cld(Nz, 2)], YH2O[1:Nx-20, :, cld(Nz, 2)], 120, cmap="hot")
-ax.set_xlabel("x/m")
-ax.set_ylabel("y/m")
+fig = plt.figure(figsize=(18, 6))
+# lev= np.linspace(1e-6, 0.27, 60)
+plt.contour(x[1:Nx-20, :, cld(Nz, 2)], y[1:Nx-20, :, cld(Nz, 2)], YH2O[1:Nx-20, :, cld(Nz, 2)], levels=60, cmap="hot", extend="min")
+a = plt.contourf(x[1:Nx-20, :, cld(Nz, 2)], y[1:Nx-20, :, cld(Nz, 2)], T[1:Nx-20, :, cld(Nz, 2)], 60, cmap="coolwarm", extend="min")
+plt.xlabel("x/m")
+plt.ylabel("y/m")
 
-b = bx.contourf(x[1:Nx-20, :, cld(Nz, 2)], y[1:Nx-20, :, cld(Nz, 2)], rho[1:Nx-20, :, cld(Nz, 2)], 120, cmap="coolwarm")
-bx.set_xlabel("x/m")
-bx.set_ylabel("y/m")
-
-fig.colorbar(a, ax=ax, label=raw"$Y_{H_2O}$", location="right")
-fig.colorbar(b, ax=bx, label=raw"$\rho$", location="right")
-plt.tight_layout()
-ax.set_title("5 million grid, H2 combustion with one GPU")
+plt.colorbar(a, label=raw"$T$", location="right")
+plt.annotate(raw"$H_2O$ mass fraction", style="italic", xy=(0.015,-0.001), xytext=(0.01,-0.003), arrowprops=Dict("facecolor"=>"black"))
+# plt.tight_layout()
+plt.title("5 million grid, H2 combustion with one GPU")
 # plt.show()
 plt.savefig("view.png", dpi=600)

@@ -7,8 +7,6 @@ Code for compressible flow simulation with neural network for real gas and chemi
 - 3D, with high order scheme (up to 7th order)
 - `Lux.jl` trained model combined with `Cantera`
 
-![comb](./Utils/view.png)
-
 ## Usage
 
 Generate mesh and metrics with
@@ -25,3 +23,11 @@ Or to use multi-GPU, make `Nprocs=<nprocs>` and run it with `mpiexecjl -n <nproc
 
 
 For more details, checkout the comments in `run.jl`.
+
+## Validation cases
+
+### Taylor Green Vortex
+![TGV](./Utils/TGV.png)
+
+### Combustion
+![JET](./Utils/JET.png)
