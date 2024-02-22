@@ -16,15 +16,15 @@ function shockSensor(ϕ, Q)
     @inbounds Pz1 = Q[i, j, k-1, 5]
     @inbounds Pz2 = Q[i, j, k  , 5]
     @inbounds Pz3 = Q[i, j, k+1, 5]
-    ϕx = CUDA.abs(-Px1 + 2*Px2 - Px3)/(Px1 + 2*Px2 + Px3)
-    ϕy = CUDA.abs(-Py1 + 2*Py2 - Py3)/(Py1 + 2*Py2 + Py3)
-    ϕz = CUDA.abs(-Pz1 + 2*Pz2 - Pz3)/(Pz1 + 2*Pz2 + Pz3)
-    ϕ[i, j, k] = ϕx + ϕy + ϕz
+    ϕx = abs(-Px1 + 2*Px2 - Px3)/(Px1 + 2*Px2 + Px3)
+    ϕy = abs(-Py1 + 2*Py2 - Py3)/(Py1 + 2*Py2 + Py3)
+    ϕz = abs(-Pz1 + 2*Pz2 - Pz3)/(Pz1 + 2*Pz2 + Pz3)
+    @inbounds ϕ[i, j, k] = ϕx + ϕy + ϕz
     return
 end
 
 @inline function minmod(a, b)
-    ifelse(a*b > 0, (CUDA.abs(a) > CUDA.abs(b)) ? b : a, zero(a))
+    ifelse(a*b > 0, (abs(a) > abs(b)) ? b : a, zero(a))
 end
 
 #Range: 1 -> N+1
@@ -105,7 +105,7 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
     c7::Float64 = consts.UP7[7]
 
     # Jameson sensor
-    ϕx = max(ϕ[i-1, j, k], ϕ[i, j, k])
+    @inbounds ϕx = max(ϕ[i-1, j, k], ϕ[i, j, k])
 
     if ϕx < consts.Hybrid[1]
         for n = 1:NV
@@ -146,10 +146,10 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
             # s11 = 0.1/(eps+s11)^2
             # s22 = 0.6/(eps+s22)^2
             # s33 = 0.3/(eps+s33)^2
-            τ = CUDA.abs(s11-s33)
-            s11 = (1 + (τ/(eps+s11))^2) * 0.1
-            s22 = (1 + (τ/(eps+s22))^2) * 0.6
-            s33 = (1 + (τ/(eps+s33))^2) * 0.3
+            τ = abs(s11-s33)
+            s11 = (1 + (τ/(eps+s11))^2) * 1
+            s22 = (1 + (τ/(eps+s22))^2) * 6
+            s33 = (1 + (τ/(eps+s33))^2) * 3
 
             invsum = 1/(s11+s22+s33)
 
@@ -171,10 +171,10 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
             # s11 = 0.1/(eps+s11)^2
             # s22 = 0.6/(eps+s22)^2
             # s33 = 0.3/(eps+s33)^2
-            τ = CUDA.abs(s11-s33)
-            s11 = (1 + (τ/(eps+s11))^2) * 0.1
-            s22 = (1 + (τ/(eps+s22))^2) * 0.6
-            s33 = (1 + (τ/(eps+s33))^2) * 0.3
+            τ = abs(s11-s33)
+            s11 = (1 + (τ/(eps+s11))^2) * 1
+            s22 = (1 + (τ/(eps+s22))^2) * 6
+            s33 = (1 + (τ/(eps+s33))^2) * 3
 
             invsum = 1/(s11+s22+s33)
 
@@ -220,7 +220,7 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
     c7::Float64 = consts.UP7[7]
 
     # Jameson sensor
-    ϕy = max(ϕ[i, j-1, k], ϕ[i, j, k])
+    @inbounds ϕy = max(ϕ[i, j-1, k], ϕ[i, j, k])
 
     if ϕy < consts.Hybrid[1]
         for n = 1:NV
@@ -261,10 +261,10 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
             # s11 = 0.1/(eps+s11)^2
             # s22 = 0.6/(eps+s22)^2
             # s33 = 0.3/(eps+s33)^2
-            τ = CUDA.abs(s11-s33)
-            s11 = (1 + (τ/(eps+s11))^2) * 0.1
-            s22 = (1 + (τ/(eps+s22))^2) * 0.6
-            s33 = (1 + (τ/(eps+s33))^2) * 0.3
+            τ = abs(s11-s33)
+            s11 = (1 + (τ/(eps+s11))^2) * 1
+            s22 = (1 + (τ/(eps+s22))^2) * 6
+            s33 = (1 + (τ/(eps+s33))^2) * 3
 
             invsum = 1/(s11+s22+s33)
 
@@ -286,10 +286,10 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
             # s11 = 0.1/(eps+s11)^2
             # s22 = 0.6/(eps+s22)^2
             # s33 = 0.3/(eps+s33)^2
-            τ = CUDA.abs(s11-s33)
-            s11 = (1 + (τ/(eps+s11))^2) * 0.1
-            s22 = (1 + (τ/(eps+s22))^2) * 0.6
-            s33 = (1 + (τ/(eps+s33))^2) * 0.3
+            τ = abs(s11-s33)
+            s11 = (1 + (τ/(eps+s11))^2) * 1
+            s22 = (1 + (τ/(eps+s22))^2) * 6
+            s33 = (1 + (τ/(eps+s33))^2) * 3
 
             invsum = 1/(s11+s22+s33)
 
@@ -335,7 +335,7 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
     c7::Float64 = consts.UP7[7]
 
     # Jameson sensor
-    ϕz = max(ϕ[i, j, k-1], ϕ[i, j, k])
+    @inbounds ϕz = max(ϕ[i, j, k-1], ϕ[i, j, k])
 
     if ϕz < consts.Hybrid[1]
         for n = 1:NV
@@ -376,10 +376,10 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
             # s11 = 0.1/(eps+s11)^2
             # s22 = 0.6/(eps+s22)^2
             # s33 = 0.3/(eps+s33)^2
-            τ = CUDA.abs(s11-s33)
-            s11 = (1 + (τ/(eps+s11))^2) * 0.1
-            s22 = (1 + (τ/(eps+s22))^2) * 0.6
-            s33 = (1 + (τ/(eps+s33))^2) * 0.3
+            τ = abs(s11-s33)
+            s11 = (1 + (τ/(eps+s11))^2) * 1
+            s22 = (1 + (τ/(eps+s22))^2) * 6
+            s33 = (1 + (τ/(eps+s33))^2) * 3
 
             invsum = 1/(s11+s22+s33)
 
@@ -401,10 +401,10 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
             # s11 = 0.1/(eps+s11)^2
             # s22 = 0.6/(eps+s22)^2
             # s33 = 0.3/(eps+s33)^2
-            τ = CUDA.abs(s11-s33)
-            s11 = (1 + (τ/(eps+s11))^2) * 0.1
-            s22 = (1 + (τ/(eps+s22))^2) * 0.6
-            s33 = (1 + (τ/(eps+s33))^2) * 0.3
+            τ = abs(s11-s33)
+            s11 = (1 + (τ/(eps+s11))^2) * 1
+            s22 = (1 + (τ/(eps+s22))^2) * 6
+            s33 = (1 + (τ/(eps+s33))^2) * 3
 
             invsum = 1/(s11+s22+s33)
 
@@ -423,6 +423,237 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
                                                        Fm[i, j, k, n] - Fm[i, j, k-1, n])
             @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
         end  
+    end
+    return
+end
+
+function TENO_x(F, Fp, Fm, NV, consts)
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+
+    if i > Nxp+NG+1 || j > Ny+NG || k > Nz+NG || i < 1+NG || j < 1+NG || k < 1+NG
+        return
+    end
+
+    eps::Float64 = consts.TENO5[1]
+    CT::Float64 = consts.TENO5[2]
+    oneSix::Float64 = consts.TENO5[3]
+
+    for n = 1:NV
+        @inbounds V1 = Fp[i-3, j, k, n]
+        @inbounds V2 = Fp[i-2, j, k, n]
+        @inbounds V3 = Fp[i-1, j, k, n]
+        @inbounds V4 = Fp[i,   j, k, n]
+        @inbounds V5 = Fp[i+1, j, k, n]
+        # FP
+        s11 = 13*(V1-2*V2+V3)^2 + 3*(V1-4*V2+3*V3)^2
+        s22 = 13*(V2-2*V3+V4)^2 + 3*(V2-V4)^2
+        s33 = 13*(V3-2*V4+V5)^2 + 3*(3*V3-4*V4+V5)^2
+
+        τ = abs(s11-s33)
+        @fastmath a1 = (1 + τ/(s11+eps))^6
+        @fastmath a2 = (1 + τ/(s22+eps))^6
+        @fastmath a3 = (1 + τ/(s33+eps))^6
+        
+        invsum = 1/(a1+a2+a3)
+        
+        a1 = 1*((a1*invsum)<CT ? 0.0 : 1.0)
+        a2 = 6*((a2*invsum)<CT ? 0.0 : 1.0)
+        a3 = 3*((a3*invsum)<CT ? 0.0 : 1.0)
+        
+        v1 = 2*V1-7*V2+5*V3
+        v2 = -V2-V3+2*V4
+        v3 = -4*V3+5*V4-V5
+        
+        invsum = 1/(a1+a2+a3)
+        
+        fp = V3+oneSix*invsum*(a1*v1+a2*v2+a3*v3)
+
+        @inbounds V1 = Fm[i-2, j, k, n]
+        @inbounds V2 = Fm[i-1, j, k, n]
+        @inbounds V3 = Fm[i,   j, k, n]
+        @inbounds V4 = Fm[i+1, j, k, n]
+        @inbounds V5 = Fm[i+2, j, k, n]
+        # FM
+        s11 = 13*(V5-2*V4+V3)^2 + 3*(V5-4*V4+3*V3)^2
+        s22 = 13*(V2-2*V3+V4)^2 + 3*(V4-V2)^2
+        s33 = 13*(V3-2*V2+V1)^2 + 3*(3*V3-4*V2+V1)^2
+
+        τ = abs(s11-s33)
+        @fastmath a1 = (1 + τ/(s11+eps))^6
+        @fastmath a2 = (1 + τ/(s22+eps))^6
+        @fastmath a3 = (1 + τ/(s33+eps))^6
+        
+        invsum = 1/(a1+a2+a3)
+        
+        a1 = 1*((a1*invsum)<1e-5 ? 0.0 : 1.0)
+        a2 = 6*((a2*invsum)<1e-5 ? 0.0 : 1.0)
+        a3 = 3*((a3*invsum)<1e-5 ? 0.0 : 1.0)
+        
+        v1 = 5*V3-7*V4+2*V5
+        v2 = -V4-V3+2*V2
+        v3 = -4*V3+5*V2-V1
+        
+        invsum = 1/(a1+a2+a3)
+        
+        fm = V3+oneSix*invsum*(a1*v1+a2*v2+a3*v3)
+        
+        @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
+    end
+    return
+end
+
+function TENO_y(F, Fp, Fm, NV, consts)
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+
+    if i > Nxp+NG || j > Ny+NG+1 || k > Nz+NG || i < 1+NG || j < 1+NG || k < 1+NG
+        return
+    end
+
+    eps::Float64 = consts.TENO5[1]
+    CT::Float64 = consts.TENO5[2]
+    oneSix::Float64 = consts.TENO5[3]
+
+    for n = 1:NV
+        @inbounds V1 = Fp[i, j-3, k, n]
+        @inbounds V2 = Fp[i, j-2, k, n]
+        @inbounds V3 = Fp[i, j-1, k, n]
+        @inbounds V4 = Fp[i, j,   k, n]
+        @inbounds V5 = Fp[i, j+1, k, n]
+        # FP
+        s11 = 13*(V1-2*V2+V3)^2 + 3*(V1-4*V2+3*V3)^2
+        s22 = 13*(V2-2*V3+V4)^2 + 3*(V2-V4)^2
+        s33 = 13*(V3-2*V4+V5)^2 + 3*(3*V3-4*V4+V5)^2
+
+        τ = abs(s11-s33)
+        @fastmath a1 = (1 + τ/(s11+eps))^6
+        @fastmath a2 = (1 + τ/(s22+eps))^6
+        @fastmath a3 = (1 + τ/(s33+eps))^6
+        
+        invsum = 1/(a1+a2+a3)
+        
+        a1 = 1*((a1*invsum)<CT ? 0.0 : 1.0)
+        a2 = 6*((a2*invsum)<CT ? 0.0 : 1.0)
+        a3 = 3*((a3*invsum)<CT ? 0.0 : 1.0)
+        
+        v1 = 2*V1-7*V2+5*V3
+        v2 = -V2-V3+2*V4
+        v3 = -4*V3+5*V4-V5
+        
+        invsum = 1/(a1+a2+a3)
+        
+        fp = V3+oneSix*invsum*(a1*v1+a2*v2+a3*v3)
+
+        @inbounds V1 = Fm[i, j-2, k, n]
+        @inbounds V2 = Fm[i, j-1, k, n]
+        @inbounds V3 = Fm[i, j,   k, n]
+        @inbounds V4 = Fm[i, j+1, k, n]
+        @inbounds V5 = Fm[i, j+2, k, n]
+        # FM
+        s11 = 13*(V5-2*V4+V3)^2 + 3*(V5-4*V4+3*V3)^2
+        s22 = 13*(V2-2*V3+V4)^2 + 3*(V4-V2)^2
+        s33 = 13*(V3-2*V2+V1)^2 + 3*(3*V3-4*V2+V1)^2
+
+        τ = abs(s11-s33)
+        @fastmath a1 = (1 + τ/(s11+eps))^6
+        @fastmath a2 = (1 + τ/(s22+eps))^6
+        @fastmath a3 = (1 + τ/(s33+eps))^6
+        
+        invsum = 1/(a1+a2+a3)
+        
+        a1 = 1*((a1*invsum)<1e-5 ? 0.0 : 1.0)
+        a2 = 6*((a2*invsum)<1e-5 ? 0.0 : 1.0)
+        a3 = 3*((a3*invsum)<1e-5 ? 0.0 : 1.0)
+        
+        v1 = 5*V3-7*V4+2*V5
+        v2 = -V4-V3+2*V2
+        v3 = -4*V3+5*V2-V1
+        
+        invsum = 1/(a1+a2+a3)
+        
+        fm = V3+oneSix*invsum*(a1*v1+a2*v2+a3*v3)
+        
+        @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
+    end
+    return
+end
+
+function TENO_z(F, Fp, Fm, NV, consts)
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+
+    if i > Nxp+NG || j > Ny+NG || k > Nz+NG+1 || i < 1+NG || j < 1+NG || k < 1+NG
+        return
+    end
+
+    eps::Float64 = consts.TENO5[1]
+    CT::Float64 = consts.TENO5[2]
+    oneSix::Float64 = consts.TENO5[3]
+
+    for n = 1:NV
+        @inbounds V1 = Fp[i, j, k-3, n]
+        @inbounds V2 = Fp[i, j, k-2, n]
+        @inbounds V3 = Fp[i, j, k-1, n]
+        @inbounds V4 = Fp[i, j, k,   n]
+        @inbounds V5 = Fp[i, j, k+1, n]
+        # FP
+        s11 = 13*(V1-2*V2+V3)^2 + 3*(V1-4*V2+3*V3)^2
+        s22 = 13*(V2-2*V3+V4)^2 + 3*(V2-V4)^2
+        s33 = 13*(V3-2*V4+V5)^2 + 3*(3*V3-4*V4+V5)^2
+
+        τ = abs(s11-s33)
+        @fastmath a1 = (1 + τ/(s11+eps))^6
+        @fastmath a2 = (1 + τ/(s22+eps))^6
+        @fastmath a3 = (1 + τ/(s33+eps))^6
+        
+        invsum = 1/(a1+a2+a3)
+        
+        a1 = 1*((a1*invsum)<CT ? 0.0 : 1.0)
+        a2 = 6*((a2*invsum)<CT ? 0.0 : 1.0)
+        a3 = 3*((a3*invsum)<CT ? 0.0 : 1.0)
+        
+        v1 = 2*V1-7*V2+5*V3
+        v2 = -V2-V3+2*V4
+        v3 = -4*V3+5*V4-V5
+        
+        invsum = 1/(a1+a2+a3)
+        
+        fp = V3+oneSix*invsum*(a1*v1+a2*v2+a3*v3)
+
+        @inbounds V1 = Fm[i, j, k-2, n]
+        @inbounds V2 = Fm[i, j, k-1, n]
+        @inbounds V3 = Fm[i, j, k,   n]
+        @inbounds V4 = Fm[i, j, k+1, n]
+        @inbounds V5 = Fm[i, j, k+2, n]
+        # FM
+        s11 = 13*(V5-2*V4+V3)^2 + 3*(V5-4*V4+3*V3)^2
+        s22 = 13*(V2-2*V3+V4)^2 + 3*(V4-V2)^2
+        s33 = 13*(V3-2*V2+V1)^2 + 3*(3*V3-4*V2+V1)^2
+
+        τ = abs(s11-s33)
+        @fastmath a1 = (1 + τ/(s11+eps))^6
+        @fastmath a2 = (1 + τ/(s22+eps))^6
+        @fastmath a3 = (1 + τ/(s33+eps))^6
+        
+        invsum = 1/(a1+a2+a3)
+        
+        a1 = 1*((a1*invsum)<1e-5 ? 0.0 : 1.0)
+        a2 = 6*((a2*invsum)<1e-5 ? 0.0 : 1.0)
+        a3 = 3*((a3*invsum)<1e-5 ? 0.0 : 1.0)
+        
+        v1 = 5*V3-7*V4+2*V5
+        v2 = -V4-V3+2*V2
+        v3 = -4*V3+5*V2-V1
+        
+        invsum = 1/(a1+a2+a3)
+        
+        fm = V3+oneSix*invsum*(a1*v1+a2*v2+a3*v3)
+        
+        @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
     end
     return
 end

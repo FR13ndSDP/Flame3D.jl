@@ -69,7 +69,8 @@ struct constants{T, VT}
     Cp::T
     CD4::VT
     Hybrid::VT
-    WENO5::VT # eps, tmp1, tmp2
+    WENO5::VT # eps, 13/12, 1/6
+    TENO5::VT # eps, CT, 1/6
     UP7::VT
 end
 
@@ -95,10 +96,11 @@ const thermo = initThermo(mech) # now only NASA7
 const react = initReact(mech)
 const consts = constants(287.0, 1.4, 1.458e-6, 110.4, 0.72, 1004.5, 
          CuArray([2/3, 1/12]),
-         CuArray([1e-8, 0.2]),
+         CuArray([1e-4, 0.2]),
          CuArray([1e-14, 13/12, 1/6]),
+         CuArray([1e-40, 1e-5, 1/6]),
          CuArray([-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420]))
 
-@time time_step(rank, comm, thermo, consts, react)
+CUDA.@time time_step(rank, comm, thermo, consts, react)
 
 MPI.Finalize()
