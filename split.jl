@@ -79,45 +79,21 @@ function split(ρi, Q, Fp, Fm, Ax, Ay, Az)
         return
     end
 
-    @inbounds ρ = Q[i, j, k, 1]
     @inbounds u = Q[i, j, k, 2]
     @inbounds v = Q[i, j, k, 3]
     @inbounds w = Q[i, j, k, 4]
-    @inbounds p = Q[i, j, k, 5]
-    @inbounds ei = Q[i, j, k, 7]
     @inbounds A1 = Ax[i, j, k]
     @inbounds A2 = Ay[i, j, k]
     @inbounds A3 = Az[i, j, k]
 
-    γ = p/ei + 1
-    @fastmath c = sqrt(γ*p/ρ)
-    # γ = 1.4
-
     @fastmath ss = sqrt(A1*A1 + A2*A2 + A3*A3)
-    E1 = A1*u + A2*v + A3*w
-    E2 = E1 - c*ss
-    E3 = E1 + c*ss
-
-    ss = 1/ss
-
-    A1 *= ss
-    A2 *= ss
-    A3 *= ss
-
-    E1P = (E1 + abs(E1)) * 0.5
-    E2P = (E2 + abs(E2)) * 0.5
-    E3P = (E3 + abs(E3)) * 0.5
-
-    E1M = E1 - E1P
-    E2M = E2 - E2P
-    E3M = E3 - E3P
-
-    tmp1 = 1/(2 * γ)
-    tmp2 = 2 * (γ - 1)
+    un = A1*u + A2*v + A3*w
+    Ep = 0.5 * (un + abs(un))
+    Em = 0.5 * (un - abs(un))
 
     for n = 1:Nspecs
-        @inbounds Fp[i, j, k, n] = tmp1 * (tmp2 * E1P + E2P + E3P) * ρi[i, j, k, n]
-        @inbounds Fm[i, j, k, n] = tmp1 * (tmp2 * E1M + E2M + E3M) * ρi[i, j, k, n]
+        @inbounds Fp[i, j, k, n] = Ep * ρi[i, j, k, n]
+        @inbounds Fm[i, j, k, n] = Em * ρi[i, j, k, n]
     end
     return
 end
