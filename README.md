@@ -5,7 +5,8 @@ Code for compressible flow simulation with neural network for real gas and chemi
 
 - `CUDA.jl` and `MPI.jl` for multi-GPU parallelization
 - 3D, with high order scheme (up to 7th order)
-- `Lux.jl` trained model combined with `Cantera`
+- `Lux.jl` trained model combined with `Cantera` for chemical reaction prediction
+- LES modeling for complex flows
 
 ## Usage
 
