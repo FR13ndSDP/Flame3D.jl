@@ -24,6 +24,8 @@ Or to use multi-GPU, make `Nprocs=<nprocs>` and run it with `mpiexecjl -n <nproc
 
 For more details, checkout the comments in `run.jl`.
 
+For post-processing, a sample code is provided in `Utils/plot.jl`. It can be used to visualize and analyze the result. Alternatively, `Paraview` or `Makie.jl` can also be used for 3D rendering. 
+
 ## Validation cases
 
 ### Taylor Green Vortex

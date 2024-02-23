@@ -65,7 +65,7 @@ function time_step(rank, comm, thermo, consts, react)
     # lo_ng = rank*Nxp+NG+1
     # hi_ng = (rank+1)*Nxp+NG
 
-    if restart[1:3] == "chk"
+    if restart[end-2:end] == ".h5"
         if rank == 0
             printstyled("Restart\n", color=:yellow)
         end
@@ -351,7 +351,8 @@ function time_step(rank, comm, thermo, consts, react)
             copyto!(ϕ_h, ϕ)
 
             # visualization file, in Float32
-            fname::String = string("plt", rank, "-", tt)
+            mkpath("./PLT")
+            fname::String = string("./PLT/plt", rank, "-", tt)
 
             rho = convert(Array{Float32, 3}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1])
             u =   convert(Array{Float32, 3}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2])
@@ -390,7 +391,8 @@ function time_step(rank, comm, thermo, consts, react)
 
             # restart file, in Float64
             if chk_out
-                chkname::String = string("chk", tt, ".h5")
+                mkpath("./CHK")
+                chkname::String = string("./CHK/chk", tt, ".h5")
                 h5open(chkname, "w", comm) do f
                     dset1 = create_dataset(
                         f,
