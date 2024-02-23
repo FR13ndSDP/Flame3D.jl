@@ -148,8 +148,8 @@ function time_step(rank, comm, thermo, consts, react)
     λ = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
     D = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs)
     
-    Un = copy(U)
-    ρn = copy(ρi)
+    Un = similar(U)
+    ρn = similar(ρi)
 
     # MPI buffer 
     Qsbuf_h = zeros(Float64, NG, Ny_tot, Nz_tot, Nprim)
@@ -168,13 +168,11 @@ function time_step(rank, comm, thermo, consts, react)
 
     # initial
     @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock prim2c(U, Q)
-    fillGhost(Q, U, ρi, Yi, thermo, rank)
-    fillSpec(ρi)
     exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
     exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
     MPI.Barrier(comm)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
-    @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock prim2c(U, Q)
+    fillGhost(Q, U, ρi, Yi, thermo, rank)
+    fillSpec(ρi, Yi)
 
     if reaction
         if Luxmodel
@@ -231,31 +229,31 @@ function time_step(rank, comm, thermo, consts, react)
         if reaction
             # Reaction Step
             if Luxmodel
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
                 @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, Yi, lambda, inputs_mean, inputs_std)
                 evalModel(Y1, Y2, yt_pred, w1, w2, w3, b1, b2, b3, inputs_norm)
                 @. yt_pred = yt_pred * labels_std + labels_mean
                 @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, thermo)
                 @cuda fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
-                fillGhost(Q, U, ρi, Yi, thermo, rank)
-                fillSpec(ρi)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
                 exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
                 MPI.Barrier(comm)
-                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
+                fillGhost(Q, U, ρi, Yi, thermo, rank)
+                fillSpec(ρi, Yi)
             elseif Cantera
                 # CPU - cantera
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
                 @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock pre_input_cpu(inputs, Q, Yi)
                 copyto!(inputs_h, inputs)
                 eval_cpu(inputs_h, dt2)
                 copyto!(inputs, inputs_h)
                 @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock post_eval_cpu(inputs, U, Q, ρi, thermo)
                 @cuda fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
-                fillGhost(Q, U, ρi, Yi, thermo, rank)
-                fillSpec(ρi)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
                 exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
                 MPI.Barrier(comm)
-                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
+                fillGhost(Q, U, ρi, Yi, thermo, rank)
+                fillSpec(ρi, Yi)
             else
                 # GPU
                 for _ = 1:sub_step
@@ -265,12 +263,11 @@ function time_step(rank, comm, thermo, consts, react)
                         @cuda fastmath=true threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2/sub_step, thermo, react)
                     end
                 end
-                fillGhost(Q, U, ρi, Yi, thermo, rank)
-                fillSpec(ρi)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
                 exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
                 MPI.Barrier(comm)
-                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
+                fillGhost(Q, U, ρi, Yi, thermo, rank)
+                fillSpec(ρi, Yi)
             end
         end
 
@@ -281,7 +278,7 @@ function time_step(rank, comm, thermo, consts, react)
                 copyto!(ρn, ρi)
             end
 
-            @cuda fastmath=true threads=nthreads blocks=nblock mixture(Q, Yi, λ, μ, D, thermo)
+            @cuda fastmath=true threads=nthreads blocks=nblock mixture(Q, ρi, Yi, λ, μ, D, thermo)
             @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q)
             specAdvance(ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fhx, Fhy, Fhz, thermo, consts)
             flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fhx, Fhy, Fhz, consts)
@@ -295,42 +292,41 @@ function time_step(rank, comm, thermo, consts, react)
             end
 
             @cuda fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
-            fillGhost(Q, U, ρi, Yi, thermo, rank)
-            fillSpec(ρi)
             exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
             exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
             MPI.Barrier(comm)
-            @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
+            fillGhost(Q, U, ρi, Yi, thermo, rank)
+            fillSpec(ρi, Yi)
         end
 
         if reaction
             # Reaction Step
             if Luxmodel
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
                 @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock pre_input(inputs, inputs_norm, Q, Yi, lambda, inputs_mean, inputs_std)
                 evalModel(Y1, Y2, yt_pred, w1, w2, w3, b1, b2, b3, inputs_norm)
                 @. yt_pred = yt_pred * labels_std + labels_mean
                 @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock post_predict(yt_pred, inputs, U, Q, ρi, dt2, lambda, thermo)
                 @cuda fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
-                fillGhost(Q, U, ρi, Yi, thermo, rank)
-                fillSpec(ρi)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
                 exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
                 MPI.Barrier(comm)
-                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
+                fillGhost(Q, U, ρi, Yi, thermo, rank)
+                fillSpec(ρi, Yi)
             elseif Cantera
                 # CPU - cantera
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
                 @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock pre_input_cpu(inputs, Q, Yi)
                 copyto!(inputs_h, inputs)
                 eval_cpu(inputs_h, dt2)
                 copyto!(inputs, inputs_h)
                 @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock post_eval_cpu(inputs, U, Q, ρi, thermo)
                 @cuda fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
-                fillGhost(Q, U, ρi, Yi, thermo, rank)
-                fillSpec(ρi)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
                 exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
                 MPI.Barrier(comm)
-                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
+                fillGhost(Q, U, ρi, Yi, thermo, rank)
+                fillSpec(ρi, Yi)
             else
                 # GPU
                 for _ = 1:sub_step
@@ -340,17 +336,16 @@ function time_step(rank, comm, thermo, consts, react)
                         @cuda fastmath=true threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2/sub_step, thermo, react)
                     end
                 end
-                fillGhost(Q, U, ρi, Yi, thermo, rank)
-                fillSpec(ρi)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
                 exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
                 MPI.Barrier(comm)
-                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
+                fillGhost(Q, U, ρi, Yi, thermo, rank)
+                fillSpec(ρi, Yi)
             end
         end
 
         # Output
-        if tt % step_out == 0 || abs(Time-dt*tt) <= 1e-15
+        if tt % step_out == 0 || abs(Time-dt*tt) < dt
             copyto!(Q_h, Q)
             copyto!(ρi_h, ρi)
             copyto!(ϕ_h, ϕ)

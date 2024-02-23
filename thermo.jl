@@ -363,7 +363,7 @@ end
     return λ, μ
 end
 
-function mixture(Q, Yi, λ, μ, D, thermo)
+function mixture(Q, ρi, Yi, λ, μ, D, thermo)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -380,6 +380,12 @@ function mixture(Q, Yi, λ, μ, D, thermo)
     @inbounds P = Q[i, j, k, 5]
 
     Y1 = @inbounds @view Yi[i, j, k, :]
+
+    @inbounds ρinv::Float64 = 1/max(Q[i, j, k, 1], CUDA.eps(Float64))
+    for n = 1:Nspecs
+        @inbounds Y1[n] = max(ρi[i, j, k, n]*ρinv, 0.0)
+    end
+
     diff = @inbounds @view D[i, j, k, :]
     Y2X(Y1, X1, thermo)
 
