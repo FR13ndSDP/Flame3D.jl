@@ -3,34 +3,39 @@ include("solver.jl")
 using PyCall
 import Adapt
 
-# load mesh info
-const NG = h5read("metrics.h5", "NG")
-const Nx = h5read("metrics.h5", "Nx")
-const Ny = h5read("metrics.h5", "Ny")
-const Nz = h5read("metrics.h5", "Nz")
+# LES
+const LES_smag::Bool = false       # if use Smagorinsky model
+const LES_wale::Bool = false        # if use WALE model
 
-# global variables, do not change name
-const LES_smag::Bool = false       # if use LES model
-const LES_wale::Bool = false       # if use LES model
+# reaction
 const reaction::Bool = false       # if reaction is activated
 const Luxmodel::Bool = false       # if use Neural network model
 const Cantera::Bool = false        # if use Cantera
 const stiff::Bool = true           # if reaction is stiff
 const sub_step::Int64 = 1          # reaction substep
 const T_criteria::Float64 = 500.0  # reaction temperature criteria 
-const dt::Float64 = 1e-8           # dt for simulation, make CFL < 1
-const Time::Float64 = 1e-4         # total simulation time
-const step_out::Int64 = 100        # how many steps to save result
-const chk_out::Bool = true         # if checkpoint is made on save
-const chk_compress_level = 3       # checkpoint file compression level 0-3, 0 for no compression
-const restart::String = "none"     # restart use checkpoint, file name "chk**.h5"
+const Nspecs::Int64 = 9            # number of species
+const Nreacs::Int64 = 21           # number of reactions, consistent with mech
+const mech::String = "./NN/H2/LiDryer.yaml" # reaction mechanism file in cantera format
 
-const Nspecs::Int64 = 9 # number of species
+# flow control
+const Nprocs::Int64 = 1              # number of GPUs
+const dt::Float64 = 1e-8             # dt for simulation, make CFL < 1
+const Time::Float64 = 5e-5           # total simulation time
+const maxStep::Int64 = 10000         # max steps to run
+const step_out::Int64 = 500          # how many steps to save result
+const chk_out::Bool = true           # if checkpoint is made on save
+const chk_compress_level::Int64 = 3  # checkpoint file compression level 0-3, 0 for no compression
+const restart::String = "none"     # restart use checkpoint, file name "*.h5"
+
+# do not change 
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
 const Nprim::Int64 = 7 # ρ u v w p T ei
-const Nreacs::Int64 = 21 # number of reactions, consistent with mech
-const mech::String = "./NN/H2/LiDryer.yaml" # reaction mechanism file in cantera format
-const Nprocs::Int64 = 1 # number of GPUs
+# load mesh info
+const NG::Int64 = h5read("metrics.h5", "NG")
+const Nx::Int64 = h5read("metrics.h5", "Nx")
+const Ny::Int64 = h5read("metrics.h5", "Ny")
+const Nz::Int64 = h5read("metrics.h5", "Nz")
 const Nxp::Int64 = Nx ÷ Nprocs # make sure it is integer
 const nthreads::Tuple{Int32, Int32, Int32} = (4, 8, 8)
 const nblock::Tuple{Int32, Int32, Int32} = (cld((Nxp+2*NG), 4), 

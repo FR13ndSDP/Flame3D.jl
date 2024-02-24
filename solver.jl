@@ -212,6 +212,9 @@ function time_step(rank, comm, thermo, consts, react)
     end
 
     for tt = 1:ceil(Int, Time/dt)
+        if tt*dt > Time || tt > maxStep
+            return
+        end
         if tt % 10 == 0
             if rank == 0
                 printstyled("Step: ", color=:cyan)
@@ -345,7 +348,7 @@ function time_step(rank, comm, thermo, consts, react)
         end
 
         # Output
-        if tt % step_out == 0 || abs(Time-dt*tt) < dt
+        if tt % step_out == 0 || abs(Time-dt*tt) < dt || tt == maxStep
             copyto!(Q_h, Q)
             copyto!(ρi_h, ρi)
             copyto!(ϕ_h, ϕ)
