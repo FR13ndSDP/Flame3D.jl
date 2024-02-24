@@ -10,6 +10,8 @@ const Ny = h5read("metrics.h5", "Ny")
 const Nz = h5read("metrics.h5", "Nz")
 
 # global variables, do not change name
+const LES_smag::Bool = false       # if use LES model
+const LES_wale::Bool = false       # if use LES model
 const reaction::Bool = false       # if reaction is activated
 const Luxmodel::Bool = false       # if use Neural network model
 const Cantera::Bool = false        # if use Cantera

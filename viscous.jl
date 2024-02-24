@@ -69,16 +69,51 @@ function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
 
     div = dudx + dvdy + dwdz
 
-    if LES
-        Cs::Float64 = 0.2
-        Prt::Float64 = 0.9
+    if LES_smag
+        Cs = 0.1
+        Prt = 0.9
+        @inbounds ρ = 0.5 * (Q[i, j, k, 1] + Q[i-1, j, k, 1])
+        @inbounds p = 0.5 * (Q[i, j, k, 5] + Q[i-1, j, k, 5])
+        @inbounds ei = 0.5 * (Q[i, j, k, 7] + Q[i-1, j, k, 7])
+        @inbounds T = 0.5 * (Q[i, j, k, 6] + Q[i-1, j, k, 6])
+
         @fastmath Sijmag = sqrt(2*(dudx^2 + dvdy^2 + dwdz^2 + 
                                2*((0.5*(dudy+dvdx))^2 + (0.5*(dudz+dwdx))^2 +(0.5*(dvdz+dwdy))^2))) # √2|sij|
       
-        @inbounds @fastmath μt = Q[i, j, k, 1] * (Cs/Jac^(1/3))^2 * Sijmag #ρ(csΔ)^2 * Sijmag
+        @fastmath μt = ρ * (Cs/Jac^(1/3))^2 * Sijmag #ρ(csΔ)^2 * Sijmag
       
-        @inbounds γ = Q[i, j, k, 5]/Q[i, j, k, 7] + 1 # γ = p/ei +1
-        @inbounds Rg = Q[i, j, k, 5]/(Q[i, j, k, 1] * Q[i, j, k, 6]) # Rg = p/(ρT)
+        γ = p/ei + 1 # γ = p/ei +1
+        Rg = p/(ρ*T) # Rg = p/(ρT)
+        λt = Rg * γ/(γ-1) * μt / Prt # cp = Rg*γ/(γ-1)
+        μi += μt
+        λi += λt
+    elseif LES_wale
+        Cw = 0.325
+        Prt = 0.9
+        @inbounds ρ = 0.5 * (Q[i, j, k, 1] + Q[i-1, j, k, 1])
+        @inbounds p = 0.5 * (Q[i, j, k, 5] + Q[i-1, j, k, 5])
+        @inbounds ei = 0.5 * (Q[i, j, k, 7] + Q[i-1, j, k, 7])
+        @inbounds T = 0.5 * (Q[i, j, k, 6] + Q[i-1, j, k, 6])
+
+        @fastmath S = sqrt(dudx^2 + dvdy^2 + dwdz^2 + 
+        2*((0.5*(dudy+dvdx))^2 + (0.5*(dudz+dwdx))^2 +(0.5*(dvdz+dwdy))^2))
+
+        Sd11 = dudx*dudx + dudy*dvdx + dudz*dwdx
+        Sd22 = dvdx*dudy + dvdy*dvdy + dvdz*dwdy
+        Sd33 = dwdx*dudz + dwdy*dvdz + dwdz*dwdz
+        trSd = 1/3*(Sd11 + Sd22 + Sd33)
+        Sd11 -= trSd
+        Sd22 -= trSd
+        Sd33 -= trSd
+        Sd12 = 0.5*(dudx*dvdx + dvdx*dvdy + dwdx*dvdz + dudy*dudx + dvdy*dudy + dwdy*dudz)
+        Sd13 = 0.5*(dudx*dwdx + dvdx*dwdy + dwdx*dwdz + dudz*dudx + dvdz*dudy + dwdz*dudz)
+        Sd23 = 0.5*(dudy*dwdx + dvdy*dwdy + dwdy*dwdz + dudz*dvdx + dvdz*dvdy + dwdz*dvdz)
+        @fastmath Sd = sqrt(Sd11^2 + Sd22^2 + Sd33^2 + 2 * (Sd12^2 + Sd13^2 + Sd23^2))
+        @fastmath D = Sd^3/(S^5 + Sd^2.5)
+        @fastmath μt = ρ * (Cw/Jac^(1/3))^2 * D
+      
+        γ = p/ei + 1 # γ = p/ei +1
+        Rg = p/(ρ*T) # Rg = p/(ρT)
         λt = Rg * γ/(γ-1) * μt / Prt # cp = Rg*γ/(γ-1)
         μi += μt
         λi += λt
@@ -173,16 +208,51 @@ function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
 
     div = dudx + dvdy + dwdz
 
-    if LES
-        Cs::Float64 = 0.2
-        Prt::Float64 = 0.9
+    if LES_smag
+        Cs = 0.1
+        Prt = 0.9
+        @inbounds ρ = 0.5 * (Q[i, j, k, 1] + Q[i-1, j, k, 1])
+        @inbounds p = 0.5 * (Q[i, j, k, 5] + Q[i-1, j, k, 5])
+        @inbounds ei = 0.5 * (Q[i, j, k, 7] + Q[i-1, j, k, 7])
+        @inbounds T = 0.5 * (Q[i, j, k, 6] + Q[i-1, j, k, 6])
+
         @fastmath Sijmag = sqrt(2*(dudx^2 + dvdy^2 + dwdz^2 + 
                                2*((0.5*(dudy+dvdx))^2 + (0.5*(dudz+dwdx))^2 +(0.5*(dvdz+dwdy))^2))) # √2|sij|
       
-        @inbounds @fastmath μt = Q[i, j, k, 1] * (Cs/Jac^(1/3))^2 * Sijmag #ρ(csΔ)^2 * Sijmag
+        @fastmath μt = ρ * (Cs/Jac^(1/3))^2 * Sijmag #ρ(csΔ)^2 * Sijmag
       
-        @inbounds γ = Q[i, j, k, 5]/Q[i, j, k, 7] + 1 # γ = p/ei +1
-        @inbounds Rg = Q[i, j, k, 5]/(Q[i, j, k, 1] * Q[i, j, k, 6]) # Rg = p/(ρT)
+        γ = p/ei + 1 # γ = p/ei +1
+        Rg = p/(ρ*T) # Rg = p/(ρT)
+        λt = Rg * γ/(γ-1) * μt / Prt # cp = Rg*γ/(γ-1)
+        μi += μt
+        λi += λt
+    elseif LES_wale
+        Cw = 0.325
+        Prt = 0.9
+        @inbounds ρ = 0.5 * (Q[i, j, k, 1] + Q[i-1, j, k, 1])
+        @inbounds p = 0.5 * (Q[i, j, k, 5] + Q[i-1, j, k, 5])
+        @inbounds ei = 0.5 * (Q[i, j, k, 7] + Q[i-1, j, k, 7])
+        @inbounds T = 0.5 * (Q[i, j, k, 6] + Q[i-1, j, k, 6])
+
+        @fastmath S = sqrt(dudx^2 + dvdy^2 + dwdz^2 + 
+        2*((0.5*(dudy+dvdx))^2 + (0.5*(dudz+dwdx))^2 +(0.5*(dvdz+dwdy))^2))
+
+        Sd11 = dudx*dudx + dudy*dvdx + dudz*dwdx
+        Sd22 = dvdx*dudy + dvdy*dvdy + dvdz*dwdy
+        Sd33 = dwdx*dudz + dwdy*dvdz + dwdz*dwdz
+        trSd = 1/3*(Sd11 + Sd22 + Sd33)
+        Sd11 -= trSd
+        Sd22 -= trSd
+        Sd33 -= trSd
+        Sd12 = 0.5*(dudx*dvdx + dvdx*dvdy + dwdx*dvdz + dudy*dudx + dvdy*dudy + dwdy*dudz)
+        Sd13 = 0.5*(dudx*dwdx + dvdx*dwdy + dwdx*dwdz + dudz*dudx + dvdz*dudy + dwdz*dudz)
+        Sd23 = 0.5*(dudy*dwdx + dvdy*dwdy + dwdy*dwdz + dudz*dvdx + dvdz*dvdy + dwdz*dvdz)
+        @fastmath Sd = sqrt(Sd11^2 + Sd22^2 + Sd33^2 + 2 * (Sd12^2 + Sd13^2 + Sd23^2))
+        @fastmath D = Sd^3/(S^5 + Sd^2.5)
+        @fastmath μt = ρ * (Cw/Jac^(1/3))^2 * D
+      
+        γ = p/ei + 1 # γ = p/ei +1
+        Rg = p/(ρ*T) # Rg = p/(ρT)
         λt = Rg * γ/(γ-1) * μt / Prt # cp = Rg*γ/(γ-1)
         μi += μt
         λi += λt
@@ -277,16 +347,51 @@ function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
 
     div = dudx + dvdy + dwdz
 
-    if LES
-        Cs::Float64 = 0.2
-        Prt::Float64 = 0.9
+    if LES_smag
+        Cs = 0.1
+        Prt = 0.9
+        @inbounds ρ = 0.5 * (Q[i, j, k, 1] + Q[i-1, j, k, 1])
+        @inbounds p = 0.5 * (Q[i, j, k, 5] + Q[i-1, j, k, 5])
+        @inbounds ei = 0.5 * (Q[i, j, k, 7] + Q[i-1, j, k, 7])
+        @inbounds T = 0.5 * (Q[i, j, k, 6] + Q[i-1, j, k, 6])
+
         @fastmath Sijmag = sqrt(2*(dudx^2 + dvdy^2 + dwdz^2 + 
                                2*((0.5*(dudy+dvdx))^2 + (0.5*(dudz+dwdx))^2 +(0.5*(dvdz+dwdy))^2))) # √2|sij|
       
-        @inbounds @fastmath μt = Q[i, j, k, 1] * (Cs/Jac^(1/3))^2 * Sijmag #ρ(csΔ)^2 * Sijmag
+        @fastmath μt = ρ * (Cs/Jac^(1/3))^2 * Sijmag #ρ(csΔ)^2 * Sijmag
       
-        @inbounds γ = Q[i, j, k, 5]/Q[i, j, k, 7] + 1 # γ = p/ei +1
-        @inbounds Rg = Q[i, j, k, 5]/(Q[i, j, k, 1] * Q[i, j, k, 6]) # Rg = p/(ρT)
+        γ = p/ei + 1 # γ = p/ei +1
+        Rg = p/(ρ*T) # Rg = p/(ρT)
+        λt = Rg * γ/(γ-1) * μt / Prt # cp = Rg*γ/(γ-1)
+        μi += μt
+        λi += λt
+    elseif LES_wale
+        Cw = 0.325
+        Prt = 0.9
+        @inbounds ρ = 0.5 * (Q[i, j, k, 1] + Q[i-1, j, k, 1])
+        @inbounds p = 0.5 * (Q[i, j, k, 5] + Q[i-1, j, k, 5])
+        @inbounds ei = 0.5 * (Q[i, j, k, 7] + Q[i-1, j, k, 7])
+        @inbounds T = 0.5 * (Q[i, j, k, 6] + Q[i-1, j, k, 6])
+
+        @fastmath S = sqrt(dudx^2 + dvdy^2 + dwdz^2 + 
+        2*((0.5*(dudy+dvdx))^2 + (0.5*(dudz+dwdx))^2 +(0.5*(dvdz+dwdy))^2))
+
+        Sd11 = dudx*dudx + dudy*dvdx + dudz*dwdx
+        Sd22 = dvdx*dudy + dvdy*dvdy + dvdz*dwdy
+        Sd33 = dwdx*dudz + dwdy*dvdz + dwdz*dwdz
+        trSd = 1/3*(Sd11 + Sd22 + Sd33)
+        Sd11 -= trSd
+        Sd22 -= trSd
+        Sd33 -= trSd
+        Sd12 = 0.5*(dudx*dvdx + dvdx*dvdy + dwdx*dvdz + dudy*dudx + dvdy*dudy + dwdy*dudz)
+        Sd13 = 0.5*(dudx*dwdx + dvdx*dwdy + dwdx*dwdz + dudz*dudx + dvdz*dudy + dwdz*dudz)
+        Sd23 = 0.5*(dudy*dwdx + dvdy*dwdy + dwdy*dwdz + dudz*dvdx + dvdz*dvdy + dwdz*dvdz)
+        @fastmath Sd = sqrt(Sd11^2 + Sd22^2 + Sd33^2 + 2 * (Sd12^2 + Sd13^2 + Sd23^2))
+        @fastmath D = Sd^3/(S^5 + Sd^2.5)
+        @fastmath μt = ρ * (Cw/Jac^(1/3))^2 * D
+      
+        γ = p/ei + 1 # γ = p/ei +1
+        Rg = p/(ρ*T) # Rg = p/(ρT)
         λt = Rg * γ/(γ-1) * μt / Prt # cp = Rg*γ/(γ-1)
         μi += μt
         λi += λt

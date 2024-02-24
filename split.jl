@@ -22,7 +22,7 @@ function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
     @fastmath c = sqrt(γ*p/ρ)
     # γ = 1.4
 
-    @fastmath ss = sqrt(A1*A1 + A2*A2 + A3*A3)
+    @fastmath ss = sqrt(A1^2 + A2^2 + A3^2)
     E1 = A1*u + A2*v + A3*w
     E2 = E1 - c*ss
     E3 = E1 + c*ss
@@ -48,10 +48,10 @@ function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
     wc1 = w - c * A3
     wc2 = w + c * A3
 
-    vvc1 = (uc1*uc1 + vc1*vc1 + wc1*wc1) * 0.50
-    vvc2 = (uc2*uc2 + vc2*vc2 + wc2*wc2) * 0.50
-    vv = (γ - 1.0) * (u*u + v*v + w*w)
-    W2 = (3-γ)/(2*(γ-1)) * c * c
+    vvc1 = (uc1^2 + vc1^2 + wc1^2) * 0.50
+    vvc2 = (uc2^2 + vc2^2 + wc2^2) * 0.50
+    vv = (γ - 1.0) * (u^2 + v^2 + w^2)
+    W2 = (3-γ)/(2*(γ-1)) * c^2
 
     tmp1 = ρ/(2 * γ)
     tmp2 = 2 * (γ - 1)
@@ -86,7 +86,6 @@ function split(ρi, Q, Fp, Fm, Ax, Ay, Az)
     @inbounds A2 = Ay[i, j, k]
     @inbounds A3 = Az[i, j, k]
 
-    @fastmath ss = sqrt(A1*A1 + A2*A2 + A3*A3)
     un = A1*u + A2*v + A3*w
     Ep = 0.5 * (un + abs(un))
     Em = 0.5 * (un - abs(un))
