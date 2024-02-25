@@ -49,7 +49,7 @@ function post_predict(yt_pred, inputs, U, Q, ρi, dt, lambda, thermo)
 
         @inbounds U[i+NG, j+NG, k+NG, 5] += InternalEnergy(T1, ρnew, thermo) - InternalEnergy(T, rhoi, thermo)
         for n = 1:Nspecs
-            ρi[i+NG, j+NG, k+NG, n] = ρnew[n]
+            @inbounds rhoi[n] = ρnew[n]
         end
     end
     return
@@ -107,38 +107,45 @@ function post_eval_cpu(yt_pred, U, Q, ρi, thermo)
     ρnew = MVector{Nspecs, Float64}(undef)
 
     for n = 3:Nspecs+2
-        @inbounds Yi = yt_pred[n, i + Nxp*(j-1 + Ny*(k-1))]
-        @inbounds ρnew[n-2] = Yi * ρ
+        @inbounds ρnew[n-2] = ρ * yt_pred[n, i + Nxp*(j-1 + Ny*(k-1))]
     end
 
     @inbounds T1::Float64 = yt_pred[1, i + Nxp*(j-1 + Ny*(k-1))]
     @inbounds U[i+NG, j+NG, k+NG, 5] += InternalEnergy(T1, ρnew, thermo) - InternalEnergy(T, rhoi, thermo)
 
     for n = 1:Nspecs
-        @inbounds ρi[i+NG, j+NG, k+NG, n] = ρnew[n]
+        @inbounds rhoi[n] = ρnew[n]
     end
     
     return
 end
 
-# serial on cpu using cantera: tooooooo slow
+# serial on cpu using cantera: use compiled dynamic library, Openmp parallel
 function eval_cpu(inputs, dt)
-    ct = pyimport("cantera")
-    gas = ct.Solution(mech)
+    # C++ interface
+    nPoints::Int64 = Nxp*Ny*Nz
+    nthreads = 8
+    @ccall "./libchem.so".run(nPoints::Cint, Nspecs::Cint, dt::Cdouble, inputs::Ptr{Cdouble}, mech::Cstring, nthreads::Cint)::Cvoid
 
-    @inbounds @simd for i = 1:Nxp*Ny*Nz
-        T = inputs[1, i]
-        if T > T_criteria
-            P = inputs[2, i]
-            Yi = @view inputs[3:end, i]
-            gas.TPY = T, P, Yi
-            r = ct.IdealGasReactor(gas)
-            sim = ct.ReactorNet([r])
-            sim.advance(dt)
-            inputs[3:end,i] = gas.Y
-            inputs[1, i] = gas.T
-        end
-    end
+    # python interface
+
+    # println("Evaluating on CPU: cantera-python")
+    # ct = pyimport("cantera")
+    # gas = ct.Solution(mech)
+
+    # @inbounds @simd for i = 1:Nxp*Ny*Nz
+    #     T = inputs[1, i]
+    #     if T > T_criteria
+    #         P = inputs[2, i]
+    #         Yi = @view inputs[3:end, i]
+    #         gas.TPY = T, P, Yi
+    #         r = ct.IdealGasReactor(gas)
+    #         sim = ct.ReactorNet([r])
+    #         sim.advance(dt)
+    #         inputs[3:end,i] = gas.Y
+    #         inputs[1, i] = gas.T
+    #     end
+    # end
 end
 
 # GPU chemical reaction

@@ -3,11 +3,13 @@
 
 Code for compressible flow simulation with neural network for real gas and chemical reaction.
 
-- `CUDA.jl` and `MPI.jl` for multi-GPU parallelization
+- Use `CUDA.jl` and `MPI.jl` for multi-GPU parallelization
 - 3D, with high order scheme (up to 7th order)
-- `Lux.jl` trained model combined with `Cantera` for chemical reaction prediction
 - LES modeling for complex flows
-
+- Use `Lux.jl` trained neural network model for chemical reaction prediction
+- GPU kernel for fast chemical reaction evaluation
+- Call `Cantera` to parse the input file, easy to use
+- Call `Cantera` for chemical reaction evaluation, either Python or C++ interface
 ## Usage
 
 Generate mesh and metrics with
