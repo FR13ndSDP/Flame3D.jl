@@ -3,5 +3,6 @@
 *.jld2
 *.txt
 *.h5
+*.so
 .vscode/**
 !/NN/**/luxmodel.jld2
