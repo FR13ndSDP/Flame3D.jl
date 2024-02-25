@@ -10,6 +10,8 @@ Code for compressible flow simulation with neural network for real gas and chemi
 - GPU kernel for fast chemical reaction evaluation
 - Call `Cantera` to parse the input file, easy to use
 - Call `Cantera` for chemical reaction evaluation, either Python or C++ interface
+- Use `HDF5` and `VTK` for I/O
+- Use `matplotlib`, `Makie.jl` or `Paraview` for post-processing
 ## Usage
 
 Generate mesh and metrics with
