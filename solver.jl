@@ -348,7 +348,7 @@ function time_step(rank, comm, thermo, consts, react)
         end
 
         # Output
-        if tt % step_out == 0 || abs(Time-dt*tt) < dt || tt == maxStep
+        if plt_out && (tt % step_plt == 0 || abs(Time-dt*tt) < dt || tt == maxStep)
             copyto!(Q_h, Q)
             copyto!(ρi_h, ρi)
             copyto!(ϕ_h, ϕ)
@@ -376,7 +376,7 @@ function time_step(rank, comm, thermo, consts, react)
             y_ng = convert(Array{Float32, 3}, @view y_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
             z_ng = convert(Array{Float32, 3}, @view z_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
 
-            vtk_grid(fname, x_ng, y_ng, z_ng) do vtk
+            vtk_grid(fname, x_ng, y_ng, z_ng; compress=plt_compress_level) do vtk
                 vtk["rho"] = rho
                 vtk["u"] = u
                 vtk["v"] = v
@@ -391,31 +391,36 @@ function time_step(rank, comm, thermo, consts, react)
                 vtk["YOH"] = YOH
                 vtk["YN2"] = YN2
             end 
+        end
 
-            # restart file, in Float64
-            if chk_out
-                mkpath("./CHK")
-                chkname::String = string("./CHK/chk", tt, ".h5")
-                h5open(chkname, "w", comm) do f
-                    dset1 = create_dataset(
-                        f,
-                        "Q_h",
-                        datatype(Float64),
-                        dataspace(Nx_tot, Ny_tot, Nz_tot, Nprim, Nprocs);
-                        chunk=(Nx_tot, Ny_tot, Nz_tot, Nprim, 1),
-                        dxpl_mpio=:collective
-                    )
-                    dset1[:, :, :, :, rank + 1] = Q_h
-                    dset2 = create_dataset(
-                        f,
-                        "ρi_h",
-                        datatype(Float64),
-                        dataspace(Nx_tot, Ny_tot, Nz_tot, Nspecs, Nprocs);
-                        chunk=(Nx_tot, Ny_tot, Nz_tot, Nspecs, 1),
-                        dxpl_mpio=:collective
-                    )
-                    dset2[:, :, :, :, rank + 1] = ρi_h
-                end
+        # restart file, in Float64
+        if chk_out && (tt % step_chk == 0 || abs(Time-dt*tt) < dt || tt == maxStep)
+            copyto!(Q_h, Q)
+            copyto!(ρi_h, ρi)
+
+            mkpath("./CHK")
+            chkname::String = string("./CHK/chk", tt, ".h5")
+            h5open(chkname, "w", comm) do f
+                dset1 = create_dataset(
+                    f,
+                    "Q_h",
+                    datatype(Float64),
+                    dataspace(Nx_tot, Ny_tot, Nz_tot, Nprim, Nprocs);
+                    chunk=(Nx_tot, Ny_tot, Nz_tot, Nprim, 1),
+                    compress=chk_compress_level,
+                    dxpl_mpio=:collective
+                )
+                dset1[:, :, :, :, rank + 1] = Q_h
+                dset2 = create_dataset(
+                    f,
+                    "ρi_h",
+                    datatype(Float64),
+                    dataspace(Nx_tot, Ny_tot, Nz_tot, Nspecs, Nprocs);
+                    chunk=(Nx_tot, Ny_tot, Nz_tot, Nspecs, 1),
+                    compress=chk_compress_level,
+                    dxpl_mpio=:collective
+                )
+                dset2[:, :, :, :, rank + 1] = ρi_h
             end
         end
     end

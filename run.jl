@@ -23,10 +23,15 @@ const Nprocs::Int64 = 1              # number of GPUs
 const dt::Float64 = 1e-8             # dt for simulation, make CFL < 1
 const Time::Float64 = 5e-5           # total simulation time
 const maxStep::Int64 = 10000         # max steps to run
-const step_out::Int64 = 500          # how many steps to save result
-const chk_out::Bool = true           # if checkpoint is made on save
-const chk_compress_level::Int64 = 3  # checkpoint file compression level 0-3, 0 for no compression
-const restart::String = "none"     # restart use checkpoint, file name "*.h5"
+
+const plt_out::Bool = true           # if output plt file
+const step_plt::Int64 = 500          # how many steps to save plt
+const plt_compress_level::Int64 = 1  # output file compression level 0-9, 0 for no compression
+
+const chk_out::Bool = false           # if checkpoint is made on save
+const step_chk::Int64 = 500          # how many steps to save chk
+const chk_compress_level::Int64 = 1  # checkpoint file compression level 0-9, 0 for no compression
+const restart::String = "none"     # restart use checkpoint, file name "*.h5" or "none"
 
 # do not change 
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
