@@ -11,6 +11,7 @@ const LES_wale::Bool = false        # if use WALE model
 const reaction::Bool = false       # if reaction is activated
 const Luxmodel::Bool = false       # if use Neural network model
 const Cantera::Bool = false        # if use Cantera
+const nthreads_cantera::Int64 = 24 # Cantera openmp threads
 const stiff::Bool = true           # if reaction is stiff
 const sub_step::Int64 = 1          # reaction substep
 const T_criteria::Float64 = 500.0  # reaction temperature criteria 
