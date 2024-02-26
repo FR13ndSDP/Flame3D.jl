@@ -205,6 +205,7 @@ function time_step(rank, comm, thermo, consts, react)
         if Cantera
             # CPU evaluation needed
             inputs_h = zeros(Float64, Nspecs+2, Nxp*Ny*Nz)
+            Mem.pin(inputs_h)
             inputs = CuArray(inputs_h)
         end
 
