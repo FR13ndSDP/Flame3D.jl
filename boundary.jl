@@ -122,7 +122,7 @@ function fill_z(Q, U)
     return
 end
 
-function fill_y_s(ρi, Yi)
+function fill_y_s(ρi)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -134,18 +134,16 @@ function fill_y_s(ρi, Yi)
     if j <= NG+1
         for n = 1:Nspecs
             @inbounds ρi[i, j, k, n] = ρi[i, NG+2, k, n]
-            @inbounds Yi[i, j, k, n] = Yi[i, NG+2, k, n]
         end
     elseif j > Ny+NG-1
         for n = 1:Nspecs
             @inbounds ρi[i, j, k, n] = ρi[i, Ny+NG-1, k, n]
-            @inbounds Yi[i, j, k, n] = Yi[i, Ny+NG-1, k, n]
         end
     end
     return
 end
 
-function fill_z_s(ρi, Yi)
+function fill_z_s(ρi)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -158,18 +156,17 @@ function fill_z_s(ρi, Yi)
     if k <= NG+1
         for n = 1:Nspecs
             @inbounds ρi[i, j, k, n] = ρi[i, j, NG+2, n]
-            @inbounds Yi[i, j, k, n] = Yi[i, j, NG+2, n]
         end
     elseif k >= Nz+NG
         for n = 1:Nspecs
             @inbounds ρi[i, j, k, n] = ρi[i, j, Nz+NG-1, n]
-            @inbounds Yi[i, j, k, n] = Yi[i, j, Nz+NG-1, n]
         end
     end
     return
 end
 
 # special treatment on wall
+# fill Q and U
 function fillGhost(Q, U, ρi, Yi, thermo, rank)
     @cuda threads=nthreads blocks=nblock fill_x(Q, U, ρi, Yi, thermo, rank)
     @cuda threads=nthreads blocks=nblock fill_y(Q, U)
@@ -177,9 +174,10 @@ function fillGhost(Q, U, ρi, Yi, thermo, rank)
 end
 
 # only in two trival directions
-function fillSpec(ρi, Yi)
-    @cuda threads=nthreads blocks=nblock fill_y_s(ρi, Yi)
-    @cuda threads=nthreads blocks=nblock fill_z_s(ρi, Yi)
+# fill ρ only
+function fillSpec(ρi)
+    @cuda threads=nthreads blocks=nblock fill_y_s(ρi)
+    @cuda threads=nthreads blocks=nblock fill_z_s(ρi)
 end
 
 function init(Q, ρi, ρ, u, v, w, P, T, T_ignite, ρ_ig, thermo)

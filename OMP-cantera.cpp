@@ -10,10 +10,10 @@ using namespace Cantera;
 
 
 extern "C" {
-    void run(int, int, double, double*, char*, int);
+    void run(int, int, double, double*, double, char*, int);
 }
 
-void run(int nPoints, int Nspecs, double dt, double* inputs, char* mech, int Nthreads)
+void run(int nPoints, int Nspecs, double dt, double* inputs, double T_criteria, char* mech, int Nthreads)
 {
     omp_set_num_threads(Nthreads);
     int nThreads = Nthreads;
@@ -56,21 +56,25 @@ void run(int nPoints, int Nspecs, double dt, double* inputs, char* mech, int Nth
         ReactorNet& net = *nets[j];
 
         // Set up the problem
-        double* tmp = new double[Nspecs];
-        for (int j=0; j<Nspecs; ++j) {
-            tmp[j] = inputs[i*(Nspecs+2)+j+2];
-        }   
-        gas->setState_TPY(inputs[i*(Nspecs+2)], inputs[i*(Nspecs+2)+1], tmp);
-        reactor.syncState();
-        net.setInitialTime(0.0);
-        net.advance(dt);
-        // reactor.syncState();
-        inputs[i*(Nspecs+2)] = gas->temperature();
-        inputs[i*(Nspecs+2)+1] = gas->pressure();
-        const double* tmp2 = gas->massFractions();
-        for (int j=0; j<Nspecs; j++)
-        {
-            inputs[i*(Nspecs+2)+j+2] = tmp2[j];
+        double T = inputs[i*(Nspecs+2)];
+        if (T >= T_criteria) {
+            double P = inputs[i*(Nspecs+2)+1];
+            double* tmp = new double[Nspecs];
+            for (int j=0; j<Nspecs; ++j) {
+                tmp[j] = inputs[i*(Nspecs+2)+j+2];
+            }   
+            gas->setState_TPY(T, P, tmp);
+            reactor.syncState();
+            net.setInitialTime(0.0);
+            net.advance(dt);
+            // reactor.syncState();
+            inputs[i*(Nspecs+2)] = gas->temperature();
+            inputs[i*(Nspecs+2)+1] = gas->pressure();
+            const double* tmp2 = gas->massFractions();
+            for (int j=0; j<Nspecs; j++)
+            {
+                inputs[i*(Nspecs+2)+j+2] = tmp2[j];
+            }
         }
     }
 

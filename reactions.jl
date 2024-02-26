@@ -72,7 +72,7 @@ function evalModel(Y1, Y2, output, w1, w2, w3, b1, b2, b3, input)
 end
 
 # Collect input for CPU evaluation (1 D)
-function pre_input_cpu(inputs, Q, Y)
+function pre_input_cpu(inputs, Q, ρi)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -81,11 +81,12 @@ function pre_input_cpu(inputs, Q, Y)
         return
     end
 
+    @inbounds ρinv = 1/Q[i+NG, j+NG, k+NG, 1]
     @inbounds inputs[1, i + Nxp*(j-1 + Ny*(k-1))] = Q[i+NG, j+NG, k+NG, 6] # T
     @inbounds inputs[2, i + Nxp*(j-1 + Ny*(k-1))] = Q[i+NG, j+NG, k+NG, 5] # p
 
     for n = 3:Nspecs+2
-        @inbounds inputs[n, i + Nxp*(j-1 + Ny*(k-1))] = Y[i+NG, j+NG, k+NG, n-2]
+        @inbounds inputs[n, i + Nxp*(j-1 + Ny*(k-1))] = ρi[i+NG, j+NG, k+NG, n-2] * ρinv
     end
 
     return
@@ -100,23 +101,41 @@ function post_eval_cpu(yt_pred, U, Q, ρi, thermo)
     if i > Nxp || j > Ny || k > Nz
         return
     end
-    
-    @inbounds ρ = Q[i+NG, j+NG, k+NG, 1]
+
     @inbounds T = Q[i+NG, j+NG, k+NG, 6]
-    @inbounds rhoi = @view ρi[i+NG, j+NG, k+NG, :]
-    ρnew = MVector{Nspecs, Float64}(undef)
+    if T >= T_criteria
+        @inbounds ρ = Q[i+NG, j+NG, k+NG, 1]
+        @inbounds rhoi = @view ρi[i+NG, j+NG, k+NG, :]
+        ρnew = MVector{Nspecs, Float64}(undef)
 
-    for n = 3:Nspecs+2
-        @inbounds ρnew[n-2] = ρ * yt_pred[n, i + Nxp*(j-1 + Ny*(k-1))]
+        for n = 3:Nspecs+2
+            @inbounds ρnew[n-2] = ρ * yt_pred[n, i + Nxp*(j-1 + Ny*(k-1))]
+        end
+
+        @inbounds T1::Float64 = yt_pred[1, i + Nxp*(j-1 + Ny*(k-1))]
+        @inbounds P1::Float64 = yt_pred[2, i + Nxp*(j-1 + Ny*(k-1))]
+        Δei = InternalEnergy(T1, ρnew, thermo) - InternalEnergy(T, rhoi, thermo)
+        @inbounds U[i+NG, j+NG, k+NG, 5] += Δei
+
+        for n = 1:Nspecs
+            @inbounds rhoi[n] = ρnew[n]
+        end
+
+        # update primitives
+        ∑ρ::Float64 = 0.0
+        for n = 1:Nspecs
+            @inbounds rhoi[n] = max(rhoi[n], 0.0)
+            @inbounds ∑ρ += rhoi[n]
+        end
+        for n = 1:Nspecs
+            @inbounds rhoi[n] *= ρ/∑ρ
+        end
+        # @inbounds rho[Nspecs] += ρ - ∑ρ
+
+        @inbounds Q[i+NG, j+NG, k+NG, 5] = P1
+        @inbounds Q[i+NG, j+NG, k+NG, 6] = T1
+        @inbounds Q[i+NG, j+NG, k+NG, 7] += Δei
     end
-
-    @inbounds T1::Float64 = yt_pred[1, i + Nxp*(j-1 + Ny*(k-1))]
-    @inbounds U[i+NG, j+NG, k+NG, 5] += InternalEnergy(T1, ρnew, thermo) - InternalEnergy(T, rhoi, thermo)
-
-    for n = 1:Nspecs
-        @inbounds rhoi[n] = ρnew[n]
-    end
-    
     return
 end
 
@@ -124,8 +143,13 @@ end
 function eval_cpu(inputs, dt)
     # C++ interface
     nPoints::Int64 = Nxp*Ny*Nz
-    nthreads = 8
-    @ccall "./libchem.so".run(nPoints::Cint, Nspecs::Cint, dt::Cdouble, inputs::Ptr{Cdouble}, mech::Cstring, nthreads::Cint)::Cvoid
+    @ccall "./libchem.so".run(nPoints::Cint, 
+                              Nspecs::Cint, 
+                              dt::Cdouble, 
+                              inputs::Ptr{Cdouble}, 
+                              T_criteria::Cdouble, 
+                              mech::Cstring, 
+                              nthreads_cantera::Cint)::Cvoid
 
     # python interface
 

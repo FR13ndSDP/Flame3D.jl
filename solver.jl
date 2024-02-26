@@ -172,7 +172,7 @@ function time_step(rank, comm, thermo, consts, react)
     exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
     MPI.Barrier(comm)
     fillGhost(Q, U, ρi, Yi, thermo, rank)
-    fillSpec(ρi, Yi)
+    fillSpec(ρi)
 
     if reaction
         if Luxmodel
@@ -215,19 +215,6 @@ function time_step(rank, comm, thermo, consts, react)
         if tt*dt > Time || tt > maxStep
             return
         end
-        if tt % 10 == 0
-            if rank == 0
-                printstyled("Step: ", color=:cyan)
-                print("$tt")
-                printstyled("\tTime: ", color=:blue)
-                println("$(tt*dt)")
-                flush(stdout)
-            end
-            if any(isnan, U)
-                printstyled("Oops, NaN detected\n", color=:red)
-                return
-            end
-        end
 
         if reaction
             # Reaction Step
@@ -242,21 +229,19 @@ function time_step(rank, comm, thermo, consts, react)
                 exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
                 MPI.Barrier(comm)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
-                fillSpec(ρi, Yi)
+                fillSpec(ρi)
             elseif Cantera
                 # CPU - cantera
-                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
-                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock pre_input_cpu(inputs, Q, Yi)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock pre_input_cpu(inputs, Q, ρi)
                 copyto!(inputs_h, inputs)
                 eval_cpu(inputs_h, dt2)
                 copyto!(inputs, inputs_h)
                 @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock post_eval_cpu(inputs, U, Q, ρi, thermo)
-                @cuda fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
                 exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
                 MPI.Barrier(comm)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
-                fillSpec(ρi, Yi)
+                fillSpec(ρi)
             else
                 # GPU
                 for _ = 1:sub_step
@@ -270,7 +255,7 @@ function time_step(rank, comm, thermo, consts, react)
                 exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
                 MPI.Barrier(comm)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
-                fillSpec(ρi, Yi)
+                fillSpec(ρi)
             end
         end
 
@@ -299,7 +284,7 @@ function time_step(rank, comm, thermo, consts, react)
             exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
             MPI.Barrier(comm)
             fillGhost(Q, U, ρi, Yi, thermo, rank)
-            fillSpec(ρi, Yi)
+            fillSpec(ρi)
         end
 
         if reaction
@@ -315,21 +300,19 @@ function time_step(rank, comm, thermo, consts, react)
                 exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
                 MPI.Barrier(comm)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
-                fillSpec(ρi, Yi)
+                fillSpec(ρi)
             elseif Cantera
                 # CPU - cantera
-                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock getY(Yi, ρi, Q)
-                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock pre_input_cpu(inputs, Q, Yi)
+                @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock pre_input_cpu(inputs, Q, ρi)
                 copyto!(inputs_h, inputs)
                 eval_cpu(inputs_h, dt2)
                 copyto!(inputs, inputs_h)
                 @cuda maxregs=255 fastmath=true threads=nthreads blocks=nblock post_eval_cpu(inputs, U, Q, ρi, thermo)
-                @cuda fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
                 exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
                 exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
                 MPI.Barrier(comm)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
-                fillSpec(ρi, Yi)
+                fillSpec(ρi)
             else
                 # GPU
                 for _ = 1:sub_step
@@ -343,10 +326,23 @@ function time_step(rank, comm, thermo, consts, react)
                 exchange_ghost(ρi, Nspecs, rank, comm, dsbuf_h, dsbuf_d, drbuf_h, drbuf_d)
                 MPI.Barrier(comm)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
-                fillSpec(ρi, Yi)
+                fillSpec(ρi)
             end
         end
 
+        if tt % 10 == 0
+            if rank == 0
+                printstyled("Step: ", color=:cyan)
+                print("$tt")
+                printstyled("\tTime: ", color=:blue)
+                println("$(tt*dt)")
+                flush(stdout)
+            end
+            if any(isnan, U)
+                printstyled("Oops, NaN detected\n", color=:red)
+                return
+            end
+        end
         # Output
         if plt_out && (tt % step_plt == 0 || abs(Time-dt*tt) < dt || tt == maxStep)
             copyto!(Q_h, Q)
