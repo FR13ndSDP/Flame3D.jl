@@ -2,7 +2,7 @@ function div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
-    if i > Nxp || j > Ny || k > Nz+NG
+    if i > Nxp || j > Ny || k > Nz
         return
     end
 
