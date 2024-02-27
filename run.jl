@@ -46,6 +46,8 @@ const Nx::Int64 = h5read("metrics.h5", "Nx")
 const Ny::Int64 = h5read("metrics.h5", "Ny")
 const Nz::Int64 = h5read("metrics.h5", "Nz")
 const Nxp::Int64 = Nx ÷ Nprocs # make sure it is integer
+# here we use 256 threads/block and limit registers to 255
+const maxreg::Int64 = 255
 const nthreads::Tuple{Int32, Int32, Int32} = (4, 8, 8)
 const nblock::Tuple{Int32, Int32, Int32} = (cld((Nxp+2*NG), 4), 
                                             cld((Ny+2*NG), 8),
@@ -101,9 +103,7 @@ comm = MPI.COMM_WORLD
 rank = MPI.Comm_rank(comm)
 nGPU = MPI.Comm_size(comm)
 if nGPU != Nprocs && rank == 0
-    printstyled("Oops, nGPU ≠ $Nprocs\n", color=:red)
-    flush(stdout)
-    return
+    error("Oops, nGPU ≠ $Nprocs\n")
 end
 # set device on each MPI rank
 device!(rank)
