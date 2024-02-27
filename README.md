@@ -3,7 +3,7 @@
 
 Code for compressible flow simulation with neural network for real gas and chemical reaction.
 
-- Use `CUDA.jl` and `MPI.jl` for multi-GPU parallelization
+- Use `CUDA.jl`, `AMDGPU.jl` and `MPI.jl` for multi-GPU parallelization
 - 3D, with high order scheme (up to 7th order)
 - LES modeling for complex flows
 - Use `Lux.jl` trained neural network model for chemical reaction prediction
