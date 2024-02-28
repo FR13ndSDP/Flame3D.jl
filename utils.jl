@@ -1,5 +1,5 @@
 # Range: 1+NG -> N+NG
-function c2Prim(U, Q, ρi, thermo)
+function c2Prim(U, Q)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -10,25 +10,15 @@ function c2Prim(U, Q, ρi, thermo)
 
     # correction
     @inbounds ρ = max(U[i, j, k, 1], CUDA.eps(Float64))
-    @inbounds rho = @view ρi[i, j, k, :]
     @inbounds ρinv = 1/ρ 
-    ∑ρ::Float64 = 0.0
-    for n = 1:Nspecs
-        @inbounds rho[n] = max(rho[n], 0.0)
-        @inbounds ∑ρ += rho[n]
-    end
-    for n = 1:Nspecs
-        @inbounds rho[n] *= ρ/∑ρ
-    end
-    # @inbounds rho[Nspecs] += ρ - ∑ρ
 
     @inbounds u = U[i, j, k, 2]*ρinv # U
     @inbounds v = U[i, j, k, 3]*ρinv # V
     @inbounds w = U[i, j, k, 4]*ρinv # W
     @inbounds ei = max((U[i, j, k, 5] - 0.5*ρ*(u^2 + v^2 + w^2)), CUDA.eps(Float64))
 
-    T::Float64 = max(GetT(ei, rho, thermo), CUDA.eps(Float64))
-    p::Float64 = max(Pmixture(T, rho, thermo), CUDA.eps(Float64))
+    p::Float64 = 0.4 * ei
+    T::Float64 = p/(ρ*287)
 
     @inbounds Q[i, j, k, 1] = ρ
     @inbounds Q[i, j, k, 2] = u
@@ -37,6 +27,29 @@ function c2Prim(U, Q, ρi, thermo)
     @inbounds Q[i, j, k, 5] = p
     @inbounds Q[i, j, k, 6] = T
     @inbounds Q[i, j, k, 7] = ei
+    return
+end
+
+function localstep(Q, dt, CFL, x, y, z)
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+
+    if i > Nxp+NG || j > Ny+NG || k > Nz+NG || i < NG+1 || j < NG+1 || k < NG+1
+        return
+    end
+
+    d1 = 0.5 * sqrt((x[i+1, j, k] - x[i-1, j, k])^2 + (y[i+1, j, k] - y[i-1, j, k])^2 + (z[i+1, j, k] - z[i-1, j, k])^2)
+    d2 = 0.5 * sqrt((x[i, j+1, k] - x[i, j-1, k])^2 + (y[i, j+1, k] - y[i, j-1, k])^2 + (z[i, j+1, k] - z[i, j-1, k])^2)
+    d3 = 0.5 * sqrt((x[i, j, k+1] - x[i, j, k-1])^2 + (y[i, j, k+1] - y[i, j, k-1])^2 + (z[i, j, k+1] - z[i, j, k-1])^2)
+    minΔ = min(d1, d2, d3)
+
+    u = abs(Q[i, j, k, 2])
+    v = abs(Q[i, j, k, 3])
+    w = abs(Q[i, j, k, 4])
+    c = sqrt(1.4*Q[i, j, k, 5]/Q[i, j, k,1])
+    maxu = max(u,v,w) + c
+    dt[i-NG, j-NG, k-NG] = CFL * minΔ/maxu
     return
 end
 
