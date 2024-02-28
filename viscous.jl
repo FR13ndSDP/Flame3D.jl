@@ -72,10 +72,10 @@ function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     if LES_smag
         Cs = 0.1
         Prt = 0.9
-        @inbounds ρ = 0.5 * (Q[i, j, k, 1] + Q[i-1, j, k, 1])
-        @inbounds p = 0.5 * (Q[i, j, k, 5] + Q[i-1, j, k, 5])
+        @inbounds ρ  = 0.5 * (Q[i, j, k, 1] + Q[i-1, j, k, 1])
+        @inbounds p  = 0.5 * (Q[i, j, k, 5] + Q[i-1, j, k, 5])
         @inbounds ei = 0.5 * (Q[i, j, k, 7] + Q[i-1, j, k, 7])
-        @inbounds T = 0.5 * (Q[i, j, k, 6] + Q[i-1, j, k, 6])
+        @inbounds T  = 0.5 * (Q[i, j, k, 6] + Q[i-1, j, k, 6])
 
         @fastmath Sijmag = sqrt(2*(dudx^2 + dvdy^2 + dwdz^2 + 
                                2*((0.5*(dudy+dvdx))^2 + (0.5*(dudz+dwdx))^2 +(0.5*(dvdz+dwdy))^2))) # √2|sij|
@@ -90,10 +90,10 @@ function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     elseif LES_wale
         Cw = 0.325
         Prt = 0.9
-        @inbounds ρ = 0.5 * (Q[i, j, k, 1] + Q[i-1, j, k, 1])
-        @inbounds p = 0.5 * (Q[i, j, k, 5] + Q[i-1, j, k, 5])
+        @inbounds ρ  = 0.5 * (Q[i, j, k, 1] + Q[i-1, j, k, 1])
+        @inbounds p  = 0.5 * (Q[i, j, k, 5] + Q[i-1, j, k, 5])
         @inbounds ei = 0.5 * (Q[i, j, k, 7] + Q[i-1, j, k, 7])
-        @inbounds T = 0.5 * (Q[i, j, k, 6] + Q[i-1, j, k, 6])
+        @inbounds T  = 0.5 * (Q[i, j, k, 6] + Q[i-1, j, k, 6])
 
         @fastmath S = sqrt(dudx^2 + dvdy^2 + dwdz^2 + 
         2*((0.5*(dudy+dvdx))^2 + (0.5*(dudz+dwdx))^2 +(0.5*(dvdz+dwdy))^2))
@@ -211,10 +211,10 @@ function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     if LES_smag
         Cs = 0.1
         Prt = 0.9
-        @inbounds ρ = 0.5 * (Q[i, j, k, 1] + Q[i-1, j, k, 1])
-        @inbounds p = 0.5 * (Q[i, j, k, 5] + Q[i-1, j, k, 5])
-        @inbounds ei = 0.5 * (Q[i, j, k, 7] + Q[i-1, j, k, 7])
-        @inbounds T = 0.5 * (Q[i, j, k, 6] + Q[i-1, j, k, 6])
+        @inbounds ρ  = 0.5 * (Q[i, j, k, 1] + Q[i, j-1, k, 1])
+        @inbounds p  = 0.5 * (Q[i, j, k, 5] + Q[i, j-1, k, 5])
+        @inbounds ei = 0.5 * (Q[i, j, k, 7] + Q[i, j-1, k, 7])
+        @inbounds T  = 0.5 * (Q[i, j, k, 6] + Q[i, j-1, k, 6])
 
         @fastmath Sijmag = sqrt(2*(dudx^2 + dvdy^2 + dwdz^2 + 
                                2*((0.5*(dudy+dvdx))^2 + (0.5*(dudz+dwdx))^2 +(0.5*(dvdz+dwdy))^2))) # √2|sij|
@@ -229,10 +229,10 @@ function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     elseif LES_wale
         Cw = 0.325
         Prt = 0.9
-        @inbounds ρ = 0.5 * (Q[i, j, k, 1] + Q[i-1, j, k, 1])
-        @inbounds p = 0.5 * (Q[i, j, k, 5] + Q[i-1, j, k, 5])
-        @inbounds ei = 0.5 * (Q[i, j, k, 7] + Q[i-1, j, k, 7])
-        @inbounds T = 0.5 * (Q[i, j, k, 6] + Q[i-1, j, k, 6])
+        @inbounds ρ  = 0.5 * (Q[i, j, k, 1] + Q[i, j-1, k, 1])
+        @inbounds p  = 0.5 * (Q[i, j, k, 5] + Q[i, j-1, k, 5])
+        @inbounds ei = 0.5 * (Q[i, j, k, 7] + Q[i, j-1, k, 7])
+        @inbounds T  = 0.5 * (Q[i, j, k, 6] + Q[i, j-1, k, 6])
 
         @fastmath S = sqrt(dudx^2 + dvdy^2 + dwdz^2 + 
         2*((0.5*(dudy+dvdx))^2 + (0.5*(dudz+dwdx))^2 +(0.5*(dvdz+dwdy))^2))
@@ -350,10 +350,10 @@ function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     if LES_smag
         Cs = 0.1
         Prt = 0.9
-        @inbounds ρ = 0.5 * (Q[i, j, k, 1] + Q[i-1, j, k, 1])
-        @inbounds p = 0.5 * (Q[i, j, k, 5] + Q[i-1, j, k, 5])
-        @inbounds ei = 0.5 * (Q[i, j, k, 7] + Q[i-1, j, k, 7])
-        @inbounds T = 0.5 * (Q[i, j, k, 6] + Q[i-1, j, k, 6])
+        @inbounds ρ  = 0.5 * (Q[i, j, k, 1] + Q[i, j, k-1, 1])
+        @inbounds p  = 0.5 * (Q[i, j, k, 5] + Q[i, j, k-1, 5])
+        @inbounds ei = 0.5 * (Q[i, j, k, 7] + Q[i, j, k-1, 7])
+        @inbounds T  = 0.5 * (Q[i, j, k, 6] + Q[i, j, k-1, 6])
 
         @fastmath Sijmag = sqrt(2*(dudx^2 + dvdy^2 + dwdz^2 + 
                                2*((0.5*(dudy+dvdx))^2 + (0.5*(dudz+dwdx))^2 +(0.5*(dvdz+dwdy))^2))) # √2|sij|
@@ -368,10 +368,10 @@ function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     elseif LES_wale
         Cw = 0.325
         Prt = 0.9
-        @inbounds ρ = 0.5 * (Q[i, j, k, 1] + Q[i-1, j, k, 1])
-        @inbounds p = 0.5 * (Q[i, j, k, 5] + Q[i-1, j, k, 5])
-        @inbounds ei = 0.5 * (Q[i, j, k, 7] + Q[i-1, j, k, 7])
-        @inbounds T = 0.5 * (Q[i, j, k, 6] + Q[i-1, j, k, 6])
+        @inbounds ρ  = 0.5 * (Q[i, j, k, 1] + Q[i, j, k-1, 1])
+        @inbounds p  = 0.5 * (Q[i, j, k, 5] + Q[i, j, k-1, 5])
+        @inbounds ei = 0.5 * (Q[i, j, k, 7] + Q[i, j, k-1, 7])
+        @inbounds T  = 0.5 * (Q[i, j, k, 6] + Q[i, j, k-1, 6])
 
         @fastmath S = sqrt(dudx^2 + dvdy^2 + dwdz^2 + 
         2*((0.5*(dudy+dvdx))^2 + (0.5*(dudz+dwdx))^2 +(0.5*(dvdz+dwdy))^2))
