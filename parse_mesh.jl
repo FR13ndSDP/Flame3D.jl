@@ -4,17 +4,9 @@ using WriteVTK
 
 const NG::Int64 = 4
 const Nx::Int64 = 300
-const Nx_uniform::Int64 = Nx-20
-const Ny::Int64 = 127
-const Nz::Int64 = 127
-const Lx::Float64 = 0.02
-const ymin::Float64 = -0.0032
-const ymax::Float64 = 0.0032
-const ystar::Float64 = 0
-const zmin::Float64 = -0.0032
-const zmax::Float64 = 0.0032
-const zstar::Float64 = 0
-const α::Float64 = 4e-4
+const Ny::Int64 = 128
+const Nz::Int64 = 128
+const Lx::Float64 = 4
 const Nx_tot::Int64 = Nx + 2*NG
 const Ny_tot::Int64 = Ny + 2*NG
 const Nz_tot::Int64 = Nz + 2*NG
@@ -25,27 +17,37 @@ x = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
 y = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
 z = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
 
-c1 = asinh((ymin-ystar)/α)
-c2 = asinh((ymax-ystar)/α)
-c3 = asinh((zmin-zstar)/α)
-c4 = asinh((zmax-zstar)/α)
 
-@inbounds for k ∈ 1:Nz, j ∈ 1:Ny
-    y[1+NG, j+NG, k+NG] = ystar + α * sinh(c1*(1-(j-1)/(Ny-1)) +c2*(j-1)/(Ny-1))
-    z[1+NG, j+NG, k+NG] = zstar + α * sinh(c3*(1-(k-1)/(Nz-1)) +c4*(k-1)/(Nz-1))
+
+@inbounds for k ∈ 1:Nz, j ∈ 1:Ny, i ∈ 1:Nx
+    Rmin = 0.0
+    Rmax = 5.0
+    Rstar = 1.0
+    α = 0.5
+    c1 = asinh((Rmin-Rstar)/α)
+    c2 = asinh((Rmax-Rstar)/α)
+    x[i+NG, j+NG, k+NG] = Rstar + α * sinh(c1*(1-(i-1)/(Nx-1)) +c2*(i-1)/(Nx-1))
 end
 
-@inbounds for k ∈ 1:Nz, j ∈ 1:Ny, i ∈ 1:Nx 
-    y[i+NG, j+NG, k+NG] = y[1+NG, j+NG, k+NG]
-    z[i+NG, j+NG, k+NG] = z[1+NG, j+NG, k+NG]
-end
+R0 = 0.1
+R1 = 0.5
+α = 1e-2
+@inbounds for k ∈ 1:Nz
+    for j ∈ 1:Ny
+        for i ∈ 1:Nx
+            Rmin = tan(7/180*π) * x[i+NG, j+NG, k+NG] + R0
+            Rmax = tan(20/180*π) * x[i+NG, j+NG, k+NG] + R1
 
-@inbounds for k ∈ 1:Nz, j ∈ 1:Ny, i ∈ 1:Nx_uniform 
-    x[i+NG, j+NG, k+NG] = (i-1) * (Lx/(Nx-1))
-end
+            Rstar = Rmin
+            c1 = asinh((Rmin-Rstar)/α)
+            c2 = asinh((Rmax-Rstar)/α)
+            R = Rstar + α * sinh(c1*(1-(j-1)/(Ny-1)) +c2*(j-1)/(Ny-1))
 
-@inbounds for k ∈ 1:Nz, j ∈ 1:Ny, i ∈ Nx_uniform+1:Nx 
-    x[i+NG, j+NG, k+NG] = x[i-1+NG, j+NG, k+NG] + (Lx/(Nx-1)) * (0.5 + (i-Nx_uniform)/2)
+            θ = 90 - (k-1)/(Nz-1) * 180
+            y[i+NG, j+NG, k+NG] = R*sin(θ/180*π)
+            z[i+NG, j+NG, k+NG] = R*cos(θ/180*π)
+        end
+    end
 end
 
 # get ghost location

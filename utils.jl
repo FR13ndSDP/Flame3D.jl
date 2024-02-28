@@ -41,22 +41,6 @@ function c2Prim(U, Q, ρi, thermo)
 end
 
 # Range: 1 -> N+2*NG
-function getY(Yi, ρi, Q)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
-
-    if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
-        return
-    end
-
-    @inbounds ρinv::Float64 = 1/max(Q[i, j, k, 1], CUDA.eps(Float64))
-    for n = 1:Nspecs
-        @inbounds Yi[i, j, k, n] = max(ρi[i, j, k, n]*ρinv, 0.0)
-    end
-end
-
-# Range: 1 -> N+2*NG
 function prim2c(U, Q)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
