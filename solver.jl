@@ -25,9 +25,9 @@ function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, d
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, dζdx, dζdy, dζdz)
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_z(Fz, ϕ, Fp, Fm, Ncons, consts)
 
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, consts)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, consts)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, consts)
+    # @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, consts)
+    # @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, consts)
+    # @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, consts)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J)
 end
@@ -51,13 +51,19 @@ function time_step(rank, comm, consts)
         Q_h = fid["Q_h"][:, :, :, :, rank+1]
         close(fid)
 
+        inlet_h = h5read("inlet.h5", "Q_h")
+
         Q  =   CuArray(Q_h)
+        inlet  =   CuArray(inlet_h)
     else
         Q_h = zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nprim)
         Q = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nprim)
         initialize(Q)
 
+        inlet_h = h5read("inlet.h5", "Q_h")
+
         copyto!(Q_h, Q)
+        inlet  =   CuArray(inlet_h)
     end
     
     ϕ_h = zeros(Float64, Nx_tot, Ny_tot, Nz_tot) # shock sensor
@@ -125,7 +131,7 @@ function time_step(rank, comm, consts)
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock prim2c(U, Q)
     exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
     MPI.Barrier(comm)
-    fillGhost(Q, U, rank)
+    fillGhost(Q, U, rank, inlet, z)
 
     for tt = 1:ceil(Int, Time/dt)
         if tt*dt > Time || tt > maxStep
@@ -151,7 +157,7 @@ function time_step(rank, comm, consts)
             @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q)
             exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
             MPI.Barrier(comm)
-            fillGhost(Q, U, rank)
+            fillGhost(Q, U, rank, inlet, z)
         end
 
         if tt % 10 == 0

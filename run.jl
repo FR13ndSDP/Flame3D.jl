@@ -8,12 +8,12 @@ const LES_wale::Bool = false        # if use WALE model
 
 # flow control
 const Nprocs::Int64 = 1              # number of GPUs
-const dt::Float64 = 1e-8             # dt for simulation, make CFL < 1
+const dt::Float64 = 2e-8             # dt for simulation, make CFL < 1
 const Time::Float64 = 1e-3           # total simulation time
-const maxStep::Int64 = 10000         # max steps to run
+const maxStep::Int64 = 100000         # max steps to run
 
 const plt_out::Bool = true           # if output plt file
-const step_plt::Int64 = 200          # how many steps to save plt
+const step_plt::Int64 = 100          # how many steps to save plt
 const plt_compress_level::Int64 = 1  # output file compression level 0-9, 0 for no compression
 
 const chk_out::Bool = true           # if checkpoint is made on save
@@ -68,7 +68,7 @@ device!(rank)
 # constant parameters
 const consts = constants(287.0, 1.4, 1.458e-6, 110.4, 0.72, 1004.5, 
          CuArray([2/3, 1/12]),
-         CuArray([1e-8, 1e-4]),
+         CuArray([1e-4, 0.2]),
          CuArray([1e-40, 13/12, 1/6]),
          CuArray([1e-40, 1e-5, 1/6]),
          CuArray([-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420]))
