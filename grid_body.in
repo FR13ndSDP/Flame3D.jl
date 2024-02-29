@@ -1,0 +1,21 @@
+# mesh for lift_body3d
+# nx      ny    nz     If_half   IF_plotwallmesh
+  435    201    161       1            0
+# x_begin, x_end,     nx_part1, nx_part3, XL_part1, XL_Part2, XL_Part3 
+  29.74953     2600.     120     220      1000.    200.   1000.    
+#  hwall  h_begin,   h_end1, h_end2,  h_end_seta 
+   0.06       40.      200.   100.         10. 
+
+
+!-------------------------------
+ mesh_data_type==0:  OCFD data type;  ==1 PLOT3D type
+!------------------------------------
+open(99,file="grid_body.in")
+read(99,*)
+read(99,*)
+read(99,*)  nx,  ns, nh
+read(99,*)
+read(99,*)  x_begin, x_end, h_begin,  h_end,  hwall
+read(99,*)
+close(99)
+
