@@ -22,7 +22,7 @@ z = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
 @inbounds for k ∈ 1:Nz, j ∈ 1:Ny, i ∈ 1:Nx
     Rmin = 0.0
     Rmax = 5.0
-    Rstar = 1.0
+    Rstar = 2.0
     α = 0.5
     c1 = asinh((Rmin-Rstar)/α)
     c2 = asinh((Rmax-Rstar)/α)
@@ -30,13 +30,13 @@ z = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
 end
 
 R0 = 0.1
-R1 = 0.5
-α = 1e-2
+R1 = 0.7
+α = 0.03
 @inbounds for k ∈ 1:Nz
     for j ∈ 1:Ny
         for i ∈ 1:Nx
             Rmin = tan(7/180*π) * x[i+NG, j+NG, k+NG] + R0
-            Rmax = tan(20/180*π) * x[i+NG, j+NG, k+NG] + R1
+            Rmax = tan(13/180*π) * x[i+NG, j+NG, k+NG] + R1
 
             Rstar = Rmin
             c1 = asinh((Rmin-Rstar)/α)

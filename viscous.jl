@@ -23,7 +23,7 @@ function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     @inbounds Jac = (J[i-1, j, k] + J[i, j, k]) * 0.5
     @inbounds T = (Q[i-1, j, k, 6] + Q[i, j, k, 6]) * 0.5
     @inbounds μi =  1.458e-6*T*sqrt(T)/(T+110.4)
-    @inbounds λi =  1004.5*μi/0.72
+    @inbounds λi =  1004.5*μi/0.7
 
     @inbounds ∂u∂ξ = 1.25*(Q[i, j, k, 2] - Q[i-1, j, k, 2]) - c12*(Q[i+1, j, k, 2] - Q[i-2, j, k, 2])
     @inbounds ∂v∂ξ = 1.25*(Q[i, j, k, 3] - Q[i-1, j, k, 3]) - c12*(Q[i+1, j, k, 3] - Q[i-2, j, k, 3])
@@ -153,7 +153,7 @@ function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     @inbounds Jac = (J[i, j-1, k] + J[i, j, k]) * 0.5
     @inbounds T = (Q[i, j-1, k, 6] + Q[i, j, k, 6]) * 0.5
     @inbounds μi =  1.458e-6*T*sqrt(T)/(T+110.4)
-    @inbounds λi =  1004.5*μi/0.72
+    @inbounds λi =  1004.5*μi/0.7
 
     @inbounds ∂u∂ξ = 0.5*(c23*(Q[i+1, j, k, 2] + Q[i+1, j-1, k, 2] - Q[i-1, j, k, 2] - Q[i-1, j-1, k, 2]) -
                           c12*(Q[i+2, j, k, 2] + Q[i+2, j-1, k, 2] - Q[i-2, j, k, 2] - Q[i-2, j-1, k, 2]))
@@ -283,7 +283,7 @@ function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     @inbounds Jac = (J[i, j, k-1] + J[i, j, k]) * 0.5
     @inbounds T = (Q[i, j, k-1, 6] + Q[i, j, k, 6]) * 0.5
     @inbounds μi =  1.458e-6*T*sqrt(T)/(T+110.4)
-    @inbounds λi =  1004.5*μi/0.72
+    @inbounds λi =  1004.5*μi/0.7
 
     @inbounds ∂u∂ξ = 0.5*(c23*(Q[i+1, j, k, 2] + Q[i+1, j, k-1, 2] - Q[i-1, j, k, 2] - Q[i-1, j, k-1, 2]) -
                           c12*(Q[i+2, j, k, 2] + Q[i+2, j, k-1, 2] - Q[i-2, j, k, 2] - Q[i-2, j, k-1, 2]))
