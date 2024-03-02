@@ -1,4 +1,18 @@
-#For N-S, range: 1->N+2*NG
+"""
+    fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
+
+Do Steger-Warming flux-vector splitting on grid points (include ghosts).
+
+...
+# Arguments
+- `Q`: primitive variables
+- `Fp, Fm`: F+ (plus) and F-(minus) fluxes.
+- `Ax, Ay, Az`: metrics respect to split direction, e.g. `dξdx, dξdy, dξdz` for ξ direction.
+
+# Notes
+- For non-perfect gas, speed of sound is approximated.
+...
+"""
 function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
@@ -69,7 +83,16 @@ function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
     return 
 end
 
-# For species, range 1->N+2*NG
+"""
+    split(ρi, Q, Fp, Fm, Ax, Ay, Az)
+
+Do flux-vector splitting on grid points for species (include ghosts).
+
+...
+# Notes
+- Species treated as scalar so only advect with velocity, the split is 1/2(U±|U|)
+...
+"""
 function split(ρi, Q, Fp, Fm, Ax, Ay, Az)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y

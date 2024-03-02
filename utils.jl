@@ -17,10 +17,13 @@ function c2Prim(U, Q, ρi, thermo)
         @inbounds rho[n] = max(rho[n], 0.0)
         @inbounds ∑ρ += rho[n]
     end
+
+    # if there are no irrelevant rich species, use this
     for n = 1:Nspecs
         @inbounds rho[n] *= ρ/∑ρ
     end
-    # @inbounds rho[Nspecs] += ρ - ∑ρ
+    # if there are irrelevant and rich species, like N₂, use this
+    # @inbounds rho[_index] += ρ - ∑ρ
 
     @inbounds u = U[i, j, k, 2]*ρinv # U
     @inbounds v = U[i, j, k, 3]*ρinv # V

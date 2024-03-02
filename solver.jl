@@ -18,6 +18,7 @@ include("reactions.jl")
 include("thermo.jl")
 include("mpi.jl")
 
+# TODO: implement charateristic flux splitting
 function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fhx, Fhy, Fhz, consts)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, dξdx, dξdy, dξdz)

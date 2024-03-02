@@ -1,3 +1,17 @@
+"""
+    div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J)
+
+Compute divergence of inviscous and viscous fluxes on grid point (without ghosts) 
+
+...
+# Arguments
+- `U`: conservative variables
+- `Fx, Fy, Fz`: inviscous fluxes
+- `Fv_x, Fv_y, Fv_z`: viscous fluxes
+- `dt`: time step
+- `J`: det of Jacobian, can be seen as 1/Δ, where Δ is the element volume
+...
+"""
 function div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
@@ -27,13 +41,18 @@ function div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J)
                                               Fy[i, j, k, n] - Fy[i, j+1, k, n] +
                                               Fz[i, j, k, n] - Fz[i, j, k+1, n]) * Jact
     end
-    @inbounds U[i+NG, j+NG, k+NG, 2] += (dV11dξ + dV21dη + dV31dζ) * Jact
-    @inbounds U[i+NG, j+NG, k+NG, 3] += (dV12dξ + dV22dη + dV32dζ) * Jact
-    @inbounds U[i+NG, j+NG, k+NG, 4] += (dV13dξ + dV23dη + dV33dζ) * Jact
-    @inbounds U[i+NG, j+NG, k+NG, 5] += (dV14dξ + dV24dη + dV34dζ) * Jact
+    @inbounds U[i+NG, j+NG, k+NG, 2] += (dV11dξ + dV21dη + dV31dζ) * Jact # x-momentum
+    @inbounds U[i+NG, j+NG, k+NG, 3] += (dV12dξ + dV22dη + dV32dζ) * Jact # y-momentum
+    @inbounds U[i+NG, j+NG, k+NG, 4] += (dV13dξ + dV23dη + dV33dζ) * Jact # z-momentum
+    @inbounds U[i+NG, j+NG, k+NG, 5] += (dV14dξ + dV24dη + dV34dζ) * Jact # Energy
     return
 end
 
+"""
+    divSpecs(U, Fx, Fy, Fz, Fd_x, Fd_y, Fd_z, dt, J)
+
+Compute divergence of fluxes for species on grid point (without ghosts) 
+"""
 function divSpecs(U, Fx, Fy, Fz, Fd_x, Fd_y, Fd_z, dt, J)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y

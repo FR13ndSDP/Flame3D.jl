@@ -4,8 +4,8 @@ function exchange_ghost(Q, NV, rank, comm, sbuf_h, sbuf_d, rbuf_h, rbuf_d)
     nblocks = (1, cld((Ny+2*NG), 16), cld((Nz+2*NG), 16))
 
     # x+
-    src = (rank - 1 == -1 ? MPI.PROC_NULL : (rank - 1)) 
-    dst = (rank + 1 == Nprocs ? MPI.PROC_NULL : (rank + 1))
+    src = (rank == 0 ? MPI.PROC_NULL : (rank - 1)) 
+    dst = (rank == Nprocs -1 ? MPI.PROC_NULL : (rank + 1))
 
     if src != MPI.PROC_NULL || dst != MPI.PROC_NULL
         if dst != MPI.PROC_NULL
@@ -20,8 +20,8 @@ function exchange_ghost(Q, NV, rank, comm, sbuf_h, sbuf_d, rbuf_h, rbuf_d)
     end
 
     # x-
-    src = (rank + 1 == Nprocs ? MPI.PROC_NULL : (rank + 1)) 
-    dst = (rank - 1 == -1 ? MPI.PROC_NULL : (rank - 1))
+    src = (rank == Nprocs - 1 ? MPI.PROC_NULL : (rank + 1)) 
+    dst = (rank == 0 ? MPI.PROC_NULL : (rank - 1))
 
     if src != MPI.PROC_NULL || dst != MPI.PROC_NULL
         if dst != MPI.PROC_NULL
