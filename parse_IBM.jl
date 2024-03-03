@@ -128,6 +128,7 @@ function generateXYZ()
                           (z[i, j, k]-z[center[1], center[2], center[3]])^2)
     end
 
+    # TODO: use neighbor interpolation
     @inbounds for k ∈ 1:Nz_tot, j ∈ 1:Ny_tot, i ∈ 1:Nx_tot
         if D[i, j, k] > R
             tag[i, j, k] = 0
