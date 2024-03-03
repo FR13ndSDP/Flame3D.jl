@@ -83,7 +83,7 @@ function NND_z(F, Fp, Fm, NV)
 end
 
 #Range: 1 -> N+1
-function WENO_x(F, ϕ, Fp, Fm, NV, consts)
+function WENO_x(F, ϕ, Fp, Fm, NV, consts, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -92,9 +92,13 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
         return
     end
 
+    if tag[i, j, k] == 1
+        return
+    end
+
     eps::Float64 = consts.WENO5[1]
-    tmp1::Float64 = consts.WENO5[2]
-    tmp2::Float64 = consts.WENO5[3]
+    tmp1::Float64 = 13/12
+    tmp2::Float64 = 1/6
 
     c1::Float64 = consts.UP7[1]
     c2::Float64 = consts.UP7[2]
@@ -198,7 +202,7 @@ function WENO_x(F, ϕ, Fp, Fm, NV, consts)
 end
 
 #Range: 1 -> N+1
-function WENO_y(F, ϕ, Fp, Fm, NV, consts)
+function WENO_y(F, ϕ, Fp, Fm, NV, consts, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -207,9 +211,13 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
         return
     end
 
+    if tag[i, j, k] == 1
+        return
+    end
+
     eps::Float64 = consts.WENO5[1]
-    tmp1::Float64 = consts.WENO5[2]
-    tmp2::Float64 = consts.WENO5[3]
+    tmp1::Float64 = 13/12
+    tmp2::Float64 = 1/6
 
     c1::Float64 = consts.UP7[1]
     c2::Float64 = consts.UP7[2]
@@ -313,7 +321,7 @@ function WENO_y(F, ϕ, Fp, Fm, NV, consts)
 end
 
 #Range: 1 -> N+1
-function WENO_z(F, ϕ, Fp, Fm, NV, consts)
+function WENO_z(F, ϕ, Fp, Fm, NV, consts, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -322,9 +330,13 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
         return
     end
 
+    if tag[i, j, k] == 1
+        return
+    end
+
     eps::Float64 = consts.WENO5[1]
-    tmp1::Float64 = consts.WENO5[2]
-    tmp2::Float64 = consts.WENO5[3]
+    tmp1::Float64 = 13/12
+    tmp2::Float64 = 1/6
 
     c1::Float64 = consts.UP7[1]
     c2::Float64 = consts.UP7[2]
@@ -427,7 +439,7 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts)
     return
 end
 
-function TENO_x(F, Fp, Fm, NV, consts)
+function TENO_x(F, Fp, Fm, NV, consts, tags)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -436,9 +448,13 @@ function TENO_x(F, Fp, Fm, NV, consts)
         return
     end
 
-    eps::Float64 = consts.TENO5[1]
-    CT::Float64 = consts.TENO5[2]
-    oneSix::Float64 = consts.TENO5[3]
+    if tag[i, j, k] == 1
+        return
+    end
+
+    eps::Float64 = consts.WENO5[2]
+    CT::Float64 = consts.WENO5[3]
+    oneSix::Float64 = 1/6
 
     for n = 1:NV
         @inbounds V1 = Fp[i-3, j, k, n]
@@ -504,7 +520,7 @@ function TENO_x(F, Fp, Fm, NV, consts)
     return
 end
 
-function TENO_y(F, Fp, Fm, NV, consts)
+function TENO_y(F, Fp, Fm, NV, consts, tags)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -513,9 +529,13 @@ function TENO_y(F, Fp, Fm, NV, consts)
         return
     end
 
-    eps::Float64 = consts.TENO5[1]
-    CT::Float64 = consts.TENO5[2]
-    oneSix::Float64 = consts.TENO5[3]
+    if tag[i, j, k] == 1
+        return
+    end
+
+    eps::Float64 = consts.WENO5[2]
+    CT::Float64 = consts.WENO5[3]
+    oneSix::Float64 = 1/6
 
     for n = 1:NV
         @inbounds V1 = Fp[i, j-3, k, n]
@@ -581,7 +601,7 @@ function TENO_y(F, Fp, Fm, NV, consts)
     return
 end
 
-function TENO_z(F, Fp, Fm, NV, consts)
+function TENO_z(F, Fp, Fm, NV, consts, tags)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -590,9 +610,13 @@ function TENO_z(F, Fp, Fm, NV, consts)
         return
     end
 
-    eps::Float64 = consts.TENO5[1]
-    CT::Float64 = consts.TENO5[2]
-    oneSix::Float64 = consts.TENO5[3]
+    if tag[i, j, k] == 1
+        return
+    end
+    
+    eps::Float64 = consts.WENO5[2]
+    CT::Float64 = consts.WENO5[3]
+    oneSix::Float64 = 1/6
 
     for n = 1:NV
         @inbounds V1 = Fp[i, j, k-3, n]

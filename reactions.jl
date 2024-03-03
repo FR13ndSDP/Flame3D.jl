@@ -173,12 +173,16 @@ function eval_cpu(inputs, dt)
 end
 
 # GPU chemical reaction
-function eval_gpu(U, Q, ρi, dt, thermo, react)
+function eval_gpu(U, Q, ρi, dt, thermo, react, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp+NG || j > Ny+NG || k > Nz+NG || i < NG+1 || j < NG+1 || k < NG+1
+        return
+    end
+
+    if tag[i, j, k] ≠ 0
         return
     end
 
@@ -228,7 +232,7 @@ function eval_gpu(U, Q, ρi, dt, thermo, react)
 end
 
 # For stiff reaction, point implicit
-function eval_gpu_stiff(U, Q, ρi, dt, thermo, react)
+function eval_gpu_stiff(U, Q, ρi, dt, thermo, react, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -237,6 +241,10 @@ function eval_gpu_stiff(U, Q, ρi, dt, thermo, react)
         return
     end
 
+    if tag[i, j, k] ≠ 0
+        return
+    end
+    
     @inbounds T = Q[i, j, k, 6]
 
     if T > T_criteria

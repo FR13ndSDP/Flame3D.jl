@@ -1,5 +1,5 @@
 """
-    fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
+    fluxSplit(Q, Fp, Fm, Ax, Ay, Az, tag)
 
 Do Steger-Warming flux-vector splitting on grid points (include ghosts).
 
@@ -8,17 +8,22 @@ Do Steger-Warming flux-vector splitting on grid points (include ghosts).
 - `Q`: primitive variables
 - `Fp, Fm`: F+ (plus) and F-(minus) fluxes.
 - `Ax, Ay, Az`: metrics respect to split direction, e.g. `dξdx, dξdy, dξdz` for ξ direction.
+- `tag`: IBM tag, 0-fluid, 1-solid, 2-boudnary, 3-ghost
 
 # Notes
 - For non-perfect gas, speed of sound is approximated.
 ...
 """
-function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
+function fluxSplit(Q, Fp, Fm, Ax, Ay, Az, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
+        return
+    end
+
+    if tag[i, j, k] == 1
         return
     end
 
@@ -84,7 +89,7 @@ function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
 end
 
 """
-    split(ρi, Q, Fp, Fm, Ax, Ay, Az)
+    split(ρi, Q, Fp, Fm, Ax, Ay, Az, tag)
 
 Do flux-vector splitting on grid points for species (include ghosts).
 
@@ -93,7 +98,7 @@ Do flux-vector splitting on grid points for species (include ghosts).
 - Species treated as scalar so only advect with velocity, the split is 1/2(U±|U|)
 ...
 """
-function split(ρi, Q, Fp, Fm, Ax, Ay, Az)
+function split(ρi, Q, Fp, Fm, Ax, Ay, Az, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -102,6 +107,10 @@ function split(ρi, Q, Fp, Fm, Ax, Ay, Az)
         return
     end
 
+    if tag[i, j, k] == 1
+        return
+    end
+    
     @inbounds u = Q[i, j, k, 2]
     @inbounds v = Q[i, j, k, 3]
     @inbounds w = Q[i, j, k, 4]

@@ -363,12 +363,16 @@ end
     return λ, μ
 end
 
-function mixture(Q, ρi, Yi, λ, μ, D, thermo)
+function mixture(Q, ρi, Yi, λ, μ, D, thermo, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
+        return
+    end
+
+    if tag[i, j, k] == 1
         return
     end
 

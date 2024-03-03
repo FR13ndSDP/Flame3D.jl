@@ -12,6 +12,7 @@ Code for compressible flow simulation with neural network for real gas and chemi
 - Call `Cantera` for chemical reaction evaluation, either Python or C++ interface
 - Use `HDF5` and `VTK` for I/O
 - Use `matplotlib`, `Makie.jl` or `Paraview` for post-processing
+- Use immersed boundary method to represent complex geometry (work in progress)
 ## Usage
 
 Generate mesh and metrics with
@@ -56,3 +57,8 @@ $Ma=1.5, T=5000\ \rm{K}, P = 3596\ \rm{Pa}$ air jet, a Neural network model for 
 ![NN-air](./Assets/NN-air.png)
 
 ![NN-T](./Assets/NN-T.png)
+
+### Immersed boundary
+ 
+![IBM1](./Assets/IBM1.png)
+![IBM2](./Assets/IBM2.png)

@@ -1,5 +1,5 @@
 """
-    div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J)
+    div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J, tag)
 
 Compute divergence of inviscous and viscous fluxes on grid point (without ghosts) 
 
@@ -10,13 +10,18 @@ Compute divergence of inviscous and viscous fluxes on grid point (without ghosts
 - `Fv_x, Fv_y, Fv_z`: viscous fluxes
 - `dt`: time step
 - `J`: det of Jacobian, can be seen as 1/Δ, where Δ is the element volume
+- `tag`: IBM tag, 0-fluid, 1-solid, 2-boudnary, 3-ghost
 ...
 """
-function div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J)
+function div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
     if i > Nxp || j > Ny || k > Nz
+        return
+    end
+
+    if tag[i+NG, j+NG, k+NG] ≠ 0
         return
     end
 
@@ -49,11 +54,11 @@ function div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J)
 end
 
 """
-    divSpecs(U, Fx, Fy, Fz, Fd_x, Fd_y, Fd_z, dt, J)
+    divSpecs(U, Fx, Fy, Fz, Fd_x, Fd_y, Fd_z, dt, J, tag)
 
 Compute divergence of fluxes for species on grid point (without ghosts) 
 """
-function divSpecs(U, Fx, Fy, Fz, Fd_x, Fd_y, Fd_z, dt, J)
+function divSpecs(U, Fx, Fy, Fz, Fd_x, Fd_y, Fd_z, dt, J, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -61,6 +66,10 @@ function divSpecs(U, Fx, Fy, Fz, Fd_x, Fd_y, Fd_z, dt, J)
         return
     end
 
+    if tag[i+NG, j+NG, k+NG] ≠ 0
+        return
+    end
+    
     @inbounds Jact = J[i+NG, j+NG, k+NG] * dt
 
     for n = 1:Nspecs

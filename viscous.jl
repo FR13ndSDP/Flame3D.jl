@@ -1,4 +1,4 @@
-function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fh, consts)
+function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fh, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -7,8 +7,12 @@ function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
         return
     end
 
-    c23::Float64 = consts.CD4[1]
-    c12::Float64 = consts.CD4[2]
+    if tag[i, j, k] == 1
+        return
+    end
+
+    c23::Float64 = 2/3
+    c12::Float64 = 1/12
 
     @inbounds ∂ξ∂x = (dξdx[i-1, j, k] + dξdx[i, j, k]) * 0.5
     @inbounds ∂ξ∂y = (dξdy[i-1, j, k] + dξdy[i, j, k]) * 0.5
@@ -137,7 +141,7 @@ function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     return
 end
 
-function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fh, consts)
+function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fh, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -146,8 +150,12 @@ function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
         return
     end
 
-    c23::Float64 = consts.CD4[1]
-    c12::Float64 = consts.CD4[2]
+    if tag[i, j, k] == 1
+        return
+    end
+
+    c23::Float64 = 2/3
+    c12::Float64 = 1/12
 
     @inbounds ∂ξ∂x = (dξdx[i, j-1, k] + dξdx[i, j, k]) * 0.5
     @inbounds ∂ξ∂y = (dξdy[i, j-1, k] + dξdy[i, j, k]) * 0.5
@@ -276,7 +284,7 @@ function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     return
 end
 
-function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fh, consts)
+function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fh, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -285,8 +293,12 @@ function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
         return
     end
 
-    c23::Float64 = consts.CD4[1]
-    c12::Float64 = consts.CD4[2]
+    if tag[i, j, k] == 1
+        return
+    end
+
+    c23::Float64 = 2/3
+    c12::Float64 = 1/12
 
     @inbounds ∂ξ∂x = (dξdx[i, j, k-1] + dξdx[i, j, k]) * 0.5
     @inbounds ∂ξ∂y = (dξdy[i, j, k-1] + dξdy[i, j, k]) * 0.5
@@ -415,7 +427,7 @@ function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     return
 end
 
-function specViscousFlux_x(Fv_x, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo, consts)
+function specViscousFlux_x(Fv_x, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -424,7 +436,11 @@ function specViscousFlux_x(Fv_x, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz
         return
     end
 
-    c12::Float64 = consts.CD4[2]
+    if tag[i, j, k] == 1
+        return
+    end
+
+    c12::Float64 = 1/12
 
     @inbounds ∂ξ∂x = (dξdx[i-1, j, k] + dξdx[i, j, k]) * 0.5
     @inbounds ∂ξ∂y = (dξdy[i-1, j, k] + dξdy[i, j, k]) * 0.5
@@ -490,7 +506,7 @@ function specViscousFlux_x(Fv_x, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz
     return
 end
 
-function specViscousFlux_y(Fv_y, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo, consts)
+function specViscousFlux_y(Fv_y, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -499,7 +515,11 @@ function specViscousFlux_y(Fv_y, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz
         return
     end
 
-    c12::Float64 = consts.CD4[2]
+    if tag[i, j, k] == 1
+        return
+    end
+
+    c12::Float64 = 1/12
 
     @inbounds ∂ξ∂x = (dξdx[i, j-1, k] + dξdx[i, j, k]) * 0.5
     @inbounds ∂ξ∂y = (dξdy[i, j-1, k] + dξdy[i, j, k]) * 0.5
@@ -565,7 +585,7 @@ function specViscousFlux_y(Fv_y, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz
     return
 end
 
-function specViscousFlux_z(Fv_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo, consts)
+function specViscousFlux_z(Fv_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -573,8 +593,12 @@ function specViscousFlux_z(Fv_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz
     if i > Nxp+NG || j > Ny+NG || k > Nz+NG+1 || i < NG+1 || j < NG+1 || k < NG+1
         return
     end
-
-    c12::Float64 = consts.CD4[2]
+    
+    if tag[i, j, k] == 1
+        return
+    end
+    
+    c12::Float64 = 1/12
 
     @inbounds ∂ξ∂x = (dξdx[i, j, k-1] + dξdx[i, j, k]) * 0.5
     @inbounds ∂ξ∂y = (dξdy[i, j, k-1] + dξdy[i, j, k]) * 0.5

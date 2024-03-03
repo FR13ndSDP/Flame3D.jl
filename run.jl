@@ -22,10 +22,13 @@ const nthreads_cantera::Int64 = 24  # Cantera openmp threads
 const stiff::Bool = true           # if reaction is stiff
 const sub_step::Int64 = 1          # reaction substep in stiff case
 
+# IBM
+const IBM::Bool = true
+
 # flow control
 const Nprocs::Int64 = 1              # number of GPUs
-const dt::Float64 = 1e-8             # dt for simulation, make CFL < 1
-const Time::Float64 = 5e-5           # total simulation time
+const dt::Float64 = 4e-8             # dt for simulation, make CFL < 1
+const Time::Float64 = 1e-3           # total simulation time
 const maxStep::Int64 = 10000         # max steps to run
 
 const plt_out::Bool = true           # if output plt file
@@ -85,10 +88,8 @@ struct constants{T, VT}
     T_s::T
     Pr::T
     Cp::T
-    CD4::VT
     Hybrid::VT
-    WENO5::VT # eps, 13/12, 1/6
-    TENO5::VT # eps, CT, 1/6
+    WENO5::VT # WENO: eps, TENO: eps, CT
     UP7::VT
 end
 
@@ -111,11 +112,9 @@ device!(rank)
 const thermo = initThermo(mech) # now only NASA7
 const react = initReact(mech)
 const consts = constants(287.0, 1.4, 1.458e-6, 110.4, 0.72, 1004.5, 
-         CuArray([2/3, 1/12]),
-         CuArray([1e-4, 0.2]),
-         CuArray([1e-14, 13/12, 1/6]),
-         CuArray([1e-40, 1e-5, 1/6]),
-         CuArray([-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420]))
+         CuArray([1e-3, 0.2]),
+         CuArray([1e-14, 1e-40, 1e-5]),
+         CuArray([0.0, 17/600, -23/120, 22/30, 0.5, -0.075, 0.005]))
 
 CUDA.@time time_step(rank, comm, thermo, consts, react)
 

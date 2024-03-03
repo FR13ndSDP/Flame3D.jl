@@ -1,10 +1,14 @@
 # Range: 1+NG -> N+NG
-function c2Prim(U, Q, ρi, thermo)
+function c2Prim(U, Q, ρi, thermo, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp+NG || j > Ny+NG || k > Nz+NG || i < NG+1 || j < NG+1 || k < NG+1
+        return
+    end
+
+    if tag[i, j, k] ≠ 0
         return
     end
 
@@ -44,12 +48,16 @@ function c2Prim(U, Q, ρi, thermo)
 end
 
 # Range: 1 -> N+2*NG
-function getY(Yi, ρi, Q)
+function getY(Yi, ρi, Q, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
     if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
+        return
+    end
+
+    if tag[i, j, k] ≠ 0
         return
     end
 
@@ -84,7 +92,7 @@ function prim2c(U, Q)
 end
 
 # Range: 1+NG -> N+NG
-function linComb(U, Un, NV, a::Float64, b::Float64)
+function linComb(U, Un, NV, a::Float64, b::Float64, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -93,6 +101,10 @@ function linComb(U, Un, NV, a::Float64, b::Float64)
         return
     end
 
+    if tag[i, j, k] ≠ 0
+        return
+    end
+    
     for n = 1:NV
         @inbounds U[i, j, k, n] = U[i, j, k, n] * a + Un[i, j, k, n] * b
     end
