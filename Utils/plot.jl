@@ -19,14 +19,10 @@ x,y,z = get_coordinates(vtk)
 Nx, Ny, Nz = size(x)
 
 # variables
-T = get_data(p_data["T"])
-rho = get_data(p_data["rho"])
-H2O = get_data(p_data["YH2O"])
+T = get_data_reshaped(p_data["T"])
+rho = get_data_reshaped(p_data["rho"])
+H2O = get_data_reshaped(p_data["YH2O"])
 YH2O = H2O./rho
-
-T = reshape(T, (Nx, Ny, Nz))
-rho = reshape(rho, (Nx, Ny, Nz))
-YH2O = reshape(YH2O, (Nx, Ny, Nz))
 
 
 fig = plt.figure(figsize=(18, 6))

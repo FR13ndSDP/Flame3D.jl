@@ -15,15 +15,10 @@ x,y,z = get_coordinates(vtk)
 Nx, Ny, Nz = size(x)
 
 # variables
-T = get_data(p_data["T"])
-rho = get_data(p_data["rho"])
-H2 = get_data(p_data["YH2"])
+T = get_data_reshaped(p_data["T"])
+rho = get_data_reshaped(p_data["rho"])
+H2 = get_data_reshaped(p_data["YH2"])
 YH2 = H2./rho
-
-T = reshape(T, (Nx, Ny, Nz))
-rho = reshape(rho, (Nx, Ny, Nz))
-YH2 = reshape(YH2, (Nx, Ny, Nz))
-
 
 # Make a colormap, with the first value being transparent
 colormap = to_colormap(:hot);

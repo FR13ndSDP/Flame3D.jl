@@ -384,9 +384,7 @@ function time_step(rank, comm, thermo, consts, react)
             fname::String = string("./PLT/plt", rank, "-", tt)
 
             rho = convert(Array{Float32, 3}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1])
-            u =   convert(Array{Float32, 3}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2])
-            v =   convert(Array{Float32, 3}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 3])
-            w =   convert(Array{Float32, 3}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 4])
+            vel = convert(Array{Float32, 4}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2:4])
             p =   convert(Array{Float32, 3}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 5])
             T =   convert(Array{Float32, 3}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 6])
         
@@ -406,9 +404,7 @@ function time_step(rank, comm, thermo, consts, react)
 
             vtk_grid(fname, x_ng, y_ng, z_ng; compress=plt_compress_level) do vtk
                 vtk["rho"] = rho
-                vtk["u"] = u
-                vtk["v"] = v
-                vtk["w"] = w
+                vtk["velocity"] = @views (vel[:, :, :, 1], vel[:, :, :, 2], vel[:, :, :, 3])
                 vtk["p"] = p
                 vtk["T"] = T
                 vtk["phi"] = ϕ_ng
@@ -419,6 +415,7 @@ function time_step(rank, comm, thermo, consts, react)
                 vtk["YOH"] = YOH
                 vtk["YN2"] = YN2
                 vtk["tag"] = tag_ng
+                vtk["Time", VTKFieldData()] = dt * tt
             end 
         end
 
