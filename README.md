@@ -13,6 +13,7 @@ Code for compressible flow simulation with neural network for real gas and chemi
 - Use `HDF5` and `VTK` for I/O
 - Use `matplotlib`, `Makie.jl` or `Paraview` for post-processing
 - Use immersed boundary method to represent complex geometry (work in progress)
+- Be able to simulate incompressible flow efficiently (work in progress)
 ## Usage
 
 Generate mesh and metrics with
@@ -62,3 +63,8 @@ $Ma=1.5, T=5000\ \rm{K}, P = 3596\ \rm{Pa}$ air jet, a Neural network model for 
  
 ![IBM1](./Assets/IBM1.png)
 ![IBM2](./Assets/IBM2.png)
+
+### Low Mach flow
+> Entropically damped form of artificial compressibility for explicit simulation of incompressible flow
+
+![incomp](./Assets/anim.gif)

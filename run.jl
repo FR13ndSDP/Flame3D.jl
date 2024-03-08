@@ -27,8 +27,8 @@ const IBM::Bool = true
 
 # flow control
 const Nprocs::Int64 = 1              # number of GPUs
-const dt::Float64 = 4e-8             # dt for simulation, make CFL < 1
-const Time::Float64 = 1e-3           # total simulation time
+const dt::Float64 = 2e-6             # dt for simulation, make CFL < 1
+const Time::Float64 = 0.1           # total simulation time
 const maxStep::Int64 = 10000         # max steps to run
 
 const plt_out::Bool = true           # if output plt file

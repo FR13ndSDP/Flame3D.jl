@@ -7,14 +7,14 @@ const Nx::Int64 = 300
 const Nx_uniform::Int64 = Nx-20
 const Ny::Int64 = 63
 const Nz::Int64 = 63
-const Lx::Float64 = 0.02
-const ymin::Float64 = -0.0032
-const ymax::Float64 = 0.0032
+const Lx::Float64 = 2
+const ymin::Float64 = -0.32
+const ymax::Float64 = 0.32
 const ystar::Float64 = 0
-const zmin::Float64 = -0.0032
-const zmax::Float64 = 0.0032
+const zmin::Float64 = -0.32
+const zmax::Float64 = 0.32
 const zstar::Float64 = 0
-const α::Float64 = 4e-4
+const α::Float64 = 2e-2
 const Nx_tot::Int64 = Nx + 2*NG
 const Ny_tot::Int64 = Ny + 2*NG
 const Nz_tot::Int64 = Nz + 2*NG
@@ -115,7 +115,7 @@ function generateXYZ()
 
     # simple sphere here
     center = (100, 36, 36)
-    R = 0.0005
+    R = 0.03
 
     D = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
     # mirror location

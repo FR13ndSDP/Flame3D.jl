@@ -28,14 +28,14 @@ function fill_x(Q, U, ρi, Yi, thermo, rank)
         @inbounds Yi[i, j, k, 9] = 0.767
         @inbounds Yi[i, j, k, 2] = 0.233
         P = 101325.0
-        T = 350.0
+        T = 290.0
         @inbounds Y = @view Yi[i, j, k, :]
         rho = ρmixture(P, T, Y, thermo)
         @inbounds ρi[i, j, k, 9] = Yi[i, j, k, 9] * rho
         @inbounds ρi[i, j, k, 2] = Yi[i, j, k, 2] * rho
         @inbounds rhoi = @view ρi[i, j, k, :]
         ei = InternalEnergy(T, rhoi, thermo)
-        u = 200.0
+        u = 280.0
         # end
         @inbounds Q[i, j, k, 1] = rho
         @inbounds Q[i, j, k, 2] = u
@@ -187,7 +187,7 @@ function fillIB(Q, U, ρi, tag, proj, thermo)
         return
     end
 
-    Tw::Float64 = 350.0
+    Tw::Float64 = 290.0
 
     if tag[i, j, k] == 2
         ii = proj[i, j, k, 1]
@@ -234,20 +234,22 @@ function fillIB(Q, U, ρi, tag, proj, thermo)
         u_proj = Q[i+ii, j+jj, k+kk, 2]
         v_proj = Q[i+ii, j+jj, k+kk, 3]
         w_proj = Q[i+ii, j+jj, k+kk, 4]
+        T_proj = Q[i+ii, j+jj, k+kk, 6]
 
         Q[i ,j ,k ,2] = -u_proj
         Q[i ,j ,k ,3] = -v_proj
         Q[i ,j ,k ,4] = -w_proj
         Q[i ,j ,k ,5] = p_proj
-        Q[i ,j ,k ,6] = Tw
-        ρ = ρmixture(p_proj, Tw, Y_IB, thermo)
+        TIB = 2*Tw-T_proj
+        Q[i, j, k, 6] = TIB
+        ρ = ρmixture(p_proj, TIB, Y_IB, thermo)
         Q[i, j, k, 1] = ρ
 
         ρ_IB = @view ρi[i, j, k, :]
         for n = 1:Nspecs
             @inbounds ρ_IB[n] = Y_IB[n] * ρ
         end
-        Q[i, j, k, 7] = InternalEnergy(Tw, ρ_IB, thermo)
+        Q[i, j, k, 7] = InternalEnergy(TIB, ρ_IB, thermo)
 
         U[i, j, k, 1] = ρ
         U[i, j, k, 2] = -ρ * u_proj
@@ -303,14 +305,14 @@ end
 function initialize(Q, ρi, thermo)
     ct = pyimport("cantera")
     gas = ct.Solution(mech)
-    T::Float64 = 350.0
+    T::Float64 = 290.0
     T_ignite::Float64 = 305.0
     P::Float64 = 101325.0
     gas.TPY = T, P, "O2:0.233 N2:0.767"
     ρ::Float64 = gas.density
     gas.TPY = T_ignite, P, "H2:0.15 N2:0.85"
     ρ_ig::Float64 = gas.density
-    u::Float64 = 200.0
+    u::Float64 = 280.0
     v::Float64 = 0.0
     w::Float64 = 0.0
     
