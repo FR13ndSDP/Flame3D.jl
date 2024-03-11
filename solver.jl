@@ -106,8 +106,15 @@ function time_step(rank, comm, thermo, consts, react)
     x_h = fid["x"][lo:hi, :, :] 
     y_h = fid["y"][lo:hi, :, :] 
     z_h = fid["z"][lo:hi, :, :]
-    tag_h = fid["tag"][lo:hi, :, :]
-    proj_h = fid["proj"][lo:hi, :, :, :]
+    if IBM
+        tag_h = fid["tag"][lo:hi, :, :]
+        proj_h = fid["proj"][lo:hi, :, :, :]
+        tag = CuArray(tag_h)
+        proj = CuArray(proj_h)
+    else
+        tag_h = zeros(Int64, Nx_tot, Ny_tot, Nz_tot)
+        tag = CuArray(tag_h)
+    end
     close(fid)
 
     # move to device memory
@@ -121,8 +128,6 @@ function time_step(rank, comm, thermo, consts, react)
     dζdy = CuArray(dζdy_h)
     dζdz = CuArray(dζdz_h)
     J = CuArray(J_h)
-    tag = CuArray(tag_h)
-    proj = CuArray(proj_h)
 
     # allocate on device
     Yi =   CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nspecs)
