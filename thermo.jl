@@ -286,7 +286,10 @@ end
 end
 
 # compute mixture viscosity and heat conduct coeff
-@inline function mixtureProperties(T, P, X, μi, D, Diff, thermo)
+@inline function mixtureProperties(T, P, X, Diff, thermo)
+    μi = MVector{Nspecs, Float64}(undef)
+    D = MVector{Nspecs*Nspecs, Float64}(undef)
+
     @fastmath sqT::Float64 = sqrt(T)
     @fastmath sqsqT::Float64 = sqrt(sqT)
     @fastmath lgT = log(T)
@@ -316,12 +319,14 @@ end
 
     # Wilke fit, see Eq. (9-5.14) of Poling et al. (2001)
     for n = 1:Nspecs
+        tmp1::Float64 = 1/thermo.mw[n]
+        tmp2::Float64 = μi[n]
         for l = 1:n
-            @inbounds wratioln = thermo.mw[l]/thermo.mw[n]
-            @inbounds vrationl = μi[n]/μi[l]
+            @inbounds wratioln = thermo.mw[l]*tmp1
+            @inbounds vrationl = tmp2/μi[l]
 
             @inbounds @fastmath factor1 = 1 + sqrt(vrationl * sqrt(wratioln))
-            @inbounds @fastmath tmp = factor1*factor1 / sqrt(8+8*thermo.mw[n]/thermo.mw[l])
+            @inbounds @fastmath tmp = factor1*factor1 / sqrt(8+8/wratioln)
             @inbounds D[(n-1)*Nspecs+l] = tmp
             @inbounds D[(l-1)*Nspecs+n] = tmp / (vrationl * wratioln)
         end
@@ -377,8 +382,6 @@ function mixture(Q, ρi, Yi, λ, μ, D, thermo, tag)
     end
 
     X1 = MVector{Nspecs, Float64}(undef)
-    μ1 = MVector{Nspecs, Float64}(undef)
-    D1 = MVector{Nspecs*Nspecs, Float64}(undef)
 
     @inbounds T = Q[i, j, k, 6]
     @inbounds P = Q[i, j, k, 5]
@@ -393,7 +396,7 @@ function mixture(Q, ρi, Yi, λ, μ, D, thermo, tag)
     diff = @inbounds @view D[i, j, k, :]
     Y2X(Y1, X1, thermo)
 
-    lambda, mu = mixtureProperties(T, P, X1, μ1, D1, diff, thermo)
+    lambda, mu = mixtureProperties(T, P, X1, diff, thermo)
     @inbounds λ[i, j, k] = lambda
     @inbounds μ[i, j, k] = mu
     return
