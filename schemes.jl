@@ -439,7 +439,7 @@ function WENO_z(F, ϕ, Fp, Fm, NV, consts, tag)
     return
 end
 
-function TENO_x(F, Fp, Fm, NV, consts, tags)
+function TENO_x(F, Fp, Fm, NV, consts, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -520,7 +520,7 @@ function TENO_x(F, Fp, Fm, NV, consts, tags)
     return
 end
 
-function TENO_y(F, Fp, Fm, NV, consts, tags)
+function TENO_y(F, Fp, Fm, NV, consts, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -601,7 +601,7 @@ function TENO_y(F, Fp, Fm, NV, consts, tags)
     return
 end
 
-function TENO_z(F, Fp, Fm, NV, consts, tags)
+function TENO_z(F, Fp, Fm, NV, consts, tag)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
