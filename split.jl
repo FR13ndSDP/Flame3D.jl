@@ -52,9 +52,9 @@ function fluxSplit(Q, Fp, Fm, Ax, Ay, Az, tag)
     A2 *= ss
     A3 *= ss
 
-    E1P = (E1 + abs(E1)) * 0.5
-    E2P = (E2 + abs(E2)) * 0.5
-    E3P = (E3 + abs(E3)) * 0.5
+    E1P = (E1 + sqrt(E1^2+SWϵ2)) * 0.5
+    E2P = (E2 + sqrt(E2^2+SWϵ2)) * 0.5
+    E3P = (E3 + sqrt(E3^2+SWϵ2)) * 0.5
 
     E1M = E1 - E1P
     E2M = E2 - E2P
