@@ -5,14 +5,14 @@ import Adapt
 
 # LES
 const LES_smag::Bool = false       # if use Smagorinsky model
-const LES_wale::Bool = false        # if use WALE model
+const LES_wale::Bool = false       # if use WALE model
 
 # reaction
 const reaction::Bool = false       # if reaction is activated
 const T_criteria::Float64 = 500.0  # reaction temperature criteria 
-const Nspecs::Int64 = 9            # number of species
-const Nreacs::Int64 = 21           # number of reactions, consistent with mech
-const mech::String = "./NN/H2/LiDryer.yaml" # reaction mechanism file in cantera format
+const Nspecs::Int64 = 5            # number of species
+const Nreacs::Int64 = 5           # number of reactions, consistent with mech
+const mech::String = "./NN/Air/air.yaml" # reaction mechanism file in cantera format
 
 const Luxmodel::Bool = false       # if use Neural network model
 
@@ -27,22 +27,30 @@ const IBM::Bool = true
 
 # flow control
 const Nprocs::Int64 = 1              # number of GPUs
-const dt::Float64 = 2e-6             # dt for simulation, make CFL < 1
+const dt::Float64 = 1e-6             # dt for simulation, make CFL < 1
 const Time::Float64 = 0.1           # total simulation time
-const maxStep::Int64 = 10000         # max steps to run
+const maxStep::Int64 = 100         # max steps to run
 
 const plt_out::Bool = true           # if output plt file
-const step_plt::Int64 = 500          # how many steps to save plt
+const step_plt::Int64 = 200          # how many steps to save plt
 const plt_compress_level::Int64 = 1  # output file compression level 0-9, 0 for no compression
 
-const chk_out::Bool = false           # if checkpoint is made on save
-const step_chk::Int64 = 500          # how many steps to save chk
+const chk_out::Bool = true           # if checkpoint is made on save
+const step_chk::Int64 = 100          # how many steps to save chk
 const chk_compress_level::Int64 = 1  # checkpoint file compression level 0-9, 0 for no compression
-const restart::String = "none"     # restart use checkpoint, file name "*.h5" or "none"
+const restart::String = "./CHK/chk100.h5"     # restart use checkpoint, file name "*.h5" or "none"
 
-# do not change 
+# do not change unless you know what you are doing
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
 const Nprim::Int64 = 7 # ρ u v w p T ei
+# scheme constants
+const SWϵ2::Float64 = 0
+const WENOϵ::Float64 = 1e-26
+const TENOϵ::Float64 = 1e-40
+const TENOct::Float64 = 1e-5
+const hybrid_ϕ1::Float64 = 1e-3
+const hybrid_ϕ2::Float64 = 0.1
+const UP7::SVector{7, Float64} = SVector(0.0, 17/600, -23/120, 22/30, 0.5, -0.075, 0.005)
 # load mesh info
 const NG::Int64 = h5read("metrics.h5", "NG")
 const Nx::Int64 = h5read("metrics.h5", "Nx")
@@ -81,21 +89,8 @@ struct reactionProperty{RT, IT, VT, MT}
     Troe::MT
 end
 
-struct constants{T, VT}
-    Rg::T
-    gamma::T
-    C_s::T
-    T_s::T
-    Pr::T
-    Cp::T
-    Hybrid::VT
-    WENO5::VT # WENO: eps, TENO: eps, CT
-    UP7::VT
-end
-
 Adapt.@adapt_structure thermoProperty
 Adapt.@adapt_structure reactionProperty
-Adapt.@adapt_structure constants
 
 # Run the simulation
 MPI.Init()
@@ -111,11 +106,7 @@ device!(rank)
 # constant parameters
 const thermo = initThermo(mech) # now only NASA7
 const react = initReact(mech)
-const consts = constants(287.0, 1.4, 1.458e-6, 110.4, 0.72, 1004.5, 
-         CuArray([1e-3, 0.2]),
-         CuArray([1e-14, 1e-40, 1e-5]),
-         CuArray([0.0, 17/600, -23/120, 22/30, 0.5, -0.075, 0.005]))
 
-CUDA.@time time_step(rank, comm, thermo, consts, react)
+CUDA.@time time_step(rank, comm, thermo, react)
 
 MPI.Finalize()

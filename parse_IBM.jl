@@ -1,20 +1,21 @@
 #TODO: add spatial information (flag, mirror index and coeffs)for IBM ghost points
 using HDF5
 using WriteVTK
+using LinearAlgebra
 
 const NG::Int64 = 4
-const Nx::Int64 = 300
+const Nx::Int64 = 256
 const Nx_uniform::Int64 = Nx-20
 const Ny::Int64 = 63
 const Nz::Int64 = 63
-const Lx::Float64 = 2
+const Lx::Float64 = 2.56
 const ymin::Float64 = -0.32
 const ymax::Float64 = 0.32
 const ystar::Float64 = 0
 const zmin::Float64 = -0.32
 const zmax::Float64 = 0.32
 const zstar::Float64 = 0
-const α::Float64 = 2e-2
+const α::Float64 = 1.0
 const Nx_tot::Int64 = Nx + 2*NG
 const Ny_tot::Int64 = Ny + 2*NG
 const Nz_tot::Int64 = Nz + 2*NG
@@ -115,12 +116,20 @@ function generateXYZ()
 
     # simple sphere here
     center = (100, 36, 36)
-    R = 0.03
+    R = 0.08
 
     D = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    # mirror location
-    mirror = zeros(Float64, Nx_tot, Ny_tot, Nz_tot, 3)
-    proj = zeros(Int64, Nx_tot, Ny_tot, Nz_tot, 3)
+
+
+    # coeffs and interp locations
+    np = 15
+    coeffs_dirichlet = zeros(Float64, np+1, Nx_tot, Ny_tot, Nz_tot)
+    coeffs_neumann = zeros(Float64, np+1, Nx_tot, Ny_tot, Nz_tot)
+    intepi = zeros(Int64, np, Nx_tot, Ny_tot, Nz_tot)
+    intepj = zeros(Int64, np, Nx_tot, Ny_tot, Nz_tot)
+    intepk = zeros(Int64, np, Nx_tot, Ny_tot, Nz_tot)
+    loca_BI = zeros(Float64, 3, Nx_tot, Ny_tot, Nz_tot)
+    dist2BI = zeros(Float64, np+1, Nx_tot, Ny_tot, Nz_tot)
 
     @inbounds for k ∈ 1:Nz_tot, j ∈ 1:Ny_tot, i ∈ 1:Nx_tot
         D[i, j, k] = sqrt((x[i, j, k]-x[center[1], center[2], center[3]])^2 +
@@ -129,85 +138,127 @@ function generateXYZ()
     end
 
     # TODO: use neighbor interpolation
-    @inbounds for k ∈ 1:Nz_tot, j ∈ 1:Ny_tot, i ∈ 1:Nx_tot
+    @inbounds for k ∈ 4:Nz_tot-3, j ∈ 4:Ny_tot-3, i ∈ 4:Nx_tot-3
         if D[i, j, k] > R
             tag[i, j, k] = 0
-        elseif D[i, j, k] == R
-            tag[i, j, k] = 2
-
-            # search for nearest neighbor
-            minD = 10000.0
-            i_min = 0
-            j_min = 0
-            k_min = 0
-            for kk = -6:6, jj = -6:6, ii = -6:6
-                if tag[i+ii, j+jj, k+kk] == 0
-                    Δd = sqrt((x[i+ii, j+jj, k+kk]-x[i, j, k])^2 +
-                              (y[i+ii, j+jj, k+kk]-y[i, j, k])^2 +
-                              (z[i+ii, j+jj, k+kk]-z[i, j, k])^2)
-
-                    if Δd < minD
-                        minD = Δd
-                        i_min = ii
-                        j_min = jj
-                        k_min = kk
-                    end
-                end
-            end
-
-            proj[i, j, k, 1] = i_min
-            proj[i, j, k, 2] = j_min
-            proj[i, j, k, 3] = k_min
-        elseif D[i, j, k] < R
+        elseif D[i, j, k] <= R
             if D[i+3, j, k] > R || D[i-3, j ,k] > R || D[i, j+3, k] > R || D[i, j-3, k] > R || D[i, j, k+3] > R || D[i, j, k-3] > R
                 tag[i, j, k] = 3
-                ratio = R/D[i, j, k]
-                x1 = (2*ratio-1) * (x[i, j, k]-x[center[1], center[2], center[3]])
-                y1 = (2*ratio-1) * (y[i, j, k]-y[center[1], center[2], center[3]])
-                z1 = (2*ratio-1) * (z[i, j, k]-z[center[1], center[2], center[3]])
-                mirror[i, j, k, 1] = x1 + x[center[1], center[2], center[3]]
-                mirror[i, j, k, 2] = y1 + y[center[1], center[2], center[3]]
-                mirror[i, j, k, 3] = z1 + z[center[1], center[2], center[3]]
-
-                # search for nearest neighbor
-                minD = 10000.0
-                i_min = 0
-                j_min = 0
-                k_min = 0
-                for kk = -6:6, jj = -6:6, ii = -6:6
-                    if tag[i+ii, j+jj, k+kk] == 0
-                        Δd = sqrt((x[i+ii, j+jj, k+kk]-mirror[i, j, k, 1])^2 +
-                                  (y[i+ii, j+jj, k+kk]-mirror[i, j, k, 2])^2 +
-                                  (z[i+ii, j+jj, k+kk]-mirror[i, j, k, 3])^2)
-
-                        if Δd < minD
-                            minD = Δd
-                            i_min = ii
-                            j_min = jj
-                            k_min = kk
-                        end
-                    end
-                end
-
-                proj[i, j, k, 1] = i_min
-                proj[i, j, k, 2] = j_min
-                proj[i, j, k, 3] = k_min
             else
                 tag[i, j, k] = 1
             end
         end
     end
+
+    for k ∈ 7:Nz_tot-6, j ∈ 7:Ny_tot-6, i ∈ 7:Nx_tot-6
+        if tag[i,j,k] == 3
+            # length scale at ghost
+            lΔ = 0.01
+
+            # find BI
+            ratio = R/D[i, j, k]
+            xBI = ratio * (x[i, j, k]-x[center[1], center[2], center[3]]) + x[center[1], center[2], center[3]]
+            yBI = ratio * (y[i, j, k]-y[center[1], center[2], center[3]]) + y[center[1], center[2], center[3]]
+            zBI = ratio * (z[i, j, k]-z[center[1], center[2], center[3]]) + z[center[1], center[2], center[3]]
+
+            loca_BI[1,i,j,k] = xBI
+            loca_BI[2,i,j,k] = yBI
+            loca_BI[3,i,j,k] = zBI
+
+            # find neighbor fluid point
+            Dg  = []
+            inear = []
+            jnear = []
+            knear = []
+            for kk = -6:6, jj = -6:6, ii = -6:6
+                if tag[i+ii, j+jj, k+kk] == 0
+                    Δd = sqrt((x[i+ii, j+jj, k+kk]-xBI)^2 +
+                              (y[i+ii, j+jj, k+kk]-yBI)^2 +
+                              (z[i+ii, j+jj, k+kk]-zBI)^2)
+
+                    push!(Dg, Δd)
+                    push!(inear, i+ii)
+                    push!(jnear, j+jj)
+                    push!(knear, k+kk)
+                end
+            end
+
+            # find closest
+            perm = sortperm(Dg)
+            index = perm[1:np]
+            inear = inear[index]
+            jnear = jnear[index]
+            knear = knear[index]
+
+            # form W and v
+            W = zeros(Float64, np+1, np+1)
+            V = zeros(Float64, np+1, 10) # 2nd order, 10
+
+            xprime = x[i,j,k]- xBI
+            yprime = y[i,j,k]- yBI
+            zprime = z[i,j,k]- zBI
+            dist2BI[1,i,j,k] = sqrt(xprime^2 + yprime^2 + zprime^2)
+            W[1, 1] = sech(sqrt(xprime^2 + yprime^2 + zprime^2)/lΔ)
+            V[1,1] = 1.0
+            V[1,2] = xprime
+            V[1,3] = yprime
+            V[1,4] = zprime
+            V[1,5] = xprime*yprime
+            V[1,6] = xprime*zprime
+            V[1,7] = yprime*zprime
+            V[1,8] = xprime^2
+            V[1,9] = yprime^2
+            V[1,10] = zprime^2
+
+            for n = 1:np
+                xprime = x[inear[n], jnear[n], knear[n]] - xBI
+                yprime = y[inear[n], jnear[n], knear[n]] - yBI
+                zprime = z[inear[n], jnear[n], knear[n]] - zBI
+
+                dist2BI[n+1,i,j,k] = sqrt(xprime^2 + yprime^2 + zprime^2)
+
+                W[n+1, n+1] = sech(sqrt(xprime^2 + yprime^2 + zprime^2)/lΔ)
+                V[n+1,1] = 1.0
+                V[n+1,2] = xprime
+                V[n+1,3] = yprime
+                V[n+1,4] = zprime
+                V[n+1,5] = xprime*yprime
+                V[n+1,6] = xprime*zprime
+                V[n+1,7] = yprime*zprime
+                V[n+1,8] = xprime^2
+                V[n+1,9] = yprime^2
+                V[n+1,10] = zprime^2
+            end
+
+            # form A
+            A = LinearAlgebra.pinv(W*V)*W
+
+            intepi[:, i,j,k] = inear
+            intepj[:, i,j,k] = jnear
+            intepk[:, i,j,k] = knear
+
+            # dirichlet coeffs
+            coeffs_dirichlet[:, i,j,k] = A[1, :]
+            # neumann coeffs
+            n1 = (xBI-x[center[1],center[2],center[3]])/R
+            n2 = (yBI-y[center[1],center[2],center[3]])/R
+            n3 = (zBI-z[center[1],center[2],center[3]])/R
+
+            coeffs_neumann[:, i,j,k] = A[2, :].*n1 + A[3,:].*n2 + A[4,:].*n3
+        end
+    end
     
     vtk_grid("IBM.vts", x, y, z) do vtk
         vtk["tag"] = tag
-        vtk["proj_i"] = proj[:, :, :, 1]
-        vtk["proj_j"] = proj[:, :, :, 2]
-        vtk["proj_k"] = proj[:, :, :, 3]
-        vtk["mirror_x"] = mirror[:, :, :, 1]
-        vtk["mirror_y"] = mirror[:, :, :, 2]
-        vtk["mirror_z"] = mirror[:, :, :, 3]
+        vtk["coeffs_d"] = coeffs_dirichlet
+        vtk["coeffs_n"] = coeffs_neumann
+        vtk["intepi"] = intepi
+        vtk["intepj"] = intepj
+        vtk["intepk"] = intepk
+        vtk["loca_BI"] = loca_BI
+        vtk["dist2BI"] = dist2BI
     end
-    return x,y,z,tag,proj
+    return x,y,z,tag,intepi,intepj,intepk,coeffs_dirichlet,coeffs_neumann
 end
 
 # compute jacobian
@@ -226,7 +277,7 @@ function CD2_R(f)
     return fₓ
 end
 
-function computeMetrics(x,y,z,tag,proj)
+function computeMetrics(x,y,z,tag,neari,nearj,neark,cd,cn)
     # Jacobians
     dxdξ = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
     dxdη = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
@@ -336,7 +387,11 @@ function computeMetrics(x,y,z,tag,proj)
         file["y", compress=compress_level] = y
         file["z", compress=compress_level] = z
         file["tag", compress=compress_level] = tag
-        file["proj", compress=compress_level] = proj
+        file["intepi", compress=compress_level] = neari
+        file["intepj", compress=compress_level] = nearj
+        file["intepk", compress=compress_level] = neark
+        file["coeffs_d", compress=compress_level] = cd
+        file["coeffs_n", compress=compress_level] = cn
     end
 
     if vis
@@ -357,8 +412,8 @@ end
 
 
 function main()
-    x,y,z,tag,proj = generateXYZ()
-    computeMetrics(x,y,z,tag,proj)
+    x,y,z,tag,neari,nearj,neark,cd,cn = generateXYZ()
+    computeMetrics(x,y,z,tag,neari,nearj,neark,cd,cn)
     println("Parse mesh done!")
     flush(stdout)
 end

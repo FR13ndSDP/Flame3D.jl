@@ -19,16 +19,16 @@ include("thermo.jl")
 include("mpi.jl")
 
 # TODO: implement charateristic flux splitting
-function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fhx, Fhy, Fhz, consts, tag)
+function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fhx, Fhy, Fhz, tag)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, dξdx, dξdy, dξdz, tag)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_x(Fx, ϕ, Fp, Fm, Ncons, consts, tag)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_x(Fx, ϕ, Fp, Fm, Ncons, tag)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, dηdx, dηdy, dηdz, tag)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_y(Fy, ϕ, Fp, Fm, Ncons, consts, tag)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_y(Fy, ϕ, Fp, Fm, Ncons, tag)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, dζdx, dζdy, dζdz, tag)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_z(Fz, ϕ, Fp, Fm, Ncons, consts, tag)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_z(Fz, ϕ, Fp, Fm, Ncons, tag)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fhx, tag)
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fhy, tag)
@@ -37,16 +37,16 @@ function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, d
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J, tag)
 end
 
-function specAdvance(ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fhx, Fhy, Fhz, thermo, consts, tag)
+function specAdvance(ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fhx, Fhy, Fhz, thermo, tag)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock split(ρi, Q, Fp_i, Fm_i, dξdx, dξdy, dξdz, tag)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_x(Fx_i, ϕ, Fp_i, Fm_i, Nspecs, consts, tag)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_x(Fx_i, ϕ, Fp_i, Fm_i, Nspecs, tag)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock split(ρi, Q, Fp_i, Fm_i, dηdx, dηdy, dηdz, tag)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_y(Fy_i, ϕ, Fp_i, Fm_i, Nspecs, consts, tag)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_y(Fy_i, ϕ, Fp_i, Fm_i, Nspecs, tag)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock split(ρi, Q, Fp_i, Fm_i, dζdx, dζdy, dζdz, tag)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_z(Fz_i, ϕ, Fp_i, Fm_i, Nspecs, consts, tag)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_z(Fz_i, ϕ, Fp_i, Fm_i, Nspecs, tag)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock specViscousFlux_x(Fd_x, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fhx, thermo, tag)
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock specViscousFlux_y(Fd_y, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fhy, thermo, tag)
@@ -55,7 +55,7 @@ function specAdvance(ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z,
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock divSpecs(ρi, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dt, J, tag)
 end
 
-function time_step(rank, comm, thermo, consts, react)
+function time_step(rank, comm, thermo, react)
     Nx_tot = Nxp+2*NG
     Ny_tot = Ny+2*NG
     Nz_tot = Nz+2*NG
@@ -108,9 +108,17 @@ function time_step(rank, comm, thermo, consts, react)
     z_h = fid["z"][lo:hi, :, :]
     if IBM
         tag_h = fid["tag"][lo:hi, :, :]
-        proj_h = fid["proj"][lo:hi, :, :, :]
+        cd_h = fid["coeffs_d"][:, lo:hi, :, :]
+        cn_h = fid["coeffs_n"][:, lo:hi, :, :]
+        neari_h = fid["intepi"][:, lo:hi, :, :]
+        nearj_h = fid["intepj"][:, lo:hi, :, :]
+        neark_h = fid["intepk"][:, lo:hi, :, :]
         tag = CuArray(tag_h)
-        proj = CuArray(proj_h)
+        cd = CuArray(cd_h)
+        cn = CuArray(cn_h)
+        neari = CuArray(neari_h)
+        nearj = CuArray(nearj_h)
+        neark = CuArray(neark_h)
     else
         tag_h = zeros(Int64, Nx_tot, Ny_tot, Nz_tot)
         tag = CuArray(tag_h)
@@ -184,7 +192,7 @@ function time_step(rank, comm, thermo, consts, react)
     fillGhost(Q, U, ρi, Yi, thermo, rank)
     fillSpec(ρi)
     if IBM
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fillIB(Q, U, ρi, tag, proj, thermo)
+        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fillIB(Q, U, ρi, neari, nearj, neark, cd, cn, tag, thermo)
     end
 
     if reaction
@@ -245,7 +253,7 @@ function time_step(rank, comm, thermo, consts, react)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
                 if IBM
-                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fillIB(Q, U, ρi, tag, proj, thermo)
+                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fillIB(Q, U, ρi, neari, nearj, neark, cd, cn, tag, thermo)
                 end
             elseif Cantera
                 # CPU - cantera
@@ -260,7 +268,7 @@ function time_step(rank, comm, thermo, consts, react)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
                 if IBM
-                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fillIB(Q, U, ρi, tag, proj, thermo)
+                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fillIB(Q, U, ρi, neari, nearj, neark, cd, cn, tag, thermo)
                 end
             else
                 # GPU
@@ -277,7 +285,7 @@ function time_step(rank, comm, thermo, consts, react)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
                 if IBM
-                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fillIB(Q, U, ρi, tag, proj, thermo)
+                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fillIB(Q, U, ρi, neari, nearj, neark, cd, cn, tag, thermo)
                 end
             end
         end
@@ -291,8 +299,8 @@ function time_step(rank, comm, thermo, consts, react)
 
             @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock mixture(Q, ρi, Yi, λ, μ, D, thermo, tag)
             @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q)
-            specAdvance(ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fhx, Fhy, Fhz, thermo, consts, tag)
-            flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fhx, Fhy, Fhz, consts, tag)
+            specAdvance(ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fhx, Fhy, Fhz, thermo, tag)
+            flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fhx, Fhy, Fhz, tag)
 
             if KRK == 2
                 @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock linComb(U, Un, Ncons, 0.25, 0.75, tag)
@@ -309,7 +317,7 @@ function time_step(rank, comm, thermo, consts, react)
             fillGhost(Q, U, ρi, Yi, thermo, rank)
             fillSpec(ρi)
             if IBM
-                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fillIB(Q, U, ρi, tag, proj, thermo)
+                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fillIB(Q, U, ρi, neari, nearj, neark, cd, cn, tag, thermo)
             end
         end
 
@@ -328,7 +336,7 @@ function time_step(rank, comm, thermo, consts, react)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
                 if IBM
-                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fillIB(Q, U, ρi, tag, proj, thermo)
+                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fillIB(Q, U, ρi, neari, nearj, neark, cd, cn, tag, thermo)
                 end
             elseif Cantera
                 # CPU - cantera
@@ -343,7 +351,7 @@ function time_step(rank, comm, thermo, consts, react)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
                 if IBM
-                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fillIB(Q, U, ρi, tag, proj, thermo)
+                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fillIB(Q, U, ρi, neari, nearj, neark, cd, cn, tag, thermo)
                 end
             else
                 # GPU
@@ -360,7 +368,7 @@ function time_step(rank, comm, thermo, consts, react)
                 fillGhost(Q, U, ρi, Yi, thermo, rank)
                 fillSpec(ρi)
                 if IBM
-                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fillIB(Q, U, ρi, tag, proj, thermo)
+                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fillIB(Q, U, ρi, neari, nearj, neark, cd, cn, tag, thermo)
                 end
             end
         end
@@ -393,12 +401,11 @@ function time_step(rank, comm, thermo, consts, react)
             p =   convert(Array{Float32, 3}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 5])
             T =   convert(Array{Float32, 3}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 6])
         
-            YH2  = convert(Array{Float32, 3}, @view ρi_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1])
+            YO  = convert(Array{Float32, 3}, @view ρi_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1])
             YO2  = convert(Array{Float32, 3}, @view ρi_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2])
-            YH2O = convert(Array{Float32, 3}, @view ρi_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 3])
-            YH   = convert(Array{Float32, 3}, @view ρi_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 4])
-            YOH  = convert(Array{Float32, 3}, @view ρi_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 6])
-            YN2  = convert(Array{Float32, 3}, @view ρi_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 9])
+            YN = convert(Array{Float32, 3}, @view ρi_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 3])
+            YNO   = convert(Array{Float32, 3}, @view ρi_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 4])
+            YN2  = convert(Array{Float32, 3}, @view ρi_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 5])
 
             ϕ_ng = convert(Array{Float32, 3}, @view ϕ_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
             x_ng = convert(Array{Float32, 3}, @view x_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
@@ -413,11 +420,10 @@ function time_step(rank, comm, thermo, consts, react)
                 vtk["p"] = p
                 vtk["T"] = T
                 vtk["phi"] = ϕ_ng
-                vtk["YH2"] = YH2
+                vtk["YO"] = YO
                 vtk["YO2"] = YO2
-                vtk["YH2O"] = YH2O
-                vtk["YH"] = YH
-                vtk["YOH"] = YOH
+                vtk["YN"] = YN
+                vtk["YNO"] = YNO
                 vtk["YN2"] = YN2
                 vtk["tag"] = tag_ng
                 vtk["Time", VTKFieldData()] = dt * tt
