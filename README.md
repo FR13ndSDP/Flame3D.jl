@@ -12,7 +12,7 @@ Code for compressible flow simulation with neural network for real gas and chemi
 - Call `Cantera` for chemical reaction evaluation, either Python or C++ interface
 - Use `HDF5` and `VTK` for I/O
 - Use `matplotlib`, `Makie.jl` or `Paraview` for post-processing
-- Use immersed boundary method on curvilinear coordinates to represent complex geometry (work in progress)
+- Use high order sharp interface immersed boundary method on curvilinear coordinates to represent complex geometry (work in progress)
 - Be able to simulate incompressible flow efficiently (work in progress)
 ## Usage
 
@@ -60,11 +60,12 @@ $Ma=1.5, T=5000\ \rm{K}, P = 3596\ \rm{Pa}$ air jet, a Neural network model for 
 ![NN-T](./Assets/NN-T.png)
 
 ### Immersed boundary
- 
+> Turner, J. M., Seo, J. H., & Mittal, R. (2024). A high-order sharp-interface immersed boundary solver for high-speed flows. Journal of Computational Physics, 500, 112748.
+> 
 ![IBM2](./Assets/IBM2.png)
 ![IBM3](./Assets/x59.png)
 
 ### Low Mach flow
-> Entropically damped form of artificial compressibility for explicit simulation of incompressible flow
+> Clausen, J. R. (2013). Entropically damped form of artificial compressibility for explicit simulation of incompressible flow. Physical Review E, 87(1), 013309.
 
 ![incomp](./Assets/anim.gif)
