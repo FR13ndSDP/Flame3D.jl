@@ -169,6 +169,10 @@ function time_step(rank, comm, thermo, react)
     Un = similar(U)
     ρn = similar(ρi)
 
+    if average
+        Q_avg = CUDA.zeros(Float64, Nx_tot, Ny_tot, Nz_tot, Nprim)
+    end
+
     # MPI buffer 
     Qsbuf_h = zeros(Float64, NG, Ny_tot, Nz_tot, Nprim)
     Qrbuf_h = similar(Qsbuf_h)
@@ -458,6 +462,42 @@ function time_step(rank, comm, thermo, react)
                     dxpl_mpio=:collective
                 )
                 dset2[:, :, :, :, rank + 1] = ρi_h
+            end
+        end
+
+        # Average output
+        if average
+            if tt % avg_step == 0
+                @. Q_avg += Q/avg_total
+            end
+
+            if tt == avg_step*avg_total
+                if rank == 0
+                    printstyled("average done\n", color=:green)
+                end
+
+                mkpath("./PLT")
+                avgname::String = string("./PLT/avg", rank, "-", tt)
+
+                copyto!(Q_h, Q_avg)
+                x_ng = convert(Array{Float32, 3}, @view x_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
+                y_ng = convert(Array{Float32, 3}, @view y_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
+                z_ng = convert(Array{Float32, 3}, @view z_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG])
+                
+                rho = convert(Array{Float32, 3}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1])
+                vel = convert(Array{Float32, 4}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2:4])
+                p =   convert(Array{Float32, 3}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 5])
+                T =   convert(Array{Float32, 3}, @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 6])
+
+                vtk_grid(avgname, x_ng, y_ng, z_ng; compress=plt_compress_level) do vtk
+                    vtk["rho"] = rho
+                    vtk["velocity"] = @views (vel[:, :, :, 1], vel[:, :, :, 2], vel[:, :, :, 3])
+                    vtk["p"] = p
+                    vtk["T"] = T
+                    vtk["Time", VTKFieldData()] = dt * tt
+                end 
+                
+                return
             end
         end
     end
