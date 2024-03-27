@@ -6,32 +6,32 @@ const NG::Int64 = 4
 const Nx::Int64 = 300
 const Ny::Int64 = 128
 const Nz::Int64 = 128
-const Lx::Float64 = 4
+const Lx::Float32 = 4
 const Nx_tot::Int64 = Nx + 2*NG
 const Ny_tot::Int64 = Ny + 2*NG
 const Nz_tot::Int64 = Nz + 2*NG
 const vis::Bool = true
 const compress_level::Int64 = 3
 
-x = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-y = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-z = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
+x = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+y = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+z = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
 
 
 
 @inbounds for k ∈ 1:Nz, j ∈ 1:Ny, i ∈ 1:Nx
-    Rmin = 0.0
-    Rmax = 5.0
-    Rstar = 2.0
-    α = 0.5
+    Rmin::Float32 = 0.0
+    Rmax::Float32 = 5.0
+    Rstar::Float32 = 2.0
+    α::Float32 = 0.5
     c1 = asinh((Rmin-Rstar)/α)
     c2 = asinh((Rmax-Rstar)/α)
     x[i+NG, j+NG, k+NG] = Rstar + α * sinh(c1*(1-(i-1)/(Nx-1)) +c2*(i-1)/(Nx-1))
 end
 
-R0 = 0.1
-R1 = 0.7
-α = 0.03
+R0::Float32 = 0.1
+R1::Float32 = 0.7
+α::Float32 = 0.03
 @inbounds for k ∈ 1:Nz
     for j ∈ 1:Ny
         for i ∈ 1:Nx
@@ -129,26 +129,26 @@ function CD2_R(f)
 end
 
 # Jacobians
-dxdξ = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-dxdη = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-dxdζ = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-dydξ = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-dydη = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-dydζ = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-dzdξ = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-dzdη = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-dzdζ = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
+dxdξ = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+dxdη = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+dxdζ = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+dydξ = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+dydη = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+dydζ = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+dzdξ = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+dzdη = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+dzdζ = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
 
-dξdx = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-dηdx = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-dζdx = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-dξdy = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-dηdy = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-dζdy = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-dξdz = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-dηdz = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-dζdz = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-J  = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
+dξdx = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+dηdx = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+dζdx = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+dξdy = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+dηdy = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+dζdy = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+dξdz = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+dηdz = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+dζdz = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+J  = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
 
 @inbounds for k ∈ 1:Nz_tot, j ∈ 1:Ny_tot, i ∈ 4:Nx_tot-3
     dxdξ[i, j, k] = CD6(x[i-3:i+3, j, k])

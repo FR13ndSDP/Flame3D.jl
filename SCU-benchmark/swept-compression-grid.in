@@ -1,9 +1,9 @@
 nx    ny    nz   Nprocs
-250   240    20   1
+1000   240    100   1
 nx_inlet   nx_conner   nx_buff
-120        120          10
+680        300          20
 dx_inlet   Lx_inlet   Lx_conner   alfax_buff
-0.05         300.       50.         1.01
+0.5         300.       50.         1.05
 sw_angle   comp_angle
 0.        24.
 High   hy_wall   Lz

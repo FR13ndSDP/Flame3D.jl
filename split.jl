@@ -4,7 +4,7 @@ function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
-    if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
+    if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
     end
 
@@ -13,12 +13,12 @@ function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
     @inbounds v = Q[i, j, k, 3]
     @inbounds w = Q[i, j, k, 4]
     @inbounds p = Q[i, j, k, 5]
-    @inbounds ei = Q[i, j, k, 7]
+
     @inbounds A1 = Ax[i, j, k]
     @inbounds A2 = Ay[i, j, k]
     @inbounds A3 = Az[i, j, k]
 
-    γ = 1.4
+    γ::Float32 = 1.4f0
     @fastmath c = sqrt(γ*p/ρ)
 
     @fastmath ss = sqrt(A1^2 + A2^2 + A3^2)
@@ -32,9 +32,9 @@ function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
     A2 *= ss
     A3 *= ss
 
-    E1P = (E1 + abs(E1)) * 0.5
-    E2P = (E2 + abs(E2)) * 0.5
-    E3P = (E3 + abs(E3)) * 0.5
+    E1P = (E1 + abs(E1)) * 0.5f0
+    E2P = (E2 + abs(E2)) * 0.5f0
+    E3P = (E3 + abs(E3)) * 0.5f0
 
     E1M = E1 - E1P
     E2M = E2 - E2P
@@ -47,9 +47,9 @@ function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
     wc1 = w - c * A3
     wc2 = w + c * A3
 
-    vvc1 = (uc1^2 + vc1^2 + wc1^2) * 0.50
-    vvc2 = (uc2^2 + vc2^2 + wc2^2) * 0.50
-    vv = (γ - 1.0) * (u^2 + v^2 + w^2)
+    vvc1 = (uc1^2 + vc1^2 + wc1^2) * 0.5f0
+    vvc2 = (uc2^2 + vc2^2 + wc2^2) * 0.5f0
+    vv = (γ - 1) * (u^2 + v^2 + w^2)
     W2 = (3-γ)/(2*(γ-1)) * c^2
 
     tmp1 = ρ/(2 * γ)

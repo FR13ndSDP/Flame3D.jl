@@ -27,6 +27,7 @@ def fluxCoeff(N, k):
 
 # Mixing CD6(0.3), UP5(0.7)
 a = fluxCoeff(7, -3)
-b = fluxCoeff(6, -3)
-b = np.append(b, 0)
-print(b*0.7+0.3*a)
+b = fluxCoeff(8, -4)
+a = np.concatenate(([0], a))
+# b = np.append(b, 0)
+print(b*0.5+0.5*a)
