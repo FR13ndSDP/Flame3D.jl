@@ -7,9 +7,10 @@ const LES_wale::Bool = false        # if use WALE model
 
 # flow control
 const Nprocs::SVector{3, Int64} = [1,1,1] # number of GPUs
+const Iperiodic = (false, false, true)
 const dt::Float32 = 1.5f-8             # dt for simulation, make CFL < 1
 const Time::Float32 = 1f-3           # total simulation time
-const maxStep::Int64 = 100000         # max steps to run
+const maxStep::Int64 = 100         # max steps to run
 
 const plt_out::Bool = true           # if output plt file
 const step_plt::Int64 = 1000          # how many steps to save plt
@@ -18,18 +19,18 @@ const plt_compress_level::Int64 = 1  # output file compression level 0-9, 0 for 
 const chk_out::Bool = false           # if checkpoint is made on save
 const step_chk::Int64 = 2000          # how many steps to save chk
 const chk_compress_level::Int64 = 1  # checkpoint file compression level 0-9, 0 for no compression
-const restart::String = "./CHK/chk38000.h5"     # restart use checkpoint, file name "*.h5" or "none"
+const restart::String = "none"     # restart use checkpoint, file name "*.h5" or "none"
 
 const average = false                 # if do average
 const avg_step = 10                  # average interval
-const avg_total = 5000                # total number of samples
+const avg_total = 1000                # total number of samples
 
 # do not change 
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
 const Nprim::Int64 = 6 # ρ u v w p T
 # scheme constant
 const WENOϵ::Float32 = eps(1f-12)
-const hybrid_ϕ1::Float32 = 3f-2
+const hybrid_ϕ1::Float32 = 5f-2
 const hybrid_ϕ2::Float32 = 10.f0
 const UP7::SVector{7, Float32} = SVector(-0.00357143f0,  0.03809524f0, -0.18690476f0,  0.68809524f0,  0.56309524f0, -0.11190476f0, 0.01309524f0)
 
@@ -55,12 +56,13 @@ MPI.Init()
 comm = MPI.COMM_WORLD
 rank = MPI.Comm_rank(comm)
 nGPU = MPI.Comm_size(comm)
+comm_cart = MPI.Cart_create(comm, Nprocs; periodic=Iperiodic)
 if nGPU != Nprocs[1]*Nprocs[2]*Nprocs[3] && rank == 0
     error("Oops, nGPU ≠ $Nprocs\n")
 end
 # set device on each MPI rank
 device!(rank)
 
-CUDA.@time time_step(rank, comm)
+time_step(rank, comm_cart)
 
 MPI.Finalize()

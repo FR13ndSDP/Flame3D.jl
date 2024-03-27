@@ -1,4 +1,4 @@
-function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, μratio_x)
+function viscousFlux_x(Fx, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -22,8 +22,8 @@ function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
 
     @inbounds Jac = (J[i-1, j, k] + J[i, j, k]) * 0.5f0
     @inbounds T = (Q[i-1, j, k, 6] + Q[i, j, k, 6]) * 0.5f0
-    @inbounds μi =  1.458f-6*T*sqrt(T)/(T+110.4f0)
-    @inbounds λi =  1004.5f0*μi/0.7f0
+    μi::Float32 =  1.458f-6*T*sqrt(T)/(T+110.4f0)
+    λi::Float32 =  1004.5f0*μi/0.7f0
 
     @inbounds ∂u∂ξ = 1.25f0*(Q[i, j, k, 2] - Q[i-1, j, k, 2]) - c12*(Q[i+1, j, k, 2] - Q[i-2, j, k, 2])
     @inbounds ∂v∂ξ = 1.25f0*(Q[i, j, k, 3] - Q[i-1, j, k, 3]) - c12*(Q[i+1, j, k, 3] - Q[i-2, j, k, 3])
@@ -81,7 +81,6 @@ function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
         @fastmath μt = ρ * (Cs/Jac^(1/3f0))^2 * Sijmag #ρ(csΔ)^2 * Sijmag
 
         λt = 1004.5f0 * μt / Prt # cp = Rg*γ/(γ-1)
-        μratio_x[i-NG, j-NG, k-NG] = μt/μi
 
         μi += μt
         λi += λt
@@ -108,7 +107,6 @@ function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
         @fastmath μt = min(ρ * (Cw/Jac^(1/3f0))^2 * D, 6*μi)
       
         λt = 1004.5f0 * μt / Prt # cp = Rg*γ/(γ-1)
-        μratio_x[i-NG, j-NG, k-NG] = μt/μi
 
         μi += μt
         λi += λt
@@ -125,14 +123,14 @@ function viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     @inbounds E2 = u * τ12 + v * τ22 + w * τ23 + λi * dTdy
     @inbounds E3 = u * τ13 + v * τ23 + w * τ33 + λi * dTdz
 
-    @inbounds Fv_x[i-NG, j-NG, k-NG, 1] = ∂ξ∂x * τ11 + ∂ξ∂y * τ12 + ∂ξ∂z * τ13
-    @inbounds Fv_x[i-NG, j-NG, k-NG, 2] = ∂ξ∂x * τ12 + ∂ξ∂y * τ22 + ∂ξ∂z * τ23
-    @inbounds Fv_x[i-NG, j-NG, k-NG, 3] = ∂ξ∂x * τ13 + ∂ξ∂y * τ23 + ∂ξ∂z * τ33
-    @inbounds Fv_x[i-NG, j-NG, k-NG, 4] = ∂ξ∂x * E1 + ∂ξ∂y * E2 + ∂ξ∂z * E3
+    @inbounds Fx[i-NG, j-NG, k-NG, 2] -= ∂ξ∂x * τ11 + ∂ξ∂y * τ12 + ∂ξ∂z * τ13
+    @inbounds Fx[i-NG, j-NG, k-NG, 3] -= ∂ξ∂x * τ12 + ∂ξ∂y * τ22 + ∂ξ∂z * τ23
+    @inbounds Fx[i-NG, j-NG, k-NG, 4] -= ∂ξ∂x * τ13 + ∂ξ∂y * τ23 + ∂ξ∂z * τ33
+    @inbounds Fx[i-NG, j-NG, k-NG, 5] -= ∂ξ∂x * E1 + ∂ξ∂y * E2 + ∂ξ∂z * E3
     return
 end
 
-function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, μratio_y)
+function viscousFlux_y(Fy, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -156,8 +154,8 @@ function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
 
     @inbounds Jac = (J[i, j-1, k] + J[i, j, k]) * 0.5f0
     @inbounds T = (Q[i, j-1, k, 6] + Q[i, j, k, 6]) * 0.5f0
-    @inbounds μi =  1.458f-6*T*sqrt(T)/(T+110.4f0)
-    @inbounds λi =  1004.5f0*μi/0.7f0
+    μi::Float32 =  1.458f-6*T*sqrt(T)/(T+110.4f0)
+    λi::Float32 =  1004.5f0*μi/0.7f0
 
     @inbounds ∂u∂ξ = 0.5f0*(c23*(Q[i+1, j, k, 2] + Q[i+1, j-1, k, 2] - Q[i-1, j, k, 2] - Q[i-1, j-1, k, 2]) -
                           c12*(Q[i+2, j, k, 2] + Q[i+2, j-1, k, 2] - Q[i-2, j, k, 2] - Q[i-2, j-1, k, 2]))
@@ -215,7 +213,6 @@ function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
         @fastmath μt = ρ * (Cs/Jac^(1/3f0))^2 * Sijmag #ρ(csΔ)^2 * Sijmag
       
         λt = 1004.5f0 * μt / Prt # cp = Rg*γ/(γ-1)
-        μratio_y[i-NG, j-NG, k-NG] = μt/μi
 
         μi += μt
         λi += λt
@@ -242,7 +239,6 @@ function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
         @fastmath μt = min(ρ * (Cw/Jac^(1/3f0))^2 * D, 6*μi)
       
         λt = 1004.5f0 * μt / Prt # cp = Rg*γ/(γ-1)
-        μratio_y[i-NG, j-NG, k-NG] = μt/μi
 
         μi += μt
         λi += λt
@@ -259,14 +255,14 @@ function viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     @inbounds E2 = u * τ12 + v * τ22 + w * τ23 + λi * dTdy
     @inbounds E3 = u * τ13 + v * τ23 + w * τ33 + λi * dTdz
 
-    @inbounds Fv_y[i-NG, j-NG, k-NG, 1] = ∂η∂x * τ11 + ∂η∂y * τ12 + ∂η∂z * τ13
-    @inbounds Fv_y[i-NG, j-NG, k-NG, 2] = ∂η∂x * τ12 + ∂η∂y * τ22 + ∂η∂z * τ23
-    @inbounds Fv_y[i-NG, j-NG, k-NG, 3] = ∂η∂x * τ13 + ∂η∂y * τ23 + ∂η∂z * τ33
-    @inbounds Fv_y[i-NG, j-NG, k-NG, 4] = ∂η∂x * E1 + ∂η∂y * E2 + ∂η∂z * E3
+    @inbounds Fy[i-NG, j-NG, k-NG, 2] -= ∂η∂x * τ11 + ∂η∂y * τ12 + ∂η∂z * τ13
+    @inbounds Fy[i-NG, j-NG, k-NG, 3] -= ∂η∂x * τ12 + ∂η∂y * τ22 + ∂η∂z * τ23
+    @inbounds Fy[i-NG, j-NG, k-NG, 4] -= ∂η∂x * τ13 + ∂η∂y * τ23 + ∂η∂z * τ33
+    @inbounds Fy[i-NG, j-NG, k-NG, 5] -= ∂η∂x * E1 + ∂η∂y * E2 + ∂η∂z * E3
     return
 end
 
-function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, μratio_z)
+function viscousFlux_z(Fz, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -290,8 +286,8 @@ function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
 
     @inbounds Jac = (J[i, j, k-1] + J[i, j, k]) * 0.5f0
     @inbounds T = (Q[i, j, k-1, 6] + Q[i, j, k, 6]) * 0.5f0
-    @inbounds μi =  1.458f-6*T*sqrt(T)/(T+110.4f0)
-    @inbounds λi =  1004.5f0*μi/0.7f0
+    μi::Float32 =  1.458f-6*T*sqrt(T)/(T+110.4f0)
+    λi::Float32 =  1004.5f0*μi/0.7f0
 
     @inbounds ∂u∂ξ = 0.5f0*(c23*(Q[i+1, j, k, 2] + Q[i+1, j, k-1, 2] - Q[i-1, j, k, 2] - Q[i-1, j, k-1, 2]) -
                           c12*(Q[i+2, j, k, 2] + Q[i+2, j, k-1, 2] - Q[i-2, j, k, 2] - Q[i-2, j, k-1, 2]))
@@ -349,7 +345,6 @@ function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
         @fastmath μt = ρ * (Cs/Jac^(1/3f0))^2 * Sijmag #ρ(csΔ)^2 * Sijmag
       
         λt = 1004.5f0 * μt / Prt # cp = Rg*γ/(γ-1)
-        μratio_z[i-NG, j-NG, k-NG] = μt/μi
 
         μi += μt
         λi += λt
@@ -376,7 +371,6 @@ function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
         @fastmath μt = min(ρ * (Cw/Jac^(1/3f0))^2 * D, 6*μi)
       
         λt = 1004.5f0 * μt / Prt # cp = Rg*γ/(γ-1)
-        μratio_z[i-NG, j-NG, k-NG] = μt/μi
 
         μi += μt
         λi += λt
@@ -393,9 +387,9 @@ function viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx,
     @inbounds E2 = u * τ12 + v * τ22 + w * τ23 + λi * dTdy
     @inbounds E3 = u * τ13 + v * τ23 + w * τ33 + λi * dTdz
 
-    @inbounds Fv_z[i-NG, j-NG, k-NG, 1] = ∂ζ∂x * τ11 + ∂ζ∂y * τ12 + ∂ζ∂z * τ13
-    @inbounds Fv_z[i-NG, j-NG, k-NG, 2] = ∂ζ∂x * τ12 + ∂ζ∂y * τ22 + ∂ζ∂z * τ23
-    @inbounds Fv_z[i-NG, j-NG, k-NG, 3] = ∂ζ∂x * τ13 + ∂ζ∂y * τ23 + ∂ζ∂z * τ33
-    @inbounds Fv_z[i-NG, j-NG, k-NG, 4] = ∂ζ∂x * E1 + ∂ζ∂y * E2 + ∂ζ∂z * E3
+    @inbounds Fz[i-NG, j-NG, k-NG, 2] -= ∂ζ∂x * τ11 + ∂ζ∂y * τ12 + ∂ζ∂z * τ13
+    @inbounds Fz[i-NG, j-NG, k-NG, 3] -= ∂ζ∂x * τ12 + ∂ζ∂y * τ22 + ∂ζ∂z * τ23
+    @inbounds Fz[i-NG, j-NG, k-NG, 4] -= ∂ζ∂x * τ13 + ∂ζ∂y * τ23 + ∂ζ∂z * τ33
+    @inbounds Fz[i-NG, j-NG, k-NG, 5] -= ∂ζ∂x * E1 + ∂ζ∂y * E2 + ∂ζ∂z * E3
     return
 end

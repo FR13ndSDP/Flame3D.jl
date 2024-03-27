@@ -1,4 +1,4 @@
-function fill_x(Q, U, rank, inlet)
+function fill_x(Q, U, rankx, ranky, inlet)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -7,15 +7,15 @@ function fill_x(Q, U, rank, inlet)
         return
     end
     # inlet
-    if rank == 0 && i <= NG+1 && j >= NG+1 && j <= Ny+NG
+    if rankx == 0 && i <= NG+1 && j >= NG+1 && j <= Nyp+NG
         T_ref = 108.1f0
         u_ref = 607.177038268082f0
         ρ_ref = 0.06894018305600735f0
 
-        ρ = inlet[j-NG, 1] * ρ_ref
-        u = inlet[j-NG, 2] * u_ref
-        v = inlet[j-NG, 3] * u_ref
-        T = inlet[j-NG, 4] * T_ref
+        ρ = inlet[j-NG+ranky*Nyp, 1] * ρ_ref
+        u = inlet[j-NG+ranky*Nyp, 2] * u_ref
+        v = inlet[j-NG+ranky*Nyp, 3] * u_ref
+        T = inlet[j-NG+ranky*Nyp, 4] * T_ref
         p = ρ * 287 * T
 
         @inbounds Q[i, j, k, 1] = ρ
@@ -32,7 +32,7 @@ function fill_x(Q, U, rank, inlet)
         @inbounds U[i, j, k, 5] = p/0.4f0 + 0.5f0*ρ*(u^2+v^2)
     end
 
-    if rank == (Nprocs[1]-1) && i > Nxp+NG
+    if rankx == (Nprocs[1]-1) && i > Nxp+NG
         for n = 1:Nprim
             @inbounds Q[i, j, k, n] = Q[Nxp+NG, j, k, n]
         end
@@ -48,41 +48,41 @@ function fill_z(Q, U)
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
     
-    if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
+    if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
     end
 
     if k <= NG
         for n = 1:Nprim
-            @inbounds Q[i, j, k, n] = Q[i, j, k+Nz, n]
+            @inbounds Q[i, j, k, n] = Q[i, j, k+Nzp, n]
         end
         for n = 1:Ncons
-            @inbounds U[i, j, k, n] = U[i, j, k+Nz, n]
+            @inbounds U[i, j, k, n] = U[i, j, k+Nzp, n]
         end
-    elseif k > Nz+NG
+    elseif k > Nzp+NG
         for n = 1:Nprim
-            @inbounds Q[i, j, k, n] = Q[i, j, k-Nz, n]
+            @inbounds Q[i, j, k, n] = Q[i, j, k-Nzp, n]
         end
         for n = 1:Ncons
-            @inbounds U[i, j, k, n] = U[i, j, k-Nz, n]
+            @inbounds U[i, j, k, n] = U[i, j, k-Nzp, n]
         end
     end
     return
 end
 
-function fill_y(Q, U)
+function fill_y(Q, U, rankx, ranky)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
     
-    if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
+    if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
     end
 
 
-    if j == NG+1
+    if ranky == 0 && j == NG+1
 
-        if i >= 50 && i <= 70
+        if rankx == 0 && i >= 50 && i <= 70
             v_turb::Float32 = sin((i-50)/20*2π)*cos(k/100*4π)*600f0*0.1f0
         else
             v_turb = 0.f0
@@ -125,12 +125,12 @@ function fill_y(Q, U)
             @inbounds U[i, l, k, 4] = ρ * w
             @inbounds U[i, l, k, 5] = p/0.4f0 + 0.5f0 * ρ * (u^2+v^2+w^2)
         end
-    elseif j > Ny+NG
+    elseif ranky == (Nprocs[2]-1) && j > Nyp+NG
         for n = 1:Nprim
-            @inbounds Q[i, j, k, n] = Q[i, Ny+NG, k, n]
+            @inbounds Q[i, j, k, n] = Q[i, Nyp+NG, k, n]
         end
         for n = 1:Ncons
-            @inbounds U[i, j, k, n] = U[i, Ny+NG, k, n]
+            @inbounds U[i, j, k, n] = U[i, Nyp+NG, k, n]
         end
     end
     return
@@ -138,19 +138,19 @@ end
 
 # special treatment on wall
 # fill Q and U
-function fillGhost(Q, U, rank, inlet)
-    @cuda threads=nthreads blocks=nblock fill_x(Q, U, rank, inlet)
-    @cuda threads=nthreads blocks=nblock fill_y(Q, U)
-    @cuda threads=nthreads blocks=nblock fill_z(Q, U)
+function fillGhost(Q, U, rankx, ranky, inlet)
+    @cuda threads=nthreads blocks=nblock fill_x(Q, U, rankx, ranky, inlet)
+    @cuda threads=nthreads blocks=nblock fill_y(Q, U, rankx, ranky)
+    # @cuda threads=nthreads blocks=nblock fill_z(Q, U)
 end
 
 
-function init(Q, inlet)
+function init(Q, inlet, ranky)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
 
-    if i > Nxp+2*NG || j > Ny+NG || j < NG+1 || k > Nz+2*NG
+    if i > Nxp+2*NG || j > Nyp+NG || j < NG+1 || k > Nzp+2*NG
         return
     end
 
@@ -158,10 +158,10 @@ function init(Q, inlet)
     u_ref = 607.177038268082f0
     ρ_ref = 0.06894018305600735f0
 
-    ρ = inlet[j-NG, 1] * ρ_ref
-    u = inlet[j-NG, 2] * u_ref
-    v = inlet[j-NG, 3] * u_ref
-    T = inlet[j-NG, 4] * T_ref
+    ρ = inlet[j-NG+ranky*Nyp, 1] * ρ_ref
+    u = inlet[j-NG+ranky*Nyp, 2] * u_ref
+    v = inlet[j-NG+ranky*Nyp, 3] * u_ref
+    T = inlet[j-NG+ranky*Nyp, 4] * T_ref
     p = ρ * 287 * T
 
     @inbounds Q[i, j, k, 1] = ρ
@@ -174,6 +174,6 @@ function init(Q, inlet)
 end
 
 #initialization on GPU
-function initialize(Q, inlet)
-    @cuda threads=nthreads blocks=nblock init(Q, inlet)
+function initialize(Q, inlet, ranky)
+    @cuda threads=nthreads blocks=nblock init(Q, inlet, ranky)
 end

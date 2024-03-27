@@ -14,41 +14,46 @@ include("utils.jl")
 include("div.jl")
 include("mpi.jl")
 
-function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, μratio_x, μratio_y, μratio_z)
+function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, dξdx, dξdy, dξdz)
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_x(Fx, ϕ, Fp, Fm, Ncons)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_x(Fx, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, dηdx, dηdy, dηdz)
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_y(Fy, ϕ, Fp, Fm, Ncons)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_y(Fy, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, dζdx, dζdy, dζdz)
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_z(Fz, ϕ, Fp, Fm, Ncons)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_z(Fz, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, μratio_x)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, μratio_y)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, μratio_z)
-
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock div(U, Fx, Fy, Fz, dt, J)
 end
 
-function time_step(rank, comm)
+function time_step(rank, comm_cart)
     Nx_tot = Nxp+2*NG
     Ny_tot = Nyp+2*NG
     Nz_tot = Nzp+2*NG
 
     # global indices
-    lo = rank*Nxp+1
-    hi = (rank+1)*Nxp+2*NG
-    # lo_ng = rank*Nxp+NG+1
-    # hi_ng = (rank+1)*Nxp+NG
+    (rankx, ranky, rankz) = MPI.Cart_coords(comm_cart, rank)
+
+    lox = rankx*Nxp+1
+    hix = (rankx+1)*Nxp+2*NG
+
+    loy = ranky*Nyp+1
+    hiy = (ranky+1)*Nyp+2*NG
+
+    loz = rankz*Nzp+1
+    hiz = (rankz+1)*Nzp+2*NG
 
     if restart[end-2:end] == ".h5"
         if rank == 0
             printstyled("Restart\n", color=:yellow)
         end
-        fid = h5open(restart, "r", comm)
-        Q_h = fid["Q_h"][:, :, :, :, rank+1]
+        fid = h5open(restart, "r", comm_cart)
+        Q_h = fid["Q_h"][lox:hix, loy:hiy, loz:hiz, :, rank+1]
         close(fid)
 
         inlet_h = readdlm("./SCU-benchmark/flow-inlet.dat")
@@ -64,27 +69,27 @@ function time_step(rank, comm)
         copyto!(Q_h, Q)
         inlet  =   cu(inlet_h)
 
-        initialize(Q, inlet)
+        initialize(Q, inlet, ranky)
     end
     
     ϕ_h = zeros(Float32, Nx_tot, Ny_tot, Nz_tot) # shock sensor
 
     # load mesh metrics
-    fid = h5open("metrics.h5", "r", comm)
-    dξdx_h = fid["dξdx"][lo:hi, :, :]
-    dξdy_h = fid["dξdy"][lo:hi, :, :]
-    dξdz_h = fid["dξdz"][lo:hi, :, :]
-    dηdx_h = fid["dηdx"][lo:hi, :, :]
-    dηdy_h = fid["dηdy"][lo:hi, :, :]
-    dηdz_h = fid["dηdz"][lo:hi, :, :]
-    dζdx_h = fid["dζdx"][lo:hi, :, :]
-    dζdy_h = fid["dζdy"][lo:hi, :, :]
-    dζdz_h = fid["dζdz"][lo:hi, :, :]
+    fid = h5open("metrics.h5", "r", comm_cart)
+    dξdx_h = fid["dξdx"][lox:hix, loy:hiy, loz:hiz]
+    dξdy_h = fid["dξdy"][lox:hix, loy:hiy, loz:hiz]
+    dξdz_h = fid["dξdz"][lox:hix, loy:hiy, loz:hiz]
+    dηdx_h = fid["dηdx"][lox:hix, loy:hiy, loz:hiz]
+    dηdy_h = fid["dηdy"][lox:hix, loy:hiy, loz:hiz]
+    dηdz_h = fid["dηdz"][lox:hix, loy:hiy, loz:hiz]
+    dζdx_h = fid["dζdx"][lox:hix, loy:hiy, loz:hiz]
+    dζdy_h = fid["dζdy"][lox:hix, loy:hiy, loz:hiz]
+    dζdz_h = fid["dζdz"][lox:hix, loy:hiy, loz:hiz]
 
-    J_h = fid["J"][lo:hi, :, :] 
-    x_h = fid["x"][lo:hi, :, :] 
-    y_h = fid["y"][lo:hi, :, :] 
-    z_h = fid["z"][lo:hi, :, :]
+    J_h = fid["J"][lox:hix, loy:hiy, loz:hiz] 
+    x_h = fid["x"][lox:hix, loy:hiy, loz:hiz] 
+    y_h = fid["y"][lox:hix, loy:hiy, loz:hiz] 
+    z_h = fid["z"][lox:hix, loy:hiy, loz:hiz]
     close(fid)
 
     # move to device memory
@@ -107,12 +112,6 @@ function time_step(rank, comm)
     Fx =   CUDA.zeros(Float32, Nxp+1, Nyp, Nzp, Ncons)
     Fy =   CUDA.zeros(Float32, Nxp, Nyp+1, Nzp, Ncons)
     Fz =   CUDA.zeros(Float32, Nxp, Nyp, Nzp+1, Ncons)
-    Fv_x = CUDA.zeros(Float32, Nxp+1, Nyp, Nzp, 4)
-    Fv_y = CUDA.zeros(Float32, Nxp, Nyp+1, Nzp, 4)
-    Fv_z = CUDA.zeros(Float32, Nxp, Nyp, Nzp+1, 4)
-    μratio_x = CUDA.zeros(Float32, Nxp+1, Nyp, Nzp)
-    μratio_y = CUDA.zeros(Float32, Nxp, Nyp+1, Nzp)
-    μratio_z = CUDA.zeros(Float32, Nxp, Nyp, Nzp+1)
 
     Un = similar(U)
 
@@ -121,19 +120,34 @@ function time_step(rank, comm)
     end
 
     # MPI buffer 
-    Qsbuf_h = zeros(Float32, NG, Ny_tot, Nz_tot, Nprim)
-    Qrbuf_h = similar(Qsbuf_h)
-    Mem.pin(Qsbuf_h)
-    Mem.pin(Qrbuf_h)
+    Qsbuf_hx = zeros(Float32, NG, Ny_tot, Nz_tot, Nprim)
+    Qsbuf_hy = zeros(Float32, Nx_tot, NG, Nz_tot, Nprim)
+    Qsbuf_hz = zeros(Float32, Nx_tot, Ny_tot, NG, Nprim)
+    Qrbuf_hx = similar(Qsbuf_hx)
+    Qrbuf_hy = similar(Qsbuf_hy)
+    Qrbuf_hz = similar(Qsbuf_hz)
+    Mem.pin(Qsbuf_hx)
+    Mem.pin(Qsbuf_hy)
+    Mem.pin(Qsbuf_hz)
+    Mem.pin(Qrbuf_hx)
+    Mem.pin(Qrbuf_hy)
+    Mem.pin(Qrbuf_hz)
 
-    Qsbuf_d = cu(Qsbuf_h)
-    Qrbuf_d = cu(Qrbuf_h)
+    Qsbuf_dx = cu(Qsbuf_hx)
+    Qsbuf_dy = cu(Qsbuf_hy)
+    Qsbuf_dz = cu(Qsbuf_hz)
+    Qrbuf_dx = cu(Qrbuf_hx)
+    Qrbuf_dy = cu(Qrbuf_hy)
+    Qrbuf_dz = cu(Qrbuf_hz)
 
     # # initial
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock prim2c(U, Q)
-    exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
-    MPI.Barrier(comm)
-    fillGhost(Q, U, rank, inlet)
+    exchange_ghost(Q, Nprim, comm_cart, 
+                   Qsbuf_hx, Qsbuf_dx, Qrbuf_hx, Qrbuf_dx,
+                   Qsbuf_hy, Qsbuf_dy, Qrbuf_hy, Qrbuf_dy,
+                   Qsbuf_hz, Qsbuf_dz, Qrbuf_hz, Qrbuf_dz)
+    MPI.Barrier(comm_cart)
+    fillGhost(Q, U, rankx, ranky, inlet)
 
     for tt = 1:ceil(Int, Time/dt)
         if tt*dt > Time || tt > maxStep
@@ -146,9 +160,8 @@ function time_step(rank, comm)
                 copyto!(Un, U)
             end
 
-            # @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock localstep(Q, dt_local, 0.1, x, y, z)
             @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q)
-            flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, μratio_x, μratio_y, μratio_z)
+            flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
 
             if KRK == 2
                 @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock linComb(U, Un, Ncons, 0.25f0, 0.75f0)
@@ -157,9 +170,12 @@ function time_step(rank, comm)
             end
 
             @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q)
-            exchange_ghost(Q, Nprim, rank, comm, Qsbuf_h, Qsbuf_d, Qrbuf_h, Qrbuf_d)
-            MPI.Barrier(comm)
-            fillGhost(Q, U, rank, inlet)
+            exchange_ghost(Q, Nprim, comm_cart, 
+                           Qsbuf_hx, Qsbuf_dx, Qrbuf_hx, Qrbuf_dx,
+                           Qsbuf_hy, Qsbuf_dy, Qrbuf_hy, Qrbuf_dy,
+                           Qsbuf_hz, Qsbuf_dz, Qrbuf_hz, Qrbuf_dz)
+            MPI.Barrier(comm_cart)
+            fillGhost(Q, U, rankx, ranky, inlet)
         end
 
         if tt % 10 == 0
@@ -180,13 +196,6 @@ function time_step(rank, comm)
             copyto!(Q_h, Q)
             copyto!(ϕ_h, ϕ)
 
-            μratio_hx = zeros(Float32, Nxp+1, Nyp, Nzp)
-            μratio_hy = zeros(Float32, Nxp, Nyp+1, Nzp)
-            μratio_hz = zeros(Float32, Nxp, Nyp, Nzp+1)
-            copyto!(μratio_hx, μratio_x)
-            copyto!(μratio_hy, μratio_y)
-            copyto!(μratio_hz, μratio_z)
-
             # visualization file, in Float32
             mkpath("./PLT")
             fname::String = string("./PLT/plt", rank, "-", tt)
@@ -203,10 +212,6 @@ function time_step(rank, comm)
             y_ng = @view y_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
             z_ng = @view z_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
 
-            μration_ngx = @view μratio_hx[1:Nxp, :, :]
-            μration_ngy = @view μratio_hy[:, 1:Nyp, :]
-            μration_ngz = @view μratio_hz[:, :, 1:Nzp]
-
             vtk_grid(fname, x_ng, y_ng, z_ng; compress=plt_compress_level) do vtk
                 vtk["rho"] = rho
                 vtk["u"] = u
@@ -214,14 +219,8 @@ function time_step(rank, comm)
                 vtk["w"] = w
                 vtk["p"] = p
                 vtk["T"] = T
-                vtk["ratiox"] = μration_ngx
-                vtk["ratioy"] = μration_ngy
-                vtk["ratioz"] = μration_ngz
                 vtk["phi"] = ϕ_ng
             end 
-            μratio_hx = nothing
-            μratio_hy = nothing
-            μratio_hz = nothing
         end
 
         # restart file, in Float32
@@ -230,7 +229,7 @@ function time_step(rank, comm)
 
             mkpath("./CHK")
             chkname::String = string("./CHK/chk", tt, ".h5")
-            h5open(chkname, "w", comm) do f
+            h5open(chkname, "w", comm_cart) do f
                 dset1 = create_dataset(
                     f,
                     "Q_h",
@@ -259,16 +258,16 @@ function time_step(rank, comm)
                 avgname::String = string("./PLT/avg", rank, "-", tt)
 
                 copyto!(Q_h, Q_avg)
-                x_ng = @view x_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
-                y_ng = @view y_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
-                z_ng = @view z_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+                x_ng = @view x_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
+                y_ng = @view y_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
+                z_ng = @view z_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
                 
-                rho = @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 1]
-                u   = @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 2]
-                v   = @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 3]
-                w   = @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 4]
-                p =   @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 5]
-                T =   @view Q_h[1+NG:Nxp+NG, 1+NG:Ny+NG, 1+NG:Nz+NG, 6]
+                rho = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 1]
+                u   = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 2]
+                v   = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 3]
+                w   = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 4]
+                p =   @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 5]
+                T =   @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 6]
 
                 vtk_grid(avgname, x_ng, y_ng, z_ng; compress=plt_compress_level) do vtk
                     vtk["rho"] = rho
@@ -288,6 +287,6 @@ function time_step(rank, comm)
         printstyled("Done!\n", color=:green)
         flush(stdout)
     end
-    MPI.Barrier(comm)
+    MPI.Barrier(comm_cart)
     return
 end
