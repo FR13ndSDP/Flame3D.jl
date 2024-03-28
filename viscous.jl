@@ -22,8 +22,8 @@ function viscousFlux_x(Fx, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, d
 
     @inbounds Jac = (J[i-1, j, k] + J[i, j, k]) * 0.5f0
     @inbounds T = (Q[i-1, j, k, 6] + Q[i, j, k, 6]) * 0.5f0
-    μi::Float32 =  1.458f-6*T*sqrt(T)/(T+110.4f0)
-    λi::Float32 =  1004.5f0*μi/0.7f0
+    μi::Float32 =  C_s*T*sqrt(T)/(T+T_s)
+    λi::Float32 =  Cp*μi/Pr
 
     @inbounds ∂u∂ξ = 1.25f0*(Q[i, j, k, 2] - Q[i-1, j, k, 2]) - c12*(Q[i+1, j, k, 2] - Q[i-2, j, k, 2])
     @inbounds ∂v∂ξ = 1.25f0*(Q[i, j, k, 3] - Q[i-1, j, k, 3]) - c12*(Q[i+1, j, k, 3] - Q[i-2, j, k, 3])
@@ -80,7 +80,7 @@ function viscousFlux_x(Fx, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, d
       
         @fastmath μt = ρ * (Cs/Jac^(1/3f0))^2 * Sijmag #ρ(csΔ)^2 * Sijmag
 
-        λt = 1004.5f0 * μt / Prt # cp = Rg*γ/(γ-1)
+        λt = Cp * μt / Prt # cp = Rg*γ/(γ-1)
 
         μi += μt
         λi += λt
@@ -106,7 +106,7 @@ function viscousFlux_x(Fx, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, d
         @fastmath D = Sd^3/(S^5 + Sd^2.5f0)
         @fastmath μt = min(ρ * (Cw/Jac^(1/3f0))^2 * D, 6*μi)
       
-        λt = 1004.5f0 * μt / Prt # cp = Rg*γ/(γ-1)
+        λt = Cp * μt / Prt # cp = Rg*γ/(γ-1)
 
         μi += μt
         λi += λt
@@ -154,8 +154,8 @@ function viscousFlux_y(Fy, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, d
 
     @inbounds Jac = (J[i, j-1, k] + J[i, j, k]) * 0.5f0
     @inbounds T = (Q[i, j-1, k, 6] + Q[i, j, k, 6]) * 0.5f0
-    μi::Float32 =  1.458f-6*T*sqrt(T)/(T+110.4f0)
-    λi::Float32 =  1004.5f0*μi/0.7f0
+    μi::Float32 =  C_s*T*sqrt(T)/(T+T_s)
+    λi::Float32 =  Cp*μi/Pr
 
     @inbounds ∂u∂ξ = 0.5f0*(c23*(Q[i+1, j, k, 2] + Q[i+1, j-1, k, 2] - Q[i-1, j, k, 2] - Q[i-1, j-1, k, 2]) -
                           c12*(Q[i+2, j, k, 2] + Q[i+2, j-1, k, 2] - Q[i-2, j, k, 2] - Q[i-2, j-1, k, 2]))
@@ -212,7 +212,7 @@ function viscousFlux_y(Fy, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, d
       
         @fastmath μt = ρ * (Cs/Jac^(1/3f0))^2 * Sijmag #ρ(csΔ)^2 * Sijmag
       
-        λt = 1004.5f0 * μt / Prt # cp = Rg*γ/(γ-1)
+        λt = Cp * μt / Prt # cp = Rg*γ/(γ-1)
 
         μi += μt
         λi += λt
@@ -238,7 +238,7 @@ function viscousFlux_y(Fy, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, d
         @fastmath D = Sd^3/(S^5 + Sd^2.5f0)
         @fastmath μt = min(ρ * (Cw/Jac^(1/3f0))^2 * D, 6*μi)
       
-        λt = 1004.5f0 * μt / Prt # cp = Rg*γ/(γ-1)
+        λt = Cp * μt / Prt # cp = Rg*γ/(γ-1)
 
         μi += μt
         λi += λt
@@ -286,8 +286,8 @@ function viscousFlux_z(Fz, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, d
 
     @inbounds Jac = (J[i, j, k-1] + J[i, j, k]) * 0.5f0
     @inbounds T = (Q[i, j, k-1, 6] + Q[i, j, k, 6]) * 0.5f0
-    μi::Float32 =  1.458f-6*T*sqrt(T)/(T+110.4f0)
-    λi::Float32 =  1004.5f0*μi/0.7f0
+    μi::Float32 =  C_s*T*sqrt(T)/(T+T_s)
+    λi::Float32 =  Cp*μi/Pr
 
     @inbounds ∂u∂ξ = 0.5f0*(c23*(Q[i+1, j, k, 2] + Q[i+1, j, k-1, 2] - Q[i-1, j, k, 2] - Q[i-1, j, k-1, 2]) -
                           c12*(Q[i+2, j, k, 2] + Q[i+2, j, k-1, 2] - Q[i-2, j, k, 2] - Q[i-2, j, k-1, 2]))
@@ -344,7 +344,7 @@ function viscousFlux_z(Fz, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, d
       
         @fastmath μt = ρ * (Cs/Jac^(1/3f0))^2 * Sijmag #ρ(csΔ)^2 * Sijmag
       
-        λt = 1004.5f0 * μt / Prt # cp = Rg*γ/(γ-1)
+        λt = Cp * μt / Prt # cp = Rg*γ/(γ-1)
 
         μi += μt
         λi += λt
@@ -370,7 +370,7 @@ function viscousFlux_z(Fz, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, d
         @fastmath D = Sd^3/(S^5 + Sd^2.5f0)
         @fastmath μt = min(ρ * (Cw/Jac^(1/3f0))^2 * D, 6*μi)
       
-        λt = 1004.5f0 * μt / Prt # cp = Rg*γ/(γ-1)
+        λt = Cp * μt / Prt # cp = Rg*γ/(γ-1)
 
         μi += μt
         λi += λt

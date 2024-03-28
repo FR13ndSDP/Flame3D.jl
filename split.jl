@@ -18,7 +18,6 @@ function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
     @inbounds A2 = Ay[i, j, k]
     @inbounds A3 = Az[i, j, k]
 
-    γ::Float32 = 1.4f0
     @fastmath c = sqrt(γ*p/ρ)
 
     @fastmath ss = sqrt(A1^2 + A2^2 + A3^2)

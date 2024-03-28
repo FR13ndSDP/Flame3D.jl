@@ -5,6 +5,14 @@ include("solver.jl")
 const LES_smag::Bool = false       # if use Smagorinsky model
 const LES_wale::Bool = false        # if use WALE model
 
+# thermal state
+const γ::Float32 = 1.4
+const Rg::Float32 = 287
+const Cp::Float32 = Rg*γ/(γ-1)
+const C_s::Float32 = 1.458f-6
+const T_s::Float32 = 110.4
+const Pr::Float32 = 0.7
+
 # flow control
 const Nprocs::SVector{3, Int64} = [1,1,1] # number of GPUs
 const Iperiodic = (false, false, true)
