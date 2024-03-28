@@ -9,13 +9,13 @@ function c2Prim(U, Q)
     end
 
     # correction
-    @inbounds ρ = max(U[i, j, k, 1], CUDA.eps(Float32))
+    @inbounds ρ = max(U[i, j, k, 1], eps(Float32))
     @inbounds ρinv = 1/ρ 
 
     @inbounds u = U[i, j, k, 2]*ρinv # U
     @inbounds v = U[i, j, k, 3]*ρinv # V
     @inbounds w = U[i, j, k, 4]*ρinv # W
-    @inbounds ei = max((U[i, j, k, 5] - 0.5f0*ρ*(u^2 + v^2 + w^2)), CUDA.eps(Float32))
+    @inbounds ei = max((U[i, j, k, 5] - 0.5f0*ρ*(u^2 + v^2 + w^2)), eps(Float32))
 
     p::Float32 = 0.4f0 * ei
     T::Float32 = p/(ρ*287)

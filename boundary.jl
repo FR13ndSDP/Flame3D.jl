@@ -139,9 +139,9 @@ end
 # special treatment on wall
 # fill Q and U
 function fillGhost(Q, U, rankx, ranky, inlet)
-    @cuda threads=nthreads blocks=nblock fill_x(Q, U, rankx, ranky, inlet)
-    @cuda threads=nthreads blocks=nblock fill_y(Q, U, rankx, ranky)
-    # @cuda threads=nthreads blocks=nblock fill_z(Q, U)
+    @roc groupsize=nthreads gridsize=ngroups fill_x(Q, U, rankx, ranky, inlet)
+    @roc groupsize=nthreads gridsize=ngroups fill_y(Q, U, rankx, ranky)
+    # @roc groupsize=nthreads gridsize=ngroups fill_z(Q, U)
 end
 
 
@@ -175,5 +175,5 @@ end
 
 #initialization on GPU
 function initialize(Q, inlet, ranky)
-    @cuda threads=nthreads blocks=nblock init(Q, inlet, ranky)
+    @roc groupsize=nthreads gridsize=ngroups init(Q, inlet, ranky)
 end

@@ -60,7 +60,7 @@ if nGPU != Nprocs[1]*Nprocs[2]*Nprocs[3] && rank == 0
     error("Oops, nGPU ≠ $Nprocs\n")
 end
 # set device on each MPI rank
-device!(AMDGPU.devices()[rank+1])
+AMDGPU.device!(AMDGPU.devices()[rank+1])
 
 time_step(rank, comm_cart)
 
