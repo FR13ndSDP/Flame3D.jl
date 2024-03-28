@@ -16,7 +16,7 @@ function fill_x(Q, U, rankx, ranky, inlet)
         u = inlet[j-NG+ranky*Nyp, 2] * u_ref
         v = inlet[j-NG+ranky*Nyp, 3] * u_ref
         T = inlet[j-NG+ranky*Nyp, 4] * T_ref
-        p = ρ * 287 * T
+        p = ρ * Rg * T
 
         @inbounds Q[i, j, k, 1] = ρ
         @inbounds Q[i, j, k, 2] = u
@@ -29,7 +29,7 @@ function fill_x(Q, U, rankx, ranky, inlet)
         @inbounds U[i, j, k, 2] = ρ * u
         @inbounds U[i, j, k, 3] = ρ * v
         @inbounds U[i, j, k, 4] = 0
-        @inbounds U[i, j, k, 5] = p/0.4f0 + 0.5f0*ρ*(u^2+v^2)
+        @inbounds U[i, j, k, 5] = p/(γ-1) + 0.5f0*ρ*(u^2+v^2)
     end
 
     if rankx == (Nprocs[1]-1) && i > Nxp+NG
@@ -90,7 +90,7 @@ function fill_y(Q, U, rankx, ranky)
 
         pw = 1.5f0*Q[i, j+1, k, 5] - 0.5f0*Q[i, j+2, k, 5]
         Tw = 307.f0
-        ρw = pw/(287 * Tw)
+        ρw = pw/(Rg * Tw)
         @inbounds Q[i, j, k, 5] = pw
         @inbounds Q[i, j, k, 1] = ρw
         @inbounds Q[i, j, k, 2] = 0
@@ -102,7 +102,7 @@ function fill_y(Q, U, rankx, ranky)
         @inbounds U[i, j, k, 2] = 0
         @inbounds U[i, j, k, 3] = ρw * v_turb
         @inbounds U[i, j, k, 4] = 0
-        @inbounds U[i, j, k, 5] = pw/0.4f0 + 0.5*ρw*v_turb^2
+        @inbounds U[i, j, k, 5] = pw/(γ-1) + 0.5*ρw*v_turb^2
 
         for l = NG:-1:1
             u = -Q[i, 2*NG+2-l, k, 2]
@@ -110,7 +110,7 @@ function fill_y(Q, U, rankx, ranky)
             w = -Q[i, 2*NG+2-l, k, 4]
             T = 2*Tw - Q[i, 2*NG+2-l, k, 6]
             p = 1.5f0*Q[i, l+1, k, 5] - 0.5f0*Q[i, l+2, k, 5]
-            ρ = p/(287*T)
+            ρ = p/(Rg*T)
 
             @inbounds Q[i, l, k, 5] = p
             @inbounds Q[i, l, k, 1] = ρ
@@ -123,7 +123,7 @@ function fill_y(Q, U, rankx, ranky)
             @inbounds U[i, l, k, 2] = ρ * u
             @inbounds U[i, l, k, 3] = ρ * v
             @inbounds U[i, l, k, 4] = ρ * w
-            @inbounds U[i, l, k, 5] = p/0.4f0 + 0.5f0 * ρ * (u^2+v^2+w^2)
+            @inbounds U[i, l, k, 5] = p/(γ-1) + 0.5f0 * ρ * (u^2+v^2+w^2)
         end
     elseif ranky == (Nprocs[2]-1) && j > Nyp+NG
         for n = 1:Nprim
@@ -162,7 +162,7 @@ function init(Q, inlet, ranky)
     u = inlet[j-NG+ranky*Nyp, 2] * u_ref
     v = inlet[j-NG+ranky*Nyp, 3] * u_ref
     T = inlet[j-NG+ranky*Nyp, 4] * T_ref
-    p = ρ * 287 * T
+    p = ρ * Rg * T
 
     @inbounds Q[i, j, k, 1] = ρ
     @inbounds Q[i, j, k, 2] = u

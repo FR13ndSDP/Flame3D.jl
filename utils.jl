@@ -17,8 +17,8 @@ function c2Prim(U, Q)
     @inbounds w = U[i, j, k, 4]*ρinv # W
     @inbounds ei = max((U[i, j, k, 5] - 0.5f0*ρ*(u^2 + v^2 + w^2)), eps(Float32))
 
-    p::Float32 = 0.4f0 * ei
-    T::Float32 = p/(ρ*287)
+    p::Float32 = (γ-1) * ei
+    T::Float32 = p/(ρ*Rg)
 
     @inbounds Q[i, j, k, 1] = ρ
     @inbounds Q[i, j, k, 2] = u
@@ -43,7 +43,7 @@ function prim2c(U, Q)
     @inbounds u = Q[i, j, k, 2]
     @inbounds v = Q[i, j, k, 3]
     @inbounds w = Q[i, j, k, 4]
-    @inbounds ei = Q[i, j, k, 5]/0.4f0
+    @inbounds ei = Q[i, j, k, 5]/(γ-1)
 
     @inbounds U[i, j, k, 1] = ρ
     @inbounds U[i, j, k, 2] = u * ρ

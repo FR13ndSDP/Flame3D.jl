@@ -5,6 +5,14 @@ include("solver.jl")
 const LES_smag::Bool = false       # if use Smagorinsky model
 const LES_wale::Bool = false        # if use WALE model
 
+# thermal state
+const γ::Float32 = 1.4
+const Rg::Float32 = 287
+const Cp::Float32 = Rg*γ/(γ-1)
+const C_s::Float32 = 1.458f-6
+const T_s::Float32 = 110.4
+const Pr::Float32 = 0.7
+
 # flow control
 const Nprocs::SVector{3, Int64} = [1,1,1] # number of GPUs
 const Iperiodic = (false, false, true)
@@ -55,12 +63,14 @@ MPI.Init()
 comm = MPI.COMM_WORLD
 rank = MPI.Comm_rank(comm)
 nGPU = MPI.Comm_size(comm)
+shmcomm = MPI.Comm_split_type(comm, MPI.COMM_TYPE_SHARED, 0)
+local_rank = MPI.Comm_rank(shmcomm)
 comm_cart = MPI.Cart_create(comm, Nprocs; periodic=Iperiodic)
 if nGPU != Nprocs[1]*Nprocs[2]*Nprocs[3] && rank == 0
     error("Oops, nGPU ≠ $Nprocs\n")
 end
 # set device on each MPI rank
-AMDGPU.device!(AMDGPU.devices()[rank+1])
+AMDGPU.device!(AMDGPU.devices()[local_rank+1])
 
 time_step(rank, comm_cart)
 

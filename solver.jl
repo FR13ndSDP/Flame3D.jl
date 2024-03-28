@@ -12,6 +12,7 @@ include("boundary.jl")
 include("utils.jl")
 include("div.jl")
 include("mpi.jl")
+include("IO.jl")
 
 function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
 
@@ -47,18 +48,37 @@ function time_step(rank, comm_cart)
     loz = rankz*Nzp+1
     hiz = (rankz+1)*Nzp+2*NG
 
+    # prepare pvtk metadata, kind of ugly
+    total_ranks = Nprocs[1]*Nprocs[2]*Nprocs[3]
+    plt_files = Vector{Vector{String}}(undef, total_ranks)  # files saved by each process
+    extents = Vector{Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}}(undef, total_ranks)
+    for n = 1:total_ranks
+        (is, js, ks) = MPI.Cart_coords(comm_cart, n-1)
+
+        lx = is*Nxp+1
+        hx = min((is+1)*Nxp+1, Nx)
+    
+        ly = js*Nyp+1
+        hy = min((js+1)*Nyp+1, Ny)
+    
+        lz = ks*Nzp+1
+        hz = min((ks+1)*Nzp+Nzp+1, Nz)
+
+        extents[n] = (lx:hx, ly:hy, lz:hz)
+    end
+
     if restart[end-2:end] == ".h5"
         if rank == 0
             printstyled("Restart\n", color=:yellow)
         end
         fid = h5open(restart, "r", comm_cart)
-        Q_h = fid["Q_h"][lox:hix, loy:hiy, loz:hiz, :, rank+1]
+        Q_h = fid["Q_h"][lox:hix, loy:hiy, loz:hiz, :, 1]
         close(fid)
 
         inlet_h = readdlm("./SCU-benchmark/flow-inlet.dat")
 
-        Q  =   ROCArray(Q_h)
-        inlet  =   ROCArray(inlet_h)
+        Q = ROCArray(Q_h)
+        inlet = ROCArray(inlet_h)
     else
         Q_h = zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
         Q = AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
@@ -66,7 +86,7 @@ function time_step(rank, comm_cart)
         inlet_h = readdlm("./SCU-benchmark/flow-inlet.dat")
 
         copyto!(Q_h, Q)
-        inlet  =   ROCArray(inlet_h)
+        inlet = ROCArray(inlet_h)
 
         initialize(Q, inlet, ranky)
     end
@@ -171,70 +191,23 @@ function time_step(rank, comm_cart)
             fillGhost(Q, U, rankx, ranky, inlet)
         end
 
-        if tt % 10 == 0
-            if rank == 0
-                printstyled("Step: ", color=:cyan)
-                print("$tt")
-                printstyled("\tTime: ", color=:blue)
-                println("$(tt*dt)")
-                flush(stdout)
-            end
+        if tt % 10 == 0 && rank == 0
+            printstyled("Step: ", color=:cyan)
+            print("$tt")
+            printstyled("\tTime: ", color=:blue)
+            println("$(tt*dt)")
+            flush(stdout)
+
             if any(isnan, U)
                 printstyled("Oops, NaN detected\n", color=:red)
+                flush(stdout)
                 return
             end
         end
-        # Output
-        if plt_out && (tt % step_plt == 0 || abs(Time-dt*tt) < dt || tt == maxStep)
-            copyto!(Q_h, Q)
-            copyto!(ϕ_h, ϕ)
 
-            # visualization file, in Float32
-            mkpath("./PLT")
-            fname::String = string("./PLT/plt", rank, "-", tt)
+        plotFile(tt, Q_h, ϕ_h, x_h, y_h, z_h, Q, ϕ, rank, rankx, ranky, rankz, plt_files, extents)
 
-            rho = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 1]
-            u   = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 2]
-            v   = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 3]
-            w   = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 4]
-            p   = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 5]
-            T   = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 6]
-
-            ϕ_ng = @view ϕ_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
-            x_ng = @view x_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
-            y_ng = @view y_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
-            z_ng = @view z_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
-
-            vtk_grid(fname, x_ng, y_ng, z_ng; compress=plt_compress_level) do vtk
-                vtk["rho"] = rho
-                vtk["u"] = u
-                vtk["v"] = v
-                vtk["w"] = w
-                vtk["p"] = p
-                vtk["T"] = T
-                vtk["phi"] = ϕ_ng
-            end 
-        end
-
-        # restart file, in Float32
-        if chk_out && (tt % step_chk == 0 || abs(Time-dt*tt) < dt || tt == maxStep)
-            copyto!(Q_h, Q)
-
-            mkpath("./CHK")
-            chkname::String = string("./CHK/chk", tt, ".h5")
-            h5open(chkname, "w", comm_cart) do f
-                dset1 = create_dataset(
-                    f,
-                    "Q_h",
-                    datatype(Float32),
-                    dataspace(Nx_tot, Ny_tot, Nz_tot, Nprim, Nprocs[1]*Nprocs[2]*Nprocs[3]);
-                    chunk=(Nx_tot, Ny_tot, Nz_tot, Nprim, 1),
-                    compress=chk_compress_level,
-                    dxpl_mpio=:collective
-                )
-                dset1[:, :, :, :, rank + 1] = Q_h
-            end
-        end
+        checkpointFile(tt, Q_h, Q, comm_cart)
 
         # Average output
         if average
@@ -247,30 +220,7 @@ function time_step(rank, comm_cart)
                     printstyled("average done\n", color=:green)
                 end
 
-                mkpath("./PLT")
-                avgname::String = string("./PLT/avg", rank, "-", tt)
-
-                copyto!(Q_h, Q_avg)
-                x_ng = @view x_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
-                y_ng = @view y_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
-                z_ng = @view z_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
-                
-                rho = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 1]
-                u   = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 2]
-                v   = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 3]
-                w   = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 4]
-                p =   @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 5]
-                T =   @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 6]
-
-                vtk_grid(avgname, x_ng, y_ng, z_ng; compress=plt_compress_level) do vtk
-                    vtk["rho"] = rho
-                    vtk["u"] = u
-                    vtk["v"] = v
-                    vtk["w"] = w
-                    vtk["p"] = p
-                    vtk["T"] = T
-                    vtk["Time", VTKFieldData()] = dt * tt
-                end 
+                averageFile(tt, Q_avg, Q_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, plt_files, extents)
                 
                 return
             end
