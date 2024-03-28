@@ -1,7 +1,7 @@
 function fill_x(Q, U, rankx, ranky, inlet)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
     
     if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
@@ -44,9 +44,9 @@ function fill_x(Q, U, rankx, ranky, inlet)
 end
 
 function fill_z(Q, U)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
     
     if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
@@ -71,9 +71,9 @@ function fill_z(Q, U)
 end
 
 function fill_y(Q, U, rankx, ranky)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
     
     if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
@@ -146,9 +146,9 @@ end
 
 
 function init(Q, inlet, ranky)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+2*NG || j > Nyp+NG || j < NG+1 || k > Nzp+2*NG
         return

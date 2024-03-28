@@ -103,9 +103,9 @@ function exchange_ghost(Q, NV, comm_cart,
 end
 
 function pack_R(buf, Q, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
@@ -118,9 +118,9 @@ function pack_R(buf, Q, NV)
 end
 
 function pack_U(buf, Q, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+2*NG || j > NG || k > Nzp+2*NG
         return
@@ -133,9 +133,9 @@ function pack_U(buf, Q, NV)
 end
 
 function pack_F(buf, Q, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+2*NG || j > Nyp+2*NG || k > NG
         return
@@ -148,9 +148,9 @@ function pack_F(buf, Q, NV)
 end
 
 function pack_L(buf, Q, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
@@ -163,9 +163,9 @@ function pack_L(buf, Q, NV)
 end
 
 function pack_D(buf, Q, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+2*NG || j > NG || k > Nzp+2*NG
         return
@@ -178,9 +178,9 @@ function pack_D(buf, Q, NV)
 end
 
 function pack_B(buf, Q, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+2*NG || j > Nyp+2*NG || k > NG
         return
@@ -193,9 +193,9 @@ function pack_B(buf, Q, NV)
 end
 
 function unpack_L(buf, Q, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
@@ -208,9 +208,9 @@ function unpack_L(buf, Q, NV)
 end
 
 function unpack_D(buf, Q, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+2*NG || j > NG || k > Nzp+2*NG
         return
@@ -223,9 +223,9 @@ function unpack_D(buf, Q, NV)
 end
 
 function unpack_B(buf, Q, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+2*NG || j > Nyp+2*NG || k > NG
         return
@@ -238,9 +238,9 @@ function unpack_B(buf, Q, NV)
 end
 
 function unpack_R(buf, Q, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
@@ -253,9 +253,9 @@ function unpack_R(buf, Q, NV)
 end
 
 function unpack_U(buf, Q, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+2*NG || j > NG || k > Nzp+2*NG
         return
@@ -268,9 +268,9 @@ function unpack_U(buf, Q, NV)
 end
 
 function unpack_F(buf, Q, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+2*NG || j > Nyp+2*NG || k > NG
         return

@@ -1,10 +1,9 @@
 using MPI
 using WriteVTK
-using LinearAlgebra, StaticArrays, CUDA
-using CUDA:i32
+using LinearAlgebra, StaticArrays, AMDGPU
 using HDF5, DelimitedFiles
 
-CUDA.allowscalar(false)
+AMDGPU.allowscalar(false)
 
 include("split.jl")
 include("schemes.jl")
@@ -16,19 +15,19 @@ include("mpi.jl")
 
 function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
 
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, dξdx, dξdy, dξdz)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_x(Fx, ϕ, Fp, Fm, Ncons)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_x(Fx, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
+    @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, dξdx, dξdy, dξdz)
+    @roc groupsize=nthreads gridsize=ngroups WENO_x(Fx, ϕ, Fp, Fm, Ncons)
+    @roc groupsize=nthreads gridsize=ngroups viscousFlux_x(Fx, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, dηdx, dηdy, dηdz)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_y(Fy, ϕ, Fp, Fm, Ncons)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_y(Fy, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
+    @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, dηdx, dηdy, dηdz)
+    @roc groupsize=nthreads gridsize=ngroups WENO_y(Fy, ϕ, Fp, Fm, Ncons)
+    @roc groupsize=nthreads gridsize=ngroups viscousFlux_y(Fy, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, dζdx, dζdy, dζdz)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_z(Fz, ϕ, Fp, Fm, Ncons)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_z(Fz, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
+    @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, dζdx, dζdy, dζdz)
+    @roc groupsize=nthreads gridsize=ngroups WENO_z(Fz, ϕ, Fp, Fm, Ncons)
+    @roc groupsize=nthreads gridsize=ngroups viscousFlux_z(Fz, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock div(U, Fx, Fy, Fz, dt, J)
+    @roc groupsize=nthreads gridsize=ngroups div(U, Fx, Fy, Fz, dt, J)
 end
 
 function time_step(rank, comm_cart)
@@ -58,16 +57,16 @@ function time_step(rank, comm_cart)
 
         inlet_h = readdlm("./SCU-benchmark/flow-inlet.dat")
 
-        Q  =   cu(Q_h)
-        inlet  =   cu(inlet_h)
+        Q  =   ROCArray(Q_h)
+        inlet  =   ROCArray(inlet_h)
     else
         Q_h = zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
-        Q = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
+        Q = AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
 
         inlet_h = readdlm("./SCU-benchmark/flow-inlet.dat")
 
         copyto!(Q_h, Q)
-        inlet  =   cu(inlet_h)
+        inlet  =   ROCArray(inlet_h)
 
         initialize(Q, inlet, ranky)
     end
@@ -93,30 +92,30 @@ function time_step(rank, comm_cart)
     close(fid)
 
     # move to device memory
-    dξdx = cu(dξdx_h)
-    dξdy = cu(dξdy_h)
-    dξdz = cu(dξdz_h)
-    dηdx = cu(dηdx_h)
-    dηdy = cu(dηdy_h)
-    dηdz = cu(dηdz_h)
-    dζdx = cu(dζdx_h)
-    dζdy = cu(dζdy_h)
-    dζdz = cu(dζdz_h)
-    J = cu(J_h)
+    dξdx = ROCArray(dξdx_h)
+    dξdy = ROCArray(dξdy_h)
+    dξdz = ROCArray(dξdz_h)
+    dηdx = ROCArray(dηdx_h)
+    dηdy = ROCArray(dηdy_h)
+    dηdz = ROCArray(dηdz_h)
+    dζdx = ROCArray(dζdx_h)
+    dζdy = ROCArray(dζdy_h)
+    dζdz = ROCArray(dζdz_h)
+    J = ROCArray(J_h)
 
     # allocate on device
-    ϕ  =   CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot) # Shock sensor
-    U  =   CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Ncons)
-    Fp =   CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Ncons)
-    Fm =   CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Ncons)
-    Fx =   CUDA.zeros(Float32, Nxp+1, Nyp, Nzp, Ncons)
-    Fy =   CUDA.zeros(Float32, Nxp, Nyp+1, Nzp, Ncons)
-    Fz =   CUDA.zeros(Float32, Nxp, Nyp, Nzp+1, Ncons)
+    ϕ  =   AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot) # Shock sensor
+    U  =   AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Ncons)
+    Fp =   AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Ncons)
+    Fm =   AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Ncons)
+    Fx =   AMDGPU.zeros(Float32, Nxp+1, Nyp, Nzp, Ncons)
+    Fy =   AMDGPU.zeros(Float32, Nxp, Nyp+1, Nzp, Ncons)
+    Fz =   AMDGPU.zeros(Float32, Nxp, Nyp, Nzp+1, Ncons)
 
     Un = similar(U)
 
     if average
-        Q_avg = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
+        Q_avg = AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
     end
 
     # MPI buffer 
@@ -126,22 +125,16 @@ function time_step(rank, comm_cart)
     Qrbuf_hx = similar(Qsbuf_hx)
     Qrbuf_hy = similar(Qsbuf_hy)
     Qrbuf_hz = similar(Qsbuf_hz)
-    Mem.pin(Qsbuf_hx)
-    Mem.pin(Qsbuf_hy)
-    Mem.pin(Qsbuf_hz)
-    Mem.pin(Qrbuf_hx)
-    Mem.pin(Qrbuf_hy)
-    Mem.pin(Qrbuf_hz)
 
-    Qsbuf_dx = cu(Qsbuf_hx)
-    Qsbuf_dy = cu(Qsbuf_hy)
-    Qsbuf_dz = cu(Qsbuf_hz)
-    Qrbuf_dx = cu(Qrbuf_hx)
-    Qrbuf_dy = cu(Qrbuf_hy)
-    Qrbuf_dz = cu(Qrbuf_hz)
+    Qsbuf_dx = ROCArray(Qsbuf_hx)
+    Qsbuf_dy = ROCArray(Qsbuf_hy)
+    Qsbuf_dz = ROCArray(Qsbuf_hz)
+    Qrbuf_dx = ROCArray(Qrbuf_hx)
+    Qrbuf_dy = ROCArray(Qrbuf_hy)
+    Qrbuf_dz = ROCArray(Qrbuf_hz)
 
     # # initial
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock prim2c(U, Q)
+    @roc groupsize=nthreads gridsize=ngroups prim2c(U, Q)
     exchange_ghost(Q, Nprim, comm_cart, 
                    Qsbuf_hx, Qsbuf_dx, Qrbuf_hx, Qrbuf_dx,
                    Qsbuf_hy, Qsbuf_dy, Qrbuf_hy, Qrbuf_dy,
@@ -160,16 +153,16 @@ function time_step(rank, comm_cart)
                 copyto!(Un, U)
             end
 
-            @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q)
+            @roc groupsize=nthreads gridsize=ngroups shockSensor(ϕ, Q)
             flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
 
             if KRK == 2
-                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock linComb(U, Un, Ncons, 0.25f0, 0.75f0)
+                @roc groupsize=nthreads gridsize=ngroups linComb(U, Un, Ncons, 0.25f0, 0.75f0)
             elseif KRK == 3
-                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock linComb(U, Un, Ncons, 2/3f0, 1/3f0)
+                @roc groupsize=nthreads gridsize=ngroups linComb(U, Un, Ncons, 2/3f0, 1/3f0)
             end
 
-            @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q)
+            @roc groupsize=nthreads gridsize=ngroups c2Prim(U, Q)
             exchange_ghost(Q, Nprim, comm_cart, 
                            Qsbuf_hx, Qsbuf_dx, Qrbuf_hx, Qrbuf_dx,
                            Qsbuf_hy, Qsbuf_dy, Qrbuf_hy, Qrbuf_dy,

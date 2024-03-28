@@ -1,8 +1,8 @@
 # Range: 1+NG -> N+NG
 function c2Prim(U, Q)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return
@@ -31,9 +31,9 @@ end
 
 # Range: 1 -> N+2*NG
 function prim2c(U, Q)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
@@ -55,9 +55,9 @@ end
 
 # Range: 1+NG -> N+NG
 function linComb(U, Un, NV, a::Float32, b::Float32)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return

@@ -1,7 +1,7 @@
 function viscousFlux_x(Fx, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG+1 || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return
@@ -131,9 +131,9 @@ function viscousFlux_x(Fx, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, d
 end
 
 function viscousFlux_y(Fy, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG+1 || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return
@@ -263,9 +263,9 @@ function viscousFlux_y(Fy, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, d
 end
 
 function viscousFlux_z(Fz, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG+1 || i < NG+1 || j < NG+1 || k < NG+1
         return

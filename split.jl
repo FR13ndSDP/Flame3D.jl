@@ -1,8 +1,8 @@
 #For N-S, range: 1->N+2*NG
 function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
