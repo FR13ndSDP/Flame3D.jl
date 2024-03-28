@@ -19,7 +19,7 @@ const plt_compress_level::Int64 = 1  # output file compression level 0-9, 0 for 
 const chk_out::Bool = false           # if checkpoint is made on save
 const step_chk::Int64 = 2000          # how many steps to save chk
 const chk_compress_level::Int64 = 1  # checkpoint file compression level 0-9, 0 for no compression
-const restart::String = "none"     # restart use checkpoint, file name "*.h5" or "none"
+const restart::String = "./CHK/chk38000.h5"     # restart use checkpoint, file name "*.h5" or "none"
 
 const average = false                 # if do average
 const avg_step = 10                  # average interval
@@ -56,12 +56,14 @@ MPI.Init()
 comm = MPI.COMM_WORLD
 rank = MPI.Comm_rank(comm)
 nGPU = MPI.Comm_size(comm)
+shmcomm = MPI.Comm_split_type(comm, MPI.COMM_TYPE_SHARED, 0)
+local_rank = MPI.Comm_rank(shmcomm)
 comm_cart = MPI.Cart_create(comm, Nprocs; periodic=Iperiodic)
 if nGPU != Nprocs[1]*Nprocs[2]*Nprocs[3] && rank == 0
     error("Oops, nGPU ≠ $Nprocs\n")
 end
 # set device on each MPI rank
-device!(rank)
+device!(local_rank)
 
 time_step(rank, comm_cart)
 
