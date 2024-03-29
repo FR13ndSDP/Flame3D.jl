@@ -1,4 +1,4 @@
-function plotFile(tt, Q_h, ϕ_h, x_h, y_h, z_h, Q, ϕ, rank, rankx, ranky, rankz, plt_files, extents)
+function plotFile(tt,  Q, ϕ, Q_h, ϕ_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, plt_files, extents)
     # Output
     if plt_out && (tt % step_plt == 0 || abs(Time-dt*tt) < dt || tt == maxStep)
         copyto!(Q_h, Q)
