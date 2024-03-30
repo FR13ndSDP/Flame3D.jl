@@ -1,8 +1,9 @@
 using MPI
 using WriteVTK
-using LinearAlgebra, StaticArrays, CUDA
+using StaticArrays, CUDA
 using CUDA:i32
 using HDF5, DelimitedFiles
+using Dates, Printf
 
 CUDA.allowscalar(false)
 
@@ -198,9 +199,11 @@ function time_step(rank, comm_cart)
 
         if tt % 10 == 0 && rank == 0
             printstyled("Step: ", color=:cyan)
-            print("$tt")
+            @printf "%g" tt
             printstyled("\tTime: ", color=:blue)
-            println("$(tt*dt)")
+            @printf "%.2e" tt*dt
+            printstyled("\tWall time: ", color=:green)
+            println("$(now())")
             flush(stdout)
 
             if any(isnan, U)
