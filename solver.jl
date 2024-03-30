@@ -159,7 +159,6 @@ function time_step(rank, comm_cart)
                    Qsbuf_hx, Qsbuf_dx, Qrbuf_hx, Qrbuf_dx,
                    Qsbuf_hy, Qsbuf_dy, Qrbuf_hy, Qrbuf_dy,
                    Qsbuf_hz, Qsbuf_dz, Qrbuf_hz, Qrbuf_dz)
-    MPI.Barrier(comm_cart)
     fillGhost(Q, U, rankx, ranky, inlet)
 
     for tt = 1:ceil(Int, Time/dt)
@@ -187,7 +186,6 @@ function time_step(rank, comm_cart)
                            Qsbuf_hx, Qsbuf_dx, Qrbuf_hx, Qrbuf_dx,
                            Qsbuf_hy, Qsbuf_dy, Qrbuf_hy, Qrbuf_dy,
                            Qsbuf_hz, Qsbuf_dz, Qrbuf_hz, Qrbuf_dz)
-            MPI.Barrier(comm_cart)
             fillGhost(Q, U, rankx, ranky, inlet)
         end
 
@@ -205,7 +203,7 @@ function time_step(rank, comm_cart)
             end
         end
 
-        plotFile(tt, Q_h, ϕ_h, x_h, y_h, z_h, Q, ϕ, rank, rankx, ranky, rankz, plt_files, extents)
+        plotFile(tt, Q, ϕ, Q_h, ϕ_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, plt_files, extents)
 
         checkpointFile(tt, Q_h, Q, comm_cart)
 
