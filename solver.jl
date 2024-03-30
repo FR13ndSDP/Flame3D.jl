@@ -1,7 +1,8 @@
 using MPI
 using WriteVTK
-using LinearAlgebra, StaticArrays, AMDGPU
+using StaticArrays, AMDGPU
 using HDF5, DelimitedFiles
+using Dates
 
 AMDGPU.allowscalar(false)
 
@@ -189,11 +190,13 @@ function time_step(rank, comm_cart)
             fillGhost(Q, U, rankx, ranky, inlet)
         end
 
-        if tt % 10 == 0 && rank == 0
+        if tt % 100 == 0 && rank == 0
             printstyled("Step: ", color=:cyan)
             print("$tt")
             printstyled("\tTime: ", color=:blue)
-            println("$(tt*dt)")
+            print("$(tt*dt)")
+            printstyled("\tWall time: ", color=:green)
+            println("$(now())")
             flush(stdout)
 
             if any(isnan, U)
