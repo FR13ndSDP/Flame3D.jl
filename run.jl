@@ -14,7 +14,7 @@ const T_s::Float32 = 110.4
 const Pr::Float32 = 0.7
 
 # flow control
-const Nprocs::SVector{3, Int64} = [2,1,1] # number of GPUs
+const Nprocs::SVector{3, Int64} = [1,1,1] # number of GPUs
 const Iperiodic = (false, false, true)
 const dt::Float32 = 1.5f-8             # dt for simulation, make CFL < 1
 const Time::Float32 = 1f-3           # total simulation time
@@ -40,7 +40,7 @@ const Nprim::Int64 = 6 # ρ u v w p T
 const WENOϵ::Float32 = eps(1f-12)
 const hybrid_ϕ1::Float32 = 5f-2
 const hybrid_ϕ2::Float32 = 10.f0
-const UP7::SVector{7, Float32} = SVector(-0.00357143f0,  0.03809524f0, -0.18690476f0,  0.68809524f0,  0.56309524f0, -0.11190476f0, 0.01309524f0)
+const UP7::SVector{7, Float32} = SVector(-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420)
 
 # load mesh info
 const NG::Int64 = h5read("metrics.h5", "NG")
@@ -71,7 +71,7 @@ if nGPU != Nprocs[1]*Nprocs[2]*Nprocs[3] && rank == 0
     error("Oops, nGPU ≠ $Nprocs\n")
 end
 # set device on each MPI rank
-device!(local_rank)
+# device!(local_rank)
 
 time_step(rank, comm_cart)
 

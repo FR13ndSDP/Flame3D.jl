@@ -6,7 +6,7 @@ function div(U, Fx, Fy, Fz, dt, J)
         return
     end
 
-    @inbounds Jact = J[i+NG, j+NG, k+NG] * dt
+    @inbounds Jact::Float32 = J[i+NG, j+NG, k+NG] * dt
 
     for n = 1:Ncons
         @inbounds U[i+NG, j+NG, k+NG, n] +=  (Fx[i, j, k, n] - Fx[i+1, j, k, n] + 
