@@ -26,7 +26,7 @@ const plt_compress_level::Int64 = 1  # output file compression level 0-9, 0 for 
 
 const chk_out::Bool = false           # if checkpoint is made on save
 const step_chk::Int64 = 2000          # how many steps to save chk
-const chk_compress_level::Int64 = 1  # checkpoint file compression level 0-9, 0 for no compression
+const chk_compress_level::Int64 = 6  # checkpoint file compression level 0-9, 0 for no compression
 const restart::String = "none"     # restart use checkpoint, file name "*.h5" or "none"
 
 const average = false                 # if do average
@@ -40,8 +40,7 @@ const Nprim::Int64 = 6 # ρ u v w p T
 const WENOϵ::Float32 = eps(1f-12)
 const hybrid_ϕ1::Float32 = 5f-2
 const hybrid_ϕ2::Float32 = 10.f0
-const UP7::SVector{7, Float32} = SVector(-0.00357143f0,  0.03809524f0, -0.18690476f0,  0.68809524f0,  0.56309524f0, -0.11190476f0, 0.01309524f0)
-
+const UP7::SVector{7, Float32} = SVector(-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420)
 # load mesh info
 const NG::Int64 = h5read("metrics.h5", "NG")
 const Nx::Int64 = h5read("metrics.h5", "Nx")
