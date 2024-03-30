@@ -14,7 +14,7 @@ const T_s::Float32 = 110.4
 const Pr::Float32 = 0.7
 
 # flow control
-const Nprocs::SVector{3, Int64} = [1,1,1] # number of GPUs
+const Nprocs::SVector{3, Int64} = [2,1,1] # number of GPUs
 const Iperiodic = (false, false, true)
 const dt::Float32 = 1.5f-8             # dt for simulation, make CFL < 1
 const Time::Float32 = 1f-3           # total simulation time
@@ -64,7 +64,7 @@ MPI.Init()
 comm = MPI.COMM_WORLD
 rank = MPI.Comm_rank(comm)
 nGPU = MPI.Comm_size(comm)
-shmcomm = MPI.Comm_split_type(comm, MPI.COMM_TYPE_SHARED, 0)
+shmcomm = MPI.Comm_split_type(comm, MPI.COMM_TYPE_SHARED, rank)
 local_rank = MPI.Comm_rank(shmcomm)
 comm_cart = MPI.Cart_create(comm, Nprocs; periodic=Iperiodic)
 if nGPU != Nprocs[1]*Nprocs[2]*Nprocs[3] && rank == 0
