@@ -2,7 +2,7 @@ using MPI
 using WriteVTK
 using StaticArrays, AMDGPU
 using HDF5, DelimitedFiles
-using Dates
+using Dates, Printf
 
 AMDGPU.allowscalar(false)
 
@@ -192,9 +192,9 @@ function time_step(rank, comm_cart)
 
         if tt % 100 == 0 && rank == 0
             printstyled("Step: ", color=:cyan)
-            print("$tt")
+            @printf "%g" tt
             printstyled("\tTime: ", color=:blue)
-            print("$(tt*dt)")
+            @printf "%.2e" tt*dt
             printstyled("\tWall time: ", color=:green)
             println("$(now())")
             flush(stdout)
