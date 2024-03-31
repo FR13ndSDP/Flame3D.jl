@@ -1,6 +1,3 @@
-# ON XDSC0029
-# DCU(AMD gfx906) + Hygon C86
-
 #!/bin/bash
 #SBATCH -J Flame3D
 #SBATCH -n 16
