@@ -73,7 +73,7 @@ function time_step(rank, comm_cart)
             printstyled("Restart\n", color=:yellow)
         end
         fid = h5open(restart, "r", comm_cart)
-        Q_h = fid["Q_h"][lox:hix, loy:hiy, loz:hiz, :, 1]
+        Q_h = fid["Q_h"][:, :, :, :, rank+1]
         close(fid)
 
         inlet_h = readdlm("./SCU-benchmark/flow-inlet.dat")
@@ -147,14 +147,14 @@ function time_step(rank, comm_cart)
     Qrbuf_hy = similar(Qsbuf_hy)
     Qrbuf_hz = similar(Qsbuf_hz)
 
-    Qsbuf_dx = ROCArray(Qsbuf_hx)
-    Qsbuf_dy = ROCArray(Qsbuf_hy)
-    Qsbuf_dz = ROCArray(Qsbuf_hz)
-    Qrbuf_dx = ROCArray(Qrbuf_hx)
-    Qrbuf_dy = ROCArray(Qrbuf_hy)
-    Qrbuf_dz = ROCArray(Qrbuf_hz)
+    Qsbuf_dx = unsafe_wrap(ROCArray, pointer(Qsbuf_hx), size(Qsbuf_hx))
+    Qsbuf_dy = unsafe_wrap(ROCArray, pointer(Qsbuf_hy), size(Qsbuf_hy))
+    Qsbuf_dz = unsafe_wrap(ROCArray, pointer(Qsbuf_hz), size(Qsbuf_hz))
+    Qrbuf_dx = unsafe_wrap(ROCArray, pointer(Qrbuf_hx), size(Qrbuf_hx))
+    Qrbuf_dy = unsafe_wrap(ROCArray, pointer(Qrbuf_hy), size(Qrbuf_hy))
+    Qrbuf_dz = unsafe_wrap(ROCArray, pointer(Qrbuf_hz), size(Qrbuf_hz))
 
-    # # initial
+    # initial
     @roc groupsize=nthreads gridsize=ngroups prim2c(U, Q)
     exchange_ghost(Q, Nprim, comm_cart, 
                    Qsbuf_hx, Qsbuf_dx, Qrbuf_hx, Qrbuf_dx,
