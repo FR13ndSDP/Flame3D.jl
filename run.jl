@@ -50,10 +50,10 @@ const Nz::Int64 = h5read("metrics.h5", "Nz")
 const Nxp::Int64 = Nx ÷ Nprocs[1] # make sure it is integer
 const Nyp::Int64 = Ny ÷ Nprocs[2] # make sure it is integer
 const Nzp::Int64 = Nz ÷ Nprocs[3] # make sure it is integer
-# here we use 256 threads/block and limit registers to 255
-const maxreg::Int64 = 255
-const nthreads::Tuple{Int32, Int32, Int32} = (4, 8, 8)
-const nblock::Tuple{Int32, Int32, Int32} = (cld((Nxp+2*NG), 4), 
+# here we use 512 threads/block and limit registers to 128
+const maxreg::Int64 = 128
+const nthreads::Tuple{Int32, Int32, Int32} = (8, 8, 8)
+const nblock::Tuple{Int32, Int32, Int32} = (cld((Nxp+2*NG), 8), 
                                             cld((Nyp+2*NG), 8),
                                             cld((Nzp+2*NG), 8))
 

@@ -184,9 +184,9 @@ function time_step(rank, comm_cart)
             flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
 
             if KRK == 2
-                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock linComb(U, Un, Ncons, 0.25f0, 0.75f0)
+                @. U = 0.25f0*U + 0.75f0*Un
             elseif KRK == 3
-                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock linComb(U, Un, Ncons, 2/3f0, 1/3f0)
+                @. U = 2/3f0*U + 1/3f0*Un
             end
 
             @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q)
