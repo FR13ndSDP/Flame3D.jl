@@ -4,8 +4,6 @@ using StaticArrays, AMDGPU
 using HDF5, DelimitedFiles
 using Dates, Printf
 
-AMDGPU.allowscalar(false)
-
 include("split.jl")
 include("schemes.jl")
 include("viscous.jl")
