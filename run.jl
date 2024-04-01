@@ -57,7 +57,11 @@ const nblock::Tuple{Int32, Int32, Int32} = (cld((Nxp+2*NG), 8),
                                             cld((Nyp+2*NG), 8),
                                             cld((Nzp+2*NG), 8))
 
-
+# For simple kernel without register limit
+const nthreads2::Tuple{Int32, Int32, Int32} = (16, 8, 8)
+const nblock2::Tuple{Int32, Int32, Int32} = (cld((Nxp+2*NG), 16), 
+                                             cld((Nyp+2*NG), 8),
+                                             cld((Nzp+2*NG), 8))
 # Run the simulation
 MPI.Init()
 
