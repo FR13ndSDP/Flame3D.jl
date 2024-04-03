@@ -8,9 +8,9 @@ function fill_x(Q, U, rankx, ranky, inlet)
     end
     # inlet
     if rankx == 0 && i <= NG+1 && j >= NG+1 && j <= Nyp+NG
-        T_ref = 108.1f0
-        u_ref = 607.177038268082f0
-        ρ_ref = 0.06894018305600735f0
+        T_ref = 107.1f0
+        u_ref = 609.1f0
+        ρ_ref = 0.077f0
 
         ρ = inlet[j-NG+ranky*Nyp, 1] * ρ_ref
         u = inlet[j-NG+ranky*Nyp, 2] * u_ref
@@ -88,7 +88,7 @@ function fill_y(Q, U, rankx, ranky)
             v_turb = 0.f0
         end
 
-        pw = 1.5f0*Q[i, j+1, k, 5] - 0.5f0*Q[i, j+2, k, 5]
+        pw = (2*Q[i, j+1, k, 5] - 0.5f0*Q[i, j+2, k, 5])/1.5f0
         Tw = 307.f0
         ρw = pw/(Rg * Tw)
         @inbounds Q[i, j, k, 5] = pw
@@ -109,7 +109,7 @@ function fill_y(Q, U, rankx, ranky)
             v = -Q[i, 2*NG+2-l, k, 3] + 2*v_turb
             w = -Q[i, 2*NG+2-l, k, 4]
             T = 2*Tw - Q[i, 2*NG+2-l, k, 6]
-            p = 1.5f0*Q[i, l+1, k, 5] - 0.5f0*Q[i, l+2, k, 5]
+            p = (2*Q[i, l+1, k, 5] - 0.5f0*Q[i, l+2, k, 5])/1.5f0
             ρ = p/(Rg*T)
 
             @inbounds Q[i, l, k, 5] = p
@@ -141,7 +141,7 @@ end
 function fillGhost(Q, U, rankx, ranky, inlet)
     @cuda threads=nthreads blocks=nblock fill_x(Q, U, rankx, ranky, inlet)
     @cuda threads=nthreads blocks=nblock fill_y(Q, U, rankx, ranky)
-    # @cuda threads=nthreads blocks=nblock fill_z(Q, U)
+    @cuda threads=nthreads blocks=nblock fill_z(Q, U)
 end
 
 
@@ -154,9 +154,9 @@ function init(Q, inlet, ranky)
         return
     end
 
-    T_ref = 108.1f0
-    u_ref = 607.177038268082f0
-    ρ_ref = 0.06894018305600735f0
+    T_ref = 107.1f0
+    u_ref = 609.1f0
+    ρ_ref = 0.077f0
 
     ρ = inlet[j-NG+ranky*Nyp, 1] * ρ_ref
     u = inlet[j-NG+ranky*Nyp, 2] * u_ref

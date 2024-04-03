@@ -11,7 +11,7 @@ const Rg::Float32 = 287
 const Cp::Float32 = Rg*γ/(γ-1)
 const C_s::Float32 = 1.458f-6
 const T_s::Float32 = 110.4
-const Pr::Float32 = 0.7
+const Pr::Float32 = 0.72
 
 # flow control
 const Nprocs::SVector{3, Int64} = [1,1,1] # number of GPUs
@@ -27,7 +27,7 @@ const plt_compress_level::Int64 = 1  # output file compression level 0-9, 0 for 
 const chk_out::Bool = false           # if checkpoint is made on save
 const step_chk::Int64 = 2000          # how many steps to save chk
 const chk_compress_level::Int64 = 1  # checkpoint file compression level 0-9, 0 for no compression
-const restart::String = "./CHK/chk38000.h5"     # restart use checkpoint, file name "*.h5" or "none"
+const restart::String = "none"     # restart use checkpoint, file name "*.h5" or "none"
 
 const average = false                 # if do average
 const avg_step = 10                  # average interval
