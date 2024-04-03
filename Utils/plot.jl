@@ -1,5 +1,3 @@
-# run at the same directory of plt files
-
 using ReadVTK
 using PyCall
 using DelimitedFiles
@@ -58,6 +56,7 @@ id2 = partialsortperm(abs.(uy.-u∞*0.99), 1)
 
 # pw plot
 dns = readdlm("./SCU-benchmark/dns-p.dat", ',', Float32)
+plt.figure(figsize=(20,10))
 plt.subplot(2, 2, 1)
 plt.plot(x1d[1:Nx-50]./δ, pw1d[1:Nx-50])
 plt.plot(dns[:, 1], dns[:, 2], "+")
@@ -143,7 +142,7 @@ for j = 1:Ny
 end
 
 ρw = ρy[1]
-τw = mu[1] * (2*uy[2]-0.5*uy[3])/y[id, 2, 1]
+τw = mu[1] * (2*uy[2]-0.5f0*uy[3])/y[id, 2, 1]
 for j = 1:Ny
     yplus[j] = y[id, j, 1]*sqrt(τw/ρw)*ρw/mu[1]
 end
