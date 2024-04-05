@@ -200,6 +200,7 @@ function time_step(rank, comm_cart)
             if any(isnan, U)
                 printstyled("Oops, NaN detected\n", color=:red)
                 flush(stdout)
+                MPI.Abort(comm_cart, 1)
                 return
             end
         end
