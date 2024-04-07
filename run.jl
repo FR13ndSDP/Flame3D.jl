@@ -15,7 +15,7 @@ const Pr::Float32 = 0.72
 
 # flow control
 const Nprocs::SVector{3, Int64} = [1,1,1] # number of GPUs
-const Iperiodic = (false, false, true)
+const Iperiodic = (false, false, false)
 const dt::Float32 = 1.5f-8             # dt for simulation, make CFL < 1
 const Time::Float32 = 1f-3           # total simulation time
 const maxStep::Int64 = 100         # max steps to run
@@ -37,7 +37,7 @@ const avg_total = 1000                # total number of samples
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
 const Nprim::Int64 = 6 # ρ u v w p T
 # scheme constant
-const WENOϵ::Float32 = eps(1f-12)
+const WENOϵ::Float64 = 1e-16
 const hybrid_ϕ1::Float32 = 5f-2
 const hybrid_ϕ2::Float32 = 10.f0
 const UP7::SVector{7, Float32} = SVector(-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420)
