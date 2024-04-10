@@ -1,5 +1,5 @@
 #For N-S, range: 1->N+2*NG
-function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
+function fluxSplit(Q, Fp, Fm, S, Ax, Ay, Az)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -17,10 +17,10 @@ function fluxSplit(Q, Fp, Fm, Ax, Ay, Az)
     @inbounds A1 = Ax[i, j, k]
     @inbounds A2 = Ay[i, j, k]
     @inbounds A3 = Az[i, j, k]
+    @inbounds ss = S[i, j, k]
 
     @fastmath c = sqrt(γ*p/ρ)
 
-    @fastmath ss = sqrt(A1^2 + A2^2 + A3^2)
     E1 = A1*u + A2*v + A3*w
     E2 = E1 - c*ss
     E3 = E1 + c*ss
