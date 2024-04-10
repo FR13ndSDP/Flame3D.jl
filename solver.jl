@@ -16,21 +16,20 @@ include("div.jl")
 include("mpi.jl")
 include("IO.jl")
 
-function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
+function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_x(Fx, ϕ, s1, Fp, Fm, Ncons)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_x(Fx, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_y(Fy, ϕ, s2, Fp, Fm, Ncons)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_y(Fy, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_z(Fz, ϕ, s3, Fp, Fm, Ncons)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_z(Fz, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock div(U, Fx, Fy, Fz, dt, J)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
+
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J)
 end
 
 function time_step(rank, comm_cart)
@@ -136,6 +135,9 @@ function time_step(rank, comm_cart)
     Fx =   CUDA.zeros(Float32, Nxp+1, Nyp, Nzp, Ncons)
     Fy =   CUDA.zeros(Float32, Nxp, Nyp+1, Nzp, Ncons)
     Fz =   CUDA.zeros(Float32, Nxp, Nyp, Nzp+1, Ncons)
+    Fv_x = CUDA.zeros(Float32, Nxp+NG, Nyp+NG, Nzp+NG, 4)
+    Fv_y = CUDA.zeros(Float32, Nxp+NG, Nyp+NG, Nzp+NG, 4)
+    Fv_z = CUDA.zeros(Float32, Nxp+NG, Nyp+NG, Nzp+NG, 4)
 
     Un = similar(U)
 
@@ -184,7 +186,7 @@ function time_step(rank, comm_cart)
             end
 
             @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q)
-            flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
+            flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
 
             if KRK == 2
                 @cuda maxregs=maxreg fastmath=true threads=nthreads2 blocks=nblock2 linComb(U, Un, Ncons, 0.25f0, 0.75f0)
