@@ -55,6 +55,7 @@ function checkpointFile(tt, Q_h, Q, comm_cart)
                 datatype(Float32),
                 dataspace(Nx_tot, Ny_tot, Nz_tot, Nprim, Nprocs[1]*Nprocs[2]*Nprocs[3]);
                 chunk=(Nx_tot, Ny_tot, Nz_tot, Nprim, 1),
+                shuffle=chk_shuffle,
                 compress=chk_compress_level,
                 dxpl_mpio=:collective
             )
