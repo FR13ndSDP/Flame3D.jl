@@ -26,7 +26,8 @@ const plt_compress_level::Int64 = 1  # output file compression level 0-9, 0 for 
 
 const chk_out::Bool = false           # if checkpoint is made on save
 const step_chk::Int64 = 2000          # how many steps to save chk
-const chk_compress_level::Int64 = 6  # checkpoint file compression level 0-9, 0 for no compression
+const chk_shuffle::Bool = true       # shuffle to make compress more efficient
+const chk_compress_level::Int64 = 1  # checkpoint file compression level 0-9, 0 for no compression
 const restart::String = "none"     # restart use checkpoint, file name "*.h5" or "none"
 
 const average = false                 # if do average
