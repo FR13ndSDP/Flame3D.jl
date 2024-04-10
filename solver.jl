@@ -13,21 +13,20 @@ include("div.jl")
 include("mpi.jl")
 include("IO.jl")
 
-function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
+function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
 
     @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
     @roc groupsize=nthreads gridsize=ngroups WENO_x(Fx, ϕ, s1, Fp, Fm, Ncons)
-    @roc groupsize=nthreads gridsize=ngroups viscousFlux_x(Fx, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
     @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
     @roc groupsize=nthreads gridsize=ngroups WENO_y(Fy, ϕ, s2, Fp, Fm, Ncons)
-    @roc groupsize=nthreads gridsize=ngroups viscousFlux_y(Fy, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
     @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
     @roc groupsize=nthreads gridsize=ngroups WENO_z(Fz, ϕ, s3, Fp, Fm, Ncons)
-    @roc groupsize=nthreads gridsize=ngroups viscousFlux_z(Fz, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
-    @roc groupsize=nthreads gridsize=ngroups div(U, Fx, Fy, Fz, dt, J)
+    @roc groupsize=nthreads gridsize=ngroups viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
+
+    @roc groupsize=nthreads gridsize=ngroups div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J)
 end
 
 function time_step(rank, comm_cart)
@@ -133,6 +132,9 @@ function time_step(rank, comm_cart)
     Fx =   AMDGPU.zeros(Float32, Nxp+1, Nyp, Nzp, Ncons)
     Fy =   AMDGPU.zeros(Float32, Nxp, Nyp+1, Nzp, Ncons)
     Fz =   AMDGPU.zeros(Float32, Nxp, Nyp, Nzp+1, Ncons)
+    Fv_x = AMDGPU.zeros(Float32, Nxp+NG, Nyp+NG, Nzp+NG, 4)
+    Fv_y = AMDGPU.zeros(Float32, Nxp+NG, Nyp+NG, Nzp+NG, 4)
+    Fv_z = AMDGPU.zeros(Float32, Nxp+NG, Nyp+NG, Nzp+NG, 4)
 
     Un = similar(U)
 
@@ -175,7 +177,7 @@ function time_step(rank, comm_cart)
             end
 
             @roc groupsize=nthreads gridsize=ngroups shockSensor(ϕ, Q)
-            flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
+            flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz,  Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
 
             if KRK == 2
                 @roc groupsize=nthreads gridsize=ngroups linComb(U, Un, Ncons, 0.25f0, 0.75f0)
