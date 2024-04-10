@@ -13,18 +13,18 @@ include("div.jl")
 include("mpi.jl")
 include("IO.jl")
 
-function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
+function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
 
-    @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, dξdx, dξdy, dξdz)
-    @roc groupsize=nthreads gridsize=ngroups WENO_x(Fx, ϕ, Fp, Fm, Ncons)
+    @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
+    @roc groupsize=nthreads gridsize=ngroups WENO_x(Fx, ϕ, s1, Fp, Fm, Ncons)
     @roc groupsize=nthreads gridsize=ngroups viscousFlux_x(Fx, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
-    @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, dηdx, dηdy, dηdz)
-    @roc groupsize=nthreads gridsize=ngroups WENO_y(Fy, ϕ, Fp, Fm, Ncons)
+    @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
+    @roc groupsize=nthreads gridsize=ngroups WENO_y(Fy, ϕ, s2, Fp, Fm, Ncons)
     @roc groupsize=nthreads gridsize=ngroups viscousFlux_y(Fy, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
-    @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, dζdx, dζdy, dζdz)
-    @roc groupsize=nthreads gridsize=ngroups WENO_z(Fz, ϕ, Fp, Fm, Ncons)
+    @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
+    @roc groupsize=nthreads gridsize=ngroups WENO_z(Fz, ϕ, s3, Fp, Fm, Ncons)
     @roc groupsize=nthreads gridsize=ngroups viscousFlux_z(Fz, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
     @roc groupsize=nthreads gridsize=ngroups div(U, Fx, Fy, Fz, dt, J)
@@ -74,7 +74,7 @@ function time_step(rank, comm_cart)
         Q_h = fid["Q_h"][:, :, :, :, rank+1]
         close(fid)
 
-        inlet_h = readdlm("./SCU-benchmark/flow-inlet.dat")
+        inlet_h = readdlm("./SCU-benchmark/flow-inlet.dat", Float32)
 
         Q = ROCArray(Q_h)
         inlet = ROCArray(inlet_h)
@@ -82,7 +82,7 @@ function time_step(rank, comm_cart)
         Q_h = zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
         Q = AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
 
-        inlet_h = readdlm("./SCU-benchmark/flow-inlet.dat")
+        inlet_h = readdlm("./SCU-benchmark/flow-inlet.dat", Float32)
 
         copyto!(Q_h, Q)
         inlet = ROCArray(inlet_h)
@@ -111,16 +111,19 @@ function time_step(rank, comm_cart)
     close(fid)
 
     # move to device memory
-    dξdx = ROCArray(dξdx_h)
-    dξdy = ROCArray(dξdy_h)
-    dξdz = ROCArray(dξdz_h)
-    dηdx = ROCArray(dηdx_h)
-    dηdy = ROCArray(dηdy_h)
-    dηdz = ROCArray(dηdz_h)
-    dζdx = ROCArray(dζdx_h)
-    dζdy = ROCArray(dζdy_h)
-    dζdz = ROCArray(dζdz_h)
-    J = ROCArray(J_h)
+    dξdx = ROCArray(convert(Array{Float32, 3}, dξdx_h))
+    dξdy = ROCArray(convert(Array{Float32, 3}, dξdy_h))
+    dξdz = ROCArray(convert(Array{Float32, 3}, dξdz_h))
+    dηdx = ROCArray(convert(Array{Float32, 3}, dηdx_h))
+    dηdy = ROCArray(convert(Array{Float32, 3}, dηdy_h))
+    dηdz = ROCArray(convert(Array{Float32, 3}, dηdz_h))
+    dζdx = ROCArray(convert(Array{Float32, 3}, dζdx_h))
+    dζdy = ROCArray(convert(Array{Float32, 3}, dζdy_h))
+    dζdz = ROCArray(convert(Array{Float32, 3}, dζdz_h))
+    J = ROCArray(convert(Array{Float32, 3}, J_h))
+    s1 = @. sqrt(dξdx^2+dξdy^2+dξdz^2)
+    s2 = @. sqrt(dηdx^2+dηdy^2+dηdz^2)
+    s3 = @. sqrt(dζdx^2+dζdy^2+dζdz^2)
 
     # allocate on device
     ϕ  =   AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot) # Shock sensor
@@ -172,7 +175,7 @@ function time_step(rank, comm_cart)
             end
 
             @roc groupsize=nthreads gridsize=ngroups shockSensor(ϕ, Q)
-            flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
+            flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
 
             if KRK == 2
                 @roc groupsize=nthreads gridsize=ngroups linComb(U, Un, Ncons, 0.25f0, 0.75f0)

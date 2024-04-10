@@ -83,7 +83,7 @@ function NND_z(F, Fp, Fm, NV)
 end
 
 #Range: 1 -> N+1
-function WENO_x(F, ϕ, Fp, Fm, NV)
+function WENO_x(F, ϕ, S, Fp, Fm, NV)
     i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
     j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
     k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
@@ -94,6 +94,7 @@ function WENO_x(F, ϕ, Fp, Fm, NV)
 
     tmp1::Float32 = 13/12f0
     tmp2::Float32 = 1/6f0
+    WENOϵ::Float32 = 1f-10
 
     c1::Float32 = UP7[1]
     c2::Float32 = UP7[2]
@@ -131,6 +132,7 @@ function WENO_x(F, ϕ, Fp, Fm, NV)
             @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
         end
     elseif ϕx < hybrid_ϕ2
+        @inbounds ss::Float32 = 2/(S[i-1, j, k] + S[i, j, k]) 
         for n = 1:NV
             @inbounds V1 = Fp[i-3, j, k, n]
             @inbounds V2 = Fp[i-2, j, k, n]
@@ -142,13 +144,14 @@ function WENO_x(F, ϕ, Fp, Fm, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25f0*(V2-V4)^2
             s33 = tmp1*(V3-2*V4+V5)^2 + 0.25f0*(3*V3-4*V4+V5)^2
 
-            # s11 = 0.1/(WENOϵ+s11)^2
-            # s22 = 0.6/(WENOϵ+s22)^2
-            # s33 = 0.3/(WENOϵ+s33)^2
+            s11 *= ss
+            s22 *= ss
+            s33 *= ss
+
             τ = abs(s11-s33)
-            s11 = (1 + (τ/(WENOϵ+s11))^2) * 1
-            s22 = (1 + (τ/(WENOϵ+s22))^2) * 6
-            s33 = (1 + (τ/(WENOϵ+s33))^2) * 3
+            s11 = min((1 + (τ/(WENOϵ+s11))^2), floatmax(Float32)) * 0.1f0
+            s22 = min((1 + (τ/(WENOϵ+s22))^2), floatmax(Float32)) * 0.6f0
+            s33 = min((1 + (τ/(WENOϵ+s33))^2), floatmax(Float32)) * 0.3f0
 
             invsum = 1/(s11+s22+s33)
 
@@ -167,13 +170,14 @@ function WENO_x(F, ϕ, Fp, Fm, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25f0*(V4-V2)^2
             s33 = tmp1*(V3-2*V2+V1)^2 + 0.25f0*(3*V3-4*V2+V1)^2
 
-            # s11 = 0.1/(WENOϵ+s11)^2
-            # s22 = 0.6/(WENOϵ+s22)^2
-            # s33 = 0.3/(WENOϵ+s33)^2
+            s11 *= ss
+            s22 *= ss
+            s33 *= ss
+
             τ = abs(s11-s33)
-            s11 = (1 + (τ/(WENOϵ+s11))^2) * 1
-            s22 = (1 + (τ/(WENOϵ+s22))^2) * 6
-            s33 = (1 + (τ/(WENOϵ+s33))^2) * 3
+            s11 = min((1 + (τ/(WENOϵ+s11))^2), floatmax(Float32)) * 0.1f0
+            s22 = min((1 + (τ/(WENOϵ+s22))^2), floatmax(Float32)) * 0.6f0
+            s33 = min((1 + (τ/(WENOϵ+s33))^2), floatmax(Float32)) * 0.3f0
 
             invsum = 1/(s11+s22+s33)
 
@@ -197,7 +201,7 @@ function WENO_x(F, ϕ, Fp, Fm, NV)
 end
 
 #Range: 1 -> N+1
-function WENO_y(F, ϕ, Fp, Fm, NV)
+function WENO_y(F, ϕ, S, Fp, Fm, NV)
     i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
     j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
     k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
@@ -208,6 +212,7 @@ function WENO_y(F, ϕ, Fp, Fm, NV)
 
     tmp1::Float32 = 13/12f0
     tmp2::Float32 = 1/6f0
+    WENOϵ::Float32 = 1f-10
 
     c1::Float32 = UP7[1]
     c2::Float32 = UP7[2]
@@ -245,6 +250,7 @@ function WENO_y(F, ϕ, Fp, Fm, NV)
             @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
         end
     elseif ϕy < hybrid_ϕ2
+        @inbounds ss::Float32 = 2/(S[i, j-1, k] + S[i, j, k]) 
         for n = 1:NV
             @inbounds V1 = Fp[i, j-3, k, n]
             @inbounds V2 = Fp[i, j-2, k, n]
@@ -256,13 +262,14 @@ function WENO_y(F, ϕ, Fp, Fm, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25f0*(V2-V4)^2
             s33 = tmp1*(V3-2*V4+V5)^2 + 0.25f0*(3*V3-4*V4+V5)^2
 
-            # s11 = 0.1/(WENOϵ+s11)^2
-            # s22 = 0.6/(WENOϵ+s22)^2
-            # s33 = 0.3/(WENOϵ+s33)^2
+            s11 *= ss
+            s22 *= ss
+            s33 *= ss
+
             τ = abs(s11-s33)
-            s11 = (1 + (τ/(WENOϵ+s11))^2) * 1
-            s22 = (1 + (τ/(WENOϵ+s22))^2) * 6
-            s33 = (1 + (τ/(WENOϵ+s33))^2) * 3
+            s11 = min((1 + (τ/(WENOϵ+s11))^2), floatmax(Float32)) * 0.1f0
+            s22 = min((1 + (τ/(WENOϵ+s22))^2), floatmax(Float32)) * 0.6f0
+            s33 = min((1 + (τ/(WENOϵ+s33))^2), floatmax(Float32)) * 0.3f0
 
             invsum = 1/(s11+s22+s33)
 
@@ -281,13 +288,14 @@ function WENO_y(F, ϕ, Fp, Fm, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25f0*(V4-V2)^2
             s33 = tmp1*(V3-2*V2+V1)^2 + 0.25f0*(3*V3-4*V2+V1)^2
 
-            # s11 = 0.1/(WENOϵ+s11)^2
-            # s22 = 0.6/(WENOϵ+s22)^2
-            # s33 = 0.3/(WENOϵ+s33)^2
+            s11 *= ss
+            s22 *= ss
+            s33 *= ss
+
             τ = abs(s11-s33)
-            s11 = (1 + (τ/(WENOϵ+s11))^2) * 1
-            s22 = (1 + (τ/(WENOϵ+s22))^2) * 6
-            s33 = (1 + (τ/(WENOϵ+s33))^2) * 3
+            s11 = min((1 + (τ/(WENOϵ+s11))^2), floatmax(Float32)) * 0.1f0
+            s22 = min((1 + (τ/(WENOϵ+s22))^2), floatmax(Float32)) * 0.6f0
+            s33 = min((1 + (τ/(WENOϵ+s33))^2), floatmax(Float32)) * 0.3f0
 
             invsum = 1/(s11+s22+s33)
 
@@ -311,7 +319,7 @@ function WENO_y(F, ϕ, Fp, Fm, NV)
 end
 
 #Range: 1 -> N+1
-function WENO_z(F, ϕ, Fp, Fm, NV)
+function WENO_z(F, ϕ, S, Fp, Fm, NV)
     i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
     j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
     k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
@@ -322,6 +330,7 @@ function WENO_z(F, ϕ, Fp, Fm, NV)
 
     tmp1::Float32 = 13/12f0
     tmp2::Float32 = 1/6f0
+    WENOϵ::Float32 = 1f-10
 
     c1::Float32 = UP7[1]
     c2::Float32 = UP7[2]
@@ -359,6 +368,7 @@ function WENO_z(F, ϕ, Fp, Fm, NV)
             @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
         end
     elseif ϕz < hybrid_ϕ2
+        @inbounds ss::Float32 = 2/(S[i, j, k-1] + S[i, j, k]) 
         for n = 1:NV
             @inbounds V1 = Fp[i, j, k-3, n]
             @inbounds V2 = Fp[i, j, k-2, n]
@@ -370,13 +380,14 @@ function WENO_z(F, ϕ, Fp, Fm, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25f0*(V2-V4)^2
             s33 = tmp1*(V3-2*V4+V5)^2 + 0.25f0*(3*V3-4*V4+V5)^2
 
-            # s11 = 0.1/(WENOϵ+s11)^2
-            # s22 = 0.6/(WENOϵ+s22)^2
-            # s33 = 0.3/(WENOϵ+s33)^2
+            s11 *= ss
+            s22 *= ss
+            s33 *= ss
+
             τ = abs(s11-s33)
-            s11 = (1 + (τ/(WENOϵ+s11))^2) * 1
-            s22 = (1 + (τ/(WENOϵ+s22))^2) * 6
-            s33 = (1 + (τ/(WENOϵ+s33))^2) * 3
+            s11 = min((1 + (τ/(WENOϵ+s11))^2), floatmax(Float32)) * 0.1f0
+            s22 = min((1 + (τ/(WENOϵ+s22))^2), floatmax(Float32)) * 0.6f0
+            s33 = min((1 + (τ/(WENOϵ+s33))^2), floatmax(Float32)) * 0.3f0
 
             invsum = 1/(s11+s22+s33)
 
@@ -395,13 +406,14 @@ function WENO_z(F, ϕ, Fp, Fm, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25f0*(V4-V2)^2
             s33 = tmp1*(V3-2*V2+V1)^2 + 0.25f0*(3*V3-4*V2+V1)^2
 
-            # s11 = 0.1/(WENOϵ+s11)^2
-            # s22 = 0.6/(WENOϵ+s22)^2
-            # s33 = 0.3/(WENOϵ+s33)^2
+            s11 *= ss
+            s22 *= ss
+            s33 *= ss
+            
             τ = abs(s11-s33)
-            s11 = (1 + (τ/(WENOϵ+s11))^2) * 1
-            s22 = (1 + (τ/(WENOϵ+s22))^2) * 6
-            s33 = (1 + (τ/(WENOϵ+s33))^2) * 3
+            s11 = min((1 + (τ/(WENOϵ+s11))^2), floatmax(Float32)) * 0.1f0
+            s22 = min((1 + (τ/(WENOϵ+s22))^2), floatmax(Float32)) * 0.6f0
+            s33 = min((1 + (τ/(WENOϵ+s33))^2), floatmax(Float32)) * 0.3f0
 
             invsum = 1/(s11+s22+s33)
 
