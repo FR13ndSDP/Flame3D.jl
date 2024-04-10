@@ -77,7 +77,7 @@ function time_step(rank, comm_cart)
         Q_h = fid["Q_h"][lox:hix, loy:hiy, loz:hiz, :, 1]
         close(fid)
 
-        inlet_h = readdlm("./SCU-benchmark/flow-inlet.dat")
+        inlet_h = readdlm("./SCU-benchmark/flow-inlet.dat", Float32)
 
         Q = cu(Q_h)
         inlet = cu(inlet_h)
@@ -85,7 +85,7 @@ function time_step(rank, comm_cart)
         Q_h = zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
         Q = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
 
-        inlet_h = readdlm("./SCU-benchmark/flow-inlet.dat")
+        inlet_h = readdlm("./SCU-benchmark/flow-inlet.dat", Float32)
 
         copyto!(Q_h, Q)
         inlet = cu(inlet_h)

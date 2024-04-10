@@ -4,7 +4,7 @@ const NG::Int64 = 4
 const Nx::Int64 = 1000
 const Ny::Int64 = 240
 const Nz::Int64 = 100
-const Lx::Float64 = 4
+const Lx::Float32 = 4
 const Nx_tot::Int64 = Nx + 2*NG
 const Ny_tot::Int64 = Ny + 2*NG
 const Nz_tot::Int64 = Nz + 2*NG
@@ -12,9 +12,9 @@ const vis::Bool = true
 const compress_level::Int64 = 0
 
 function generateXYZ()
-    x = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    y = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    z = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
+    x = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    y = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    z = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
 
     f = FortranFile("OCFD3d-Mesh.dat")
 
@@ -94,50 +94,50 @@ function generateXYZ()
 
 
     # convert to meter
-    x ./= 1000.0
-    y ./= 1000.0
-    z ./= 1000.0
+    x ./= 1000.f0
+    y ./= 1000.f0
+    z ./= 1000.f0
     return x,y,z
 end
 
 # compute jacobian
 function CD6(f)
-    fₓ = 1/60*(f[7]-f[1]) - 3/20*(f[6]-f[2]) + 3/4*(f[5]-f[3])
+    fₓ = 1/60f0*(f[7]-f[1]) - 3/20f0*(f[6]-f[2]) + 3/4f0*(f[5]-f[3])
     return fₓ
 end
 
 function CD2_L(f)
-    fₓ = 2*f[2] - 0.5*f[3] - 1.5*f[1]
+    fₓ = 2*f[2] - 0.5f0*f[3] - 1.5f0*f[1]
     return fₓ
 end
 
 function CD2_R(f)
-    fₓ = -2*f[2] + 0.5*f[1] + 1.5*f[3]
+    fₓ = -2*f[2] + 0.5f0*f[1] + 1.5f0*f[3]
     return fₓ
 end
 
 function computeMetrics(x,y,z)
     # Jacobians
-    dxdξ = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    dxdη = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    dxdζ = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    dydξ = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    dydη = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    dydζ = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    dzdξ = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    dzdη = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    dzdζ = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
+    dxdξ = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    dxdη = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    dxdζ = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    dydξ = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    dydη = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    dydζ = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    dzdξ = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    dzdη = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    dzdζ = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
 
-    dξdx = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    dηdx = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    dζdx = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    dξdy = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    dηdy = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    dζdy = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    dξdz = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    dηdz = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    dζdz = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
-    J  = zeros(Float64, Nx_tot, Ny_tot, Nz_tot)
+    dξdx = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    dηdx = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    dζdx = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    dξdy = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    dηdy = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    dζdy = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    dξdz = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    dηdz = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    dζdz = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    J  = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
 
     @inbounds for k ∈ 1:Nz_tot, j ∈ 1:Ny_tot, i ∈ 4:Nx_tot-3
         dxdξ[i, j, k] = CD6(@view x[i-3:i+3, j, k])
