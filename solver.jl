@@ -19,13 +19,13 @@ include("IO.jl")
 function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_x(Fx, ϕ, s1, Fp, Fm, Ncons)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_x(Fx, ϕ, s1, Fp, Fm, Ncons)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_y(Fy, ϕ, s2, Fp, Fm, Ncons)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_y(Fy, ϕ, s2, Fp, Fm, Ncons)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock WENO_z(Fz, ϕ, s3, Fp, Fm, Ncons)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_z(Fz, ϕ, s3, Fp, Fm, Ncons)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
