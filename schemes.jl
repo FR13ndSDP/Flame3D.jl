@@ -144,13 +144,9 @@ function WENO_x(F, ϕ, S, Fp, Fm, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25f0*(V2-V4)^2
             s33 = tmp1*(V3-2*V4+V5)^2 + 0.25f0*(3*V3-4*V4+V5)^2
 
-            s11 *= ss
-            s22 *= ss
-            s33 *= ss
-
-            s11 = 1/(WENOϵ+s11)^2
-            s22 = 6/(WENOϵ+s22)^2
-            s33 = 3/(WENOϵ+s33)^2
+            s11 = 1/(WENOϵ+s11*ss)^2
+            s22 = 6/(WENOϵ+s22*ss)^2
+            s33 = 3/(WENOϵ+s33*ss)^2
 
             invsum = 1/(s11+s22+s33)
 
@@ -169,13 +165,9 @@ function WENO_x(F, ϕ, S, Fp, Fm, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25f0*(V4-V2)^2
             s33 = tmp1*(V3-2*V2+V1)^2 + 0.25f0*(3*V3-4*V2+V1)^2
 
-            s11 *= ss
-            s22 *= ss
-            s33 *= ss
-
-            s11 = 1/(WENOϵ+s11)^2
-            s22 = 6/(WENOϵ+s22)^2
-            s33 = 3/(WENOϵ+s33)^2
+            s11 = 1/(WENOϵ+s11*ss)^2
+            s22 = 6/(WENOϵ+s22*ss)^2
+            s33 = 3/(WENOϵ+s33*ss)^2
 
             invsum = 1/(s11+s22+s33)
 
@@ -260,13 +252,9 @@ function WENO_y(F, ϕ, S, Fp, Fm, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25f0*(V2-V4)^2
             s33 = tmp1*(V3-2*V4+V5)^2 + 0.25f0*(3*V3-4*V4+V5)^2
 
-            s11 *= ss
-            s22 *= ss
-            s33 *= ss
-
-            s11 = 1/(WENOϵ+s11)^2
-            s22 = 6/(WENOϵ+s22)^2
-            s33 = 3/(WENOϵ+s33)^2
+            s11 = 1/(WENOϵ+s11*ss)^2
+            s22 = 6/(WENOϵ+s22*ss)^2
+            s33 = 3/(WENOϵ+s33*ss)^2
 
             invsum = 1/(s11+s22+s33)
 
@@ -285,13 +273,9 @@ function WENO_y(F, ϕ, S, Fp, Fm, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25f0*(V4-V2)^2
             s33 = tmp1*(V3-2*V2+V1)^2 + 0.25f0*(3*V3-4*V2+V1)^2
 
-            s11 *= ss
-            s22 *= ss
-            s33 *= ss
-
-            s11 = 1/(WENOϵ+s11)^2
-            s22 = 6/(WENOϵ+s22)^2
-            s33 = 3/(WENOϵ+s33)^2
+            s11 = 1/(WENOϵ+s11*ss)^2
+            s22 = 6/(WENOϵ+s22*ss)^2
+            s33 = 3/(WENOϵ+s33*ss)^2
 
             invsum = 1/(s11+s22+s33)
 
@@ -376,13 +360,9 @@ function WENO_z(F, ϕ, S, Fp, Fm, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25f0*(V2-V4)^2
             s33 = tmp1*(V3-2*V4+V5)^2 + 0.25f0*(3*V3-4*V4+V5)^2
 
-            s11 *= ss
-            s22 *= ss
-            s33 *= ss
-
-            s11 = 1/(WENOϵ+s11)^2
-            s22 = 6/(WENOϵ+s22)^2
-            s33 = 3/(WENOϵ+s33)^2
+            s11 = 1/(WENOϵ+s11*ss)^2
+            s22 = 6/(WENOϵ+s22*ss)^2
+            s33 = 3/(WENOϵ+s33*ss)^2
 
             invsum = 1/(s11+s22+s33)
 
@@ -401,13 +381,9 @@ function WENO_z(F, ϕ, S, Fp, Fm, NV)
             s22 = tmp1*(V2-2*V3+V4)^2 + 0.25f0*(V4-V2)^2
             s33 = tmp1*(V3-2*V2+V1)^2 + 0.25f0*(3*V3-4*V2+V1)^2
 
-            s11 *= ss
-            s22 *= ss
-            s33 *= ss
-            
-            s11 = 1/(WENOϵ+s11)^2
-            s22 = 6/(WENOϵ+s22)^2
-            s33 = 3/(WENOϵ+s33)^2
+            s11 = 1/(WENOϵ+s11*ss)^2
+            s22 = 6/(WENOϵ+s22*ss)^2
+            s33 = 3/(WENOϵ+s33*ss)^2
 
             invsum = 1/(s11+s22+s33)
 
