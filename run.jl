@@ -34,6 +34,11 @@ const average::Bool = false                 # if do average
 const avg_step::Int64 = 10                  # average interval
 const avg_total::Int64 = 1000               # total number of samples
 
+const sample::Bool = false                             # if do sampling (slice)
+const sample_step::Int64 = 10                          # sampling interval
+const sample_total::Int64 = 10                         # number of samples
+const sample_index::SVector{3, Int64} = [-1, 130, -1]  # slice index in 3 directions, -1 for no slicing
+
 # do not change 
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
 const Nprim::Int64 = 6 # ρ u v w p T
