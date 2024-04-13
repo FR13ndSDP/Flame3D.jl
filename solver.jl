@@ -16,13 +16,13 @@ include("IO.jl")
 function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
 
     @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
-    @roc groupsize=nthreads gridsize=ngroups WENO_x(Fx, ϕ, s1, Fp, Fm, Ncons)
+    @roc groupsize=nthreads gridsize=ngroups advect_x(Fx, ϕ, s1, Fp, Fm, Ncons)
 
     @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
-    @roc groupsize=nthreads gridsize=ngroups WENO_y(Fy, ϕ, s2, Fp, Fm, Ncons)
+    @roc groupsize=nthreads gridsize=ngroups advect_y(Fy, ϕ, s2, Fp, Fm, Ncons)
 
     @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
-    @roc groupsize=nthreads gridsize=ngroups WENO_z(Fz, ϕ, s3, Fp, Fm, Ncons)
+    @roc groupsize=nthreads gridsize=ngroups advect_z(Fz, ϕ, s3, Fp, Fm, Ncons)
 
     @roc groupsize=nthreads gridsize=ngroups viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
