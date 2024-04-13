@@ -30,9 +30,9 @@ const chk_compress_level::Int64 = 1  # checkpoint file compression level 0-9, 0 
 const chk_shuffle::Bool = true       # shuffle to make compress more efficient
 const restart::String = "none"     # restart use checkpoint, file name "*.h5" or "none"
 
-const average = false                 # if do average
-const avg_step = 10                  # average interval
-const avg_total = 1000                # total number of samples
+const average::Bool = false                 # if do average
+const avg_step::Int64 = 10                  # average interval
+const avg_total::Int64 = 1000               # total number of samples
 
 # do not change 
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
@@ -73,7 +73,7 @@ nGPU = MPI.Comm_size(comm)
 shmcomm = MPI.Comm_split_type(comm, MPI.COMM_TYPE_SHARED, rank)
 local_rank = MPI.Comm_rank(shmcomm)
 comm_cart = MPI.Cart_create(comm, Nprocs; periodic=Iperiodic)
-if nGPU != Nprocs[1]*Nprocs[2]*Nprocs[3] && rank == 0
+if nGPU != prod(Nprocs) && rank == 0
     error("Oops, nGPU ≠ $Nprocs\n")
 end
 # set device on each MPI rank

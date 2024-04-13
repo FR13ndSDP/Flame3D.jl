@@ -50,7 +50,7 @@ function time_step(rank, comm_cart)
     hiz = (rankz+1)*Nzp+2*NG
 
     # prepare pvtk metadata, kind of ugly
-    total_ranks = Nprocs[1]*Nprocs[2]*Nprocs[3]
+    total_ranks = prod(Nprocs)
     plt_files = Vector{Vector{String}}(undef, total_ranks)  # files saved by each process
     extents = Vector{Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}}(undef, total_ranks)
     for n = 1:total_ranks
@@ -232,6 +232,9 @@ function time_step(rank, comm_cart)
             if tt == avg_step*avg_total
                 if rank == 0
                     printstyled("average done\n", color=:green)
+                    if isdir("./CHK") ≠ true
+                        mkpath("./CHK")
+                    end
                 end
 
                 averageFile(tt, Q_avg, Q_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, plt_files, extents)

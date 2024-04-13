@@ -46,14 +46,13 @@ function checkpointFile(tt, Q_h, Q, comm_cart)
 
         copyto!(Q_h, Q)
 
-        mkpath("./CHK")
         chkname::String = string("./CHK/chk", tt, ".h5")
         h5open(chkname, "w", comm_cart) do f
             dset1 = create_dataset(
                 f,
                 "Q_h",
                 datatype(Float32),
-                dataspace(Nx_tot, Ny_tot, Nz_tot, Nprim, Nprocs[1]*Nprocs[2]*Nprocs[3]);
+                dataspace(Nx_tot, Ny_tot, Nz_tot, Nprim, prod(Nprocs));
                 chunk=(Nx_tot, Ny_tot, Nz_tot, Nprim, 1),
                 shuffle=chk_shuffle,
                 compress=chk_compress_level,
