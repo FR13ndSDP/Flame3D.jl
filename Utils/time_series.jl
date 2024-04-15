@@ -1,12 +1,12 @@
 using WriteVTK, HDF5
 
-fname = "./SAMPLE/collection-y.h5"
+fname = "./SAMPLE/collection-z.h5"
 
 data = h5read(fname, "collection")
 
 const time_step = 1.5f-8
-const interval = 10
-const total = 100
+const interval = 100
+const total = 1000
 
 # mesh cordinate
 # x,y,z = get_coordinates(vtk)
@@ -16,20 +16,22 @@ const Ny::Int64 = h5read("metrics.h5", "Ny")
 const Nz::Int64 = h5read("metrics.h5", "Nz")
 
 fid = h5open("metrics.h5", "r")
-x = fid["x"][NG+1:Nx+NG, 130+NG, NG+1:Nz+NG] 
-y = fid["y"][NG+1:Nx+NG, 130+NG, NG+1:Nz+NG] 
-z = fid["z"][NG+1:Nx+NG, 130+NG, NG+1:Nz+NG]
+x = fid["x"][1+NG:Nx+NG, 1+NG:Ny+NG, 50+NG] 
+y = fid["y"][1+NG:Nx+NG, 1+NG:Ny+NG, 50+NG] 
+z = fid["z"][1+NG:Nx+NG, 1+NG:Ny+NG, 50+NG]
 close(fid)
-
-# variables
-p = data[:, :, 1, :]
 
 times = range(time_step, time_step*total; step=time_step*interval)
 
 saved_files = paraview_collection("./SAMPLE/full_simulation") do pvd
     for (n, time) ∈ enumerate(times)
         vtk_surface("./SAMPLE/timestep_$n", x, y, z) do vtk
-            vtk["p"] = p[:, :, n]
+            vtk["ρ"] =  data[:, :, 1, n]
+            vtk["u"] =  data[:, :, 2, n]
+            vtk["v"] =  data[:, :, 3, n]
+            vtk["w"] =  data[:, :, 4, n]
+            vtk["p"] =  data[:, :, 5, n]
+            vtk["T"] =  data[:, :, 6, n]
             pvd[time] = vtk
         end
     end
