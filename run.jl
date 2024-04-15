@@ -45,7 +45,7 @@ const Nprim::Int64 = 6 # ρ u v w p T
 # scheme constant
 const hybrid_ϕ1::Float32 = 5f-2     # < ϕ1: UP7
 const hybrid_ϕ2::Float32 = 1.f0     # < ϕ2: WENO7 in FP64
-const hybrid_ϕ3::Float32 = 10.f0     # < ϕ3: WENO5, else NND2
+const hybrid_ϕ3::Float32 = 10.f0    # < ϕ3: WENO5, else MUSCL3
 # adjust this to get mixed upwind-central linear scheme
 const UP7::SVector{7, Float32} = SVector(-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420)
 

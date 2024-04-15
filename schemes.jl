@@ -94,8 +94,11 @@ function advect_x(F, ϕ, S, Fp, Fm, NV)
 
     tmp1::Float32 = 1/12f0
     tmp2::Float32 = 1/6f0
+    tmp3::Float32 = 1/3f0
+
     WENOϵ1::Float64 = 1e-20
     WENOϵ2::Float32 = 1f-16
+    MUSCLϵ::Float32 = 1f-6
 
     c1::Float32 = UP7[1]
     c2::Float32 = UP7[2]
@@ -270,10 +273,26 @@ function advect_x(F, ϕ, S, Fp, Fm, NV)
         end
     else
         for n = 1:NV
-            @inbounds fp = Fp[i-1, j, k, n] + 0.5f0*minmod(Fp[i, j, k, n] - Fp[i-1, j, k, n], 
-                                                         Fp[i-1, j, k, n] - Fp[i-2, j, k, n])
-            @inbounds fm = Fm[i, j, k, n] - 0.5f0*minmod(Fm[i+1, j, k, n] - Fm[i, j, k, n], 
-                                                       Fm[i, j, k, n] - Fm[i-1, j, k, n])
+            @inbounds V1 = Fp[i-2, j, k, n]
+            @inbounds V2 = Fp[i-1, j, k, n]
+            @inbounds V3 = Fp[i,   j, k, n]
+
+            up = V3 - V2
+            um = V2 - V1
+            s = (2up*um*ss^2+MUSCLϵ)/((up^2+um^2)*ss^2+MUSCLϵ)
+
+            @inbounds fp = Fp[i-1, j, k, n] + 0.25f0*s*((1-tmp3*s)*um+(1+tmp3*s)*up)
+
+            @inbounds V1 = Fm[i-1, j, k, n]
+            @inbounds V2 = Fm[i,   j, k, n]
+            @inbounds V3 = Fm[i+1, j, k, n]
+
+            up = V3 - V2
+            um = V2 - V1
+            s = (2up*um*ss^2+MUSCLϵ)/((up^2+um^2)*ss^2+MUSCLϵ)
+
+            @inbounds fm = Fm[i, j, k, n] - 0.25f0*s*((1-tmp3*s)*um+(1+tmp3*s)*up)
+
             @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
         end 
     end
@@ -292,8 +311,11 @@ function advect_y(F, ϕ, S, Fp, Fm, NV)
 
     tmp1::Float32 = 1/12f0
     tmp2::Float32 = 1/6f0
+    tmp3::Float32 = 1/3f0
+
     WENOϵ1::Float64 = 1e-20
     WENOϵ2::Float32 = 1f-16
+    MUSCLϵ::Float32 = 1f-6
 
     c1::Float32 = UP7[1]
     c2::Float32 = UP7[2]
@@ -468,10 +490,26 @@ function advect_y(F, ϕ, S, Fp, Fm, NV)
         end
     else
         for n = 1:NV
-            @inbounds fp = Fp[i, j-1, k, n] + 0.5f0*minmod(Fp[i, j, k, n] - Fp[i, j-1, k, n], 
-                                                         Fp[i, j-1, k, n] - Fp[i, j-2, k, n])
-            @inbounds fm = Fm[i, j, k, n] - 0.5f0*minmod(Fm[i, j+1, k, n] - Fm[i, j, k, n], 
-                                                       Fm[i, j, k, n] - Fm[i, j-1, k, n])
+            @inbounds V1 = Fp[i, j-2, k, n]
+            @inbounds V2 = Fp[i, j-1, k, n]
+            @inbounds V3 = Fp[i, j,   k, n]
+
+            up = V3 - V2
+            um = V2 - V1
+            s = (2up*um*ss^2+MUSCLϵ)/((up^2+um^2)*ss^2+MUSCLϵ)
+
+            @inbounds fp = Fp[i, j-1, k, n] + 0.25f0*s*((1-tmp3*s)*um+(1+tmp3*s)*up)
+
+            @inbounds V1 = Fm[i, j-1, k, n]
+            @inbounds V2 = Fm[i, j,   k, n]
+            @inbounds V3 = Fm[i, j+1, k, n]
+
+            up = V3 - V2
+            um = V2 - V1
+            s = (2up*um*ss^2+MUSCLϵ)/((up^2+um^2)*ss^2+MUSCLϵ)
+
+            @inbounds fm = Fm[i, j, k, n] - 0.25f0*s*((1-tmp3*s)*um+(1+tmp3*s)*up)
+
             @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
         end 
     end
@@ -490,8 +528,11 @@ function advect_z(F, ϕ, S, Fp, Fm, NV)
 
     tmp1::Float32 = 1/12f0
     tmp2::Float32 = 1/6f0
+    tmp3::Float32 = 1/3f0
+
     WENOϵ1::Float64 = 1e-20
     WENOϵ2::Float32 = 1f-16
+    MUSCLϵ::Float32 = 1f-6
 
     c1::Float32 = UP7[1]
     c2::Float32 = UP7[2]
@@ -666,12 +707,28 @@ function advect_z(F, ϕ, S, Fp, Fm, NV)
         end
     else
         for n = 1:NV
-            @inbounds fp = Fp[i, j, k-1, n] + 0.5f0*minmod(Fp[i, j, k, n] - Fp[i, j, k-1, n], 
-                                                         Fp[i, j, k-1, n] - Fp[i, j, k-2, n])
-            @inbounds fm = Fm[i, j, k, n] - 0.5f0*minmod(Fm[i, j, k+1, n] - Fm[i, j, k, n], 
-                                                       Fm[i, j, k, n] - Fm[i, j, k-1, n])
+            @inbounds V1 = Fp[i, j, k-2, n]
+            @inbounds V2 = Fp[i, j, k-1, n]
+            @inbounds V3 = Fp[i, j, k,   n]
+
+            up = V3 - V2
+            um = V2 - V1
+            s = (2up*um*ss^2+MUSCLϵ)/((up^2+um^2)*ss^2+MUSCLϵ)
+
+            @inbounds fp = Fp[i, j, k-1, n] + 0.25f0*s*((1-tmp3*s)*um+(1+tmp3*s)*up)
+
+            @inbounds V1 = Fm[i, j, k-1, n]
+            @inbounds V2 = Fm[i, j, k,   n]
+            @inbounds V3 = Fm[i, j, k+1, n]
+
+            up = V3 - V2
+            um = V2 - V1
+            s = (2up*um*ss^2+MUSCLϵ)/((up^2+um^2)*ss^2+MUSCLϵ)
+
+            @inbounds fm = Fm[i, j, k, n] - 0.25f0*s*((1-tmp3*s)*um+(1+tmp3*s)*up)
+
             @inbounds F[i-NG, j-NG, k-NG, n] = fp + fm
-        end
+        end 
     end
     return
 end
