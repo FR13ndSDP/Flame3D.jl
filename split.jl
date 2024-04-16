@@ -1,5 +1,5 @@
 #For N-S, range: 1->N+2*NG
-function fluxSplit(Q, Fp, Fm, S, Ax, Ay, Az)
+function fluxSplit_SW(Q, Fp, Fm, S, Ax, Ay, Az)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -64,5 +64,45 @@ function fluxSplit(Q, Fp, Fm, S, Ax, Ay, Az)
     @inbounds Fm[i, j, k, 3] = tmp1 * (tmp2 * E1M * v + E2M * vc1 + E3M * vc2)
     @inbounds Fm[i, j, k, 4] = tmp1 * (tmp2 * E1M * w + E2M * wc1 + E3M * wc2)
     @inbounds Fm[i, j, k, 5] = tmp1 * (E1M * vv + E2M * vvc1 + E3M * vvc2 + W2 * (E2M + E3M))
+    return 
+end
+
+function fluxSplit_LF(Q, Fp, Fm, S, Ax, Ay, Az)
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+
+    if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
+        return
+    end
+
+    @inbounds ρ = Q[i, j, k, 1]
+    @inbounds u = Q[i, j, k, 2]
+    @inbounds v = Q[i, j, k, 3]
+    @inbounds w = Q[i, j, k, 4]
+    @inbounds p = Q[i, j, k, 5]
+
+    @inbounds A1 = Ax[i, j, k]
+    @inbounds A2 = Ay[i, j, k]
+    @inbounds A3 = Az[i, j, k]
+    @inbounds ss = S[i, j, k]
+
+    @fastmath c = sqrt(γ*p/ρ)
+
+    un = A1*u + A2*v + A3*w
+    λ0 = abs(un) + c*ss
+    E0 = p/(γ-1) + 0.5f0*ρ*(u^2+v^2+w^2)
+
+    @inbounds Fp[i, j, k, 1] = 0.5f0*(ρ*un + λ0*ρ)
+    @inbounds Fp[i, j, k, 2] = 0.5f0*(ρ*u*un+A1*p + λ0*ρ*u)
+    @inbounds Fp[i, j, k, 3] = 0.5f0*(ρ*v*un+A2*p + λ0*ρ*v)
+    @inbounds Fp[i, j, k, 4] = 0.5f0*(ρ*w*un+A3*p + λ0*ρ*w)
+    @inbounds Fp[i, j, k, 5] = 0.5f0*((E0+p)*un + λ0*E0)
+
+    @inbounds Fm[i, j, k, 1] = 0.5f0*(ρ*un - λ0*ρ)
+    @inbounds Fm[i, j, k, 2] = 0.5f0*(ρ*u*un+A1*p - λ0*ρ*u)
+    @inbounds Fm[i, j, k, 3] = 0.5f0*(ρ*v*un+A2*p - λ0*ρ*v)
+    @inbounds Fm[i, j, k, 4] = 0.5f0*(ρ*w*un+A3*p - λ0*ρ*w)
+    @inbounds Fm[i, j, k, 5] = 0.5f0*((E0+p)*un - λ0*E0)
     return 
 end

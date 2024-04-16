@@ -43,6 +43,7 @@ const sample_index::SVector{3, Int64} = [-1, 130, -1]  # slice index in 3 direct
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
 const Nprim::Int64 = 6 # ρ u v w p T
 # scheme constant
+const splitMethod::String = "SW"    # use SW, else LF
 const hybrid_ϕ1::Float32 = 5f-2     # < ϕ1: UP7
 const hybrid_ϕ2::Float32 = 1.f0     # < ϕ2: WENO7 in FP64
 const hybrid_ϕ3::Float32 = 10.f0    # < ϕ3: WENO5, else MUSCL3
