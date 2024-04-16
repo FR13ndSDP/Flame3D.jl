@@ -94,11 +94,9 @@ function advect_x(F, ϕ, S, Fp, Fm, NV)
 
     tmp1::Float32 = 1/12f0
     tmp2::Float32 = 1/6f0
-    tmp3::Float32 = 1/3f0
 
     WENOϵ1::Float64 = 1e-20
     WENOϵ2::Float32 = 1f-16
-    MUSCLϵ::Float32 = 1f-6
 
     c1::Float32 = UP7[1]
     c2::Float32 = UP7[2]
@@ -296,11 +294,9 @@ function advect_y(F, ϕ, S, Fp, Fm, NV)
 
     tmp1::Float32 = 1/12f0
     tmp2::Float32 = 1/6f0
-    tmp3::Float32 = 1/3f0
 
     WENOϵ1::Float64 = 1e-20
     WENOϵ2::Float32 = 1f-16
-    MUSCLϵ::Float32 = 1f-6
 
     c1::Float32 = UP7[1]
     c2::Float32 = UP7[2]
@@ -498,11 +494,9 @@ function advect_z(F, ϕ, S, Fp, Fm, NV)
 
     tmp1::Float32 = 1/12f0
     tmp2::Float32 = 1/6f0
-    tmp3::Float32 = 1/3f0
 
     WENOϵ1::Float64 = 1e-20
     WENOϵ2::Float32 = 1f-16
-    MUSCLϵ::Float32 = 1f-6
 
     c1::Float32 = UP7[1]
     c2::Float32 = UP7[2]
