@@ -37,7 +37,7 @@ function plotFile(tt,  Q, ϕ, Q_h, ϕ_h, x_h, y_h, z_h, rank, rankx, ranky, rank
     end
 end
 
-function checkpointFile(tt, Q_h, Q, comm_cart)
+function checkpointFile(tt, Q_h, Q, comm_cart, rank)
     # restart file, in Float32
     if chk_out && (tt % step_chk == 0 || abs(Time-dt*tt) < dt || tt == maxStep)
         Nx_tot = Nxp+2*NG
@@ -46,6 +46,9 @@ function checkpointFile(tt, Q_h, Q, comm_cart)
 
         copyto!(Q_h, Q)
 
+        if rank == 0
+            mkpath("./CHK")
+        end
         chkname::String = string("./CHK/chk", tt, ".h5")
         h5open(chkname, "w", comm_cart) do f
             dset1 = create_dataset(

@@ -296,10 +296,10 @@ function time_step(rank, comm_cart)
 
         plotFile(tt, Q, ϕ, Q_h, ϕ_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, plt_files, extents)
 
-        checkpointFile(tt, Q_h, Q, comm_cart)
+        checkpointFile(tt, Q_h, Q, comm_cart, rank)
 
         # Average output
-        if average
+        if average && tt <= avg_step*avg_total
             if tt % avg_step == 0
                 @. Q_avg += Q/avg_total
             end
@@ -307,14 +307,9 @@ function time_step(rank, comm_cart)
             if tt == avg_step*avg_total
                 if rank == 0
                     printstyled("average done\n", color=:green)
-                    if isdir("./CHK") == false
-                        mkpath("./CHK")
-                    end
                 end
 
-                averageFile(tt, Q_avg, Q_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, plt_files, extents)
-                
-                return
+                averageFile(tt, Q_avg, Q_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, plt_files, extents)                
             end
         end
 
@@ -409,9 +404,7 @@ function time_step(rank, comm_cart)
             end
 
             if sample_count == sample_total && rank == 0
-                if isdir("./SAMPLE") ≠ true
-                    mkpath("./SAMPLE")
-                end
+                mkpath("./SAMPLE")
 
                 if sample_index[1] ≠ -1
                     h5open("./SAMPLE/collection-x.h5", "w") do file
