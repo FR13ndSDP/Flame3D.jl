@@ -290,7 +290,7 @@ function time_step(rank, comm_cart)
         checkpointFile(tt, Q_h, Q, comm_cart, rank)
 
         # Average output
-        if average
+        if average && tt <= avg_step*avg_total
             if tt % avg_step == 0
                 @. Q_avg += Q/avg_total
             end
@@ -301,8 +301,6 @@ function time_step(rank, comm_cart)
                 end
 
                 averageFile(tt, Q_avg, Q_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, plt_files, extents)
-                
-                return
             end
         end
 
