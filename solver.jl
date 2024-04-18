@@ -15,13 +15,25 @@ include("IO.jl")
 
 function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
 
-    @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
+    if splitMethod == "SW"
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_SW(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
+    else
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_LF(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
+    end
     @roc groupsize=nthreads gridsize=ngroups advect_x(Fx, ϕ, s1, Fp, Fm, Ncons)
 
-    @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
+    if splitMethod == "SW"
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_SW(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
+    else
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_LF(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
+    end
     @roc groupsize=nthreads gridsize=ngroups advect_y(Fy, ϕ, s2, Fp, Fm, Ncons)
 
-    @roc groupsize=nthreads gridsize=ngroups fluxSplit(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
+    if splitMethod == "SW"
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_SW(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
+    else
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_LF(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
+    end
     @roc groupsize=nthreads gridsize=ngroups advect_z(Fz, ϕ, s3, Fp, Fm, Ncons)
 
     @roc groupsize=nthreads gridsize=ngroups viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
@@ -47,7 +59,7 @@ function time_step(rank, comm_cart)
     hiz = (rankz+1)*Nzp+2*NG
 
     # prepare pvtk metadata, kind of ugly
-    total_ranks = Nprocs[1]*Nprocs[2]*Nprocs[3]
+    total_ranks = prod(Nprocs)
     plt_files = Vector{Vector{String}}(undef, total_ranks)  # files saved by each process
     extents = Vector{Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}}(undef, total_ranks)
     for n = 1:total_ranks
@@ -165,6 +177,69 @@ function time_step(rank, comm_cart)
                    Qsbuf_hz, Qsbuf_dz, Qrbuf_hz, Qrbuf_dz)
     fillGhost(Q, U, rankx, ranky, inlet)
 
+    # sampling metadata
+    if sample
+        sample_count::Int64 = 1
+        valid_rankx = -1
+        valid_ranky = -1
+        valid_rankz = -1
+
+        # find target ranks
+        if sample_index[1] ≠ -1
+            local_rankx::Int64 = sample_index[1] ÷ Nxp
+            local_idx::Int64 = sample_index[1] % Nxp
+
+            if rankx == local_rankx
+                valid_rankx = rank
+            end
+
+            # collect on rank 0
+            if rank == 0
+                collectionx = zeros(Ny, Nz, Nprim, sample_total)
+                rank_listx = MPI.gather(valid_rankx, comm_cart)
+                rank_listx = filter!(x->x!=-1, rank_listx)
+            else
+                MPI.gather(valid_rankx, comm_cart)
+            end
+        end
+
+        if sample_index[2] ≠ -1
+            local_ranky::Int64 = sample_index[2] ÷ Nyp
+            local_idy::Int64 = sample_index[2] % Nyp
+
+            if ranky == local_ranky
+                valid_ranky = rank
+            end
+
+            # collect on rank 0
+            if rank == 0
+                collectiony = zeros(Nx, Nz, Nprim, sample_total)
+                rank_listy = MPI.gather(valid_ranky, comm_cart)
+                rank_listy = filter!(x->x!=-1, rank_listy)
+            else
+                MPI.gather(valid_ranky, comm_cart)
+            end
+        end
+
+        if sample_index[3] ≠ -1
+            local_rankz::Int64 = sample_index[3] ÷ Nzp
+            local_idz::Int64 = sample_index[3] % Nzp
+
+            if rankz == local_rankz
+                valid_rankz = rank
+            end
+
+            # collect on rank 0
+            if rank == 0
+                collectionz = zeros(Nx, Ny, Nprim, sample_total)
+                rank_listz = MPI.gather(valid_rankz, comm_cart)
+                rank_listz = filter!(x->x!=-1, rank_listz)
+            else
+                MPI.gather(valid_rankz, comm_cart)
+            end
+        end
+    end
+
     for tt = 1:ceil(Int, Time/dt)
         if tt*dt > Time || tt > maxStep
             return
@@ -212,7 +287,7 @@ function time_step(rank, comm_cart)
 
         plotFile(tt, Q, ϕ, Q_h, ϕ_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, plt_files, extents)
 
-        checkpointFile(tt, Q_h, Q, comm_cart)
+        checkpointFile(tt, Q_h, Q, comm_cart, rank)
 
         # Average output
         if average
@@ -229,6 +304,120 @@ function time_step(rank, comm_cart)
                 
                 return
             end
+        end
+
+        # collection of slice
+        if sample && (tt % sample_step == 0) && sample_count <= sample_total
+
+            if sample_index[1] ≠ -1
+                if rankx == local_rankx && rank ≠ 0
+                    copyto!(Q_h, Q)
+                    part = @view Q_h[local_idx, 1+NG:Nyp+NG, 1+NG:Nzp+NG, :]
+                    MPI.Send(part, 0, 0, comm_cart)
+                end
+            
+                if rank == 0
+                    copyto!(Q_h, Q)
+                    part = @view Q_h[local_idx, 1+NG:Nyp+NG, 1+NG:Nzp+NG, :]
+                    for i ∈ rank_listx
+                        if i ≠ 0
+                            MPI.Recv!(part, i, 0, comm_cart)
+                        end
+            
+                        # get global index
+                        (_, ry, rz) = MPI.Cart_coords(comm_cart, i)
+            
+                        ly = ry*Nyp+1
+                        hy = (ry+1)*Nyp
+            
+                        lz = rz*Nzp+1
+                        hz = (rz+1)*Nzp
+            
+                        collectionx[ly:hy, lz:hz, :, sample_count] = part
+                    end
+                end
+            end
+
+            if sample_index[2] ≠ -1
+                if ranky == local_ranky && rank ≠ 0
+                    copyto!(Q_h, Q)
+                    part = @view Q_h[1+NG:Nxp+NG, local_idy, 1+NG:Nzp+NG, :]
+                    MPI.Send(part, 0, 0, comm_cart)
+                end
+            
+                if rank == 0
+                    copyto!(Q_h, Q)
+                    part = @view Q_h[1+NG:Nxp+NG, local_idy, 1+NG:Nzp+NG, :]
+                    for i ∈ rank_listy
+                        if i ≠ 0
+                            MPI.Recv!(part, i, 0, comm_cart)
+                        end
+
+                        # get global index
+                        (rx, _, rz) = MPI.Cart_coords(comm_cart, i)
+            
+                        lx = rx*Nxp+1
+                        hx = (rx+1)*Nxp
+            
+                        lz = rz*Nzp+1
+                        hz = (rz+1)*Nzp
+            
+                        collectiony[lx:hx, lz:hz, :, sample_count] = part
+                    end
+                end
+            end
+            
+            if sample_index[3] ≠ -1
+                if rankz == local_rankz && rank ≠ 0
+                    copyto!(Q_h, Q)
+                    part = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, local_idz, :]
+                    MPI.Send(part, 0, 0, comm_cart)
+                end
+            
+                if rank == 0
+                    copyto!(Q_h, Q)
+                    part = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, local_idz, :]
+                    for i ∈ rank_listz
+                        if i ≠ 0
+                            MPI.Recv!(part, i, 0, comm_cart)
+                        end
+
+                        # get global index
+                        (rx, ry, _) = MPI.Cart_coords(comm_cart, i)
+            
+                        lx = rx*Nxp+1
+                        hx = (rx+1)*Nxp
+            
+                        ly = ry*Nyp+1
+                        hy = (ry+1)*Nyp
+            
+                        collectionz[lx:hx, ly:hy, :, sample_count] = part
+                    end
+                end
+            end
+
+            if sample_count == sample_total && rank == 0
+                mkpath("./SAMPLE")
+
+                if sample_index[1] ≠ -1
+                    h5open("./SAMPLE/collection-x.h5", "w") do file
+                        file["collection"] = collectionx
+                    end
+                end
+
+                if sample_index[2] ≠ -1
+                    h5open("./SAMPLE/collection-y.h5", "w") do file
+                        file["collection"] = collectiony
+                    end
+                end
+
+                if sample_index[3] ≠ -1
+                    h5open("./SAMPLE/collection-z.h5", "w") do file
+                        file["collection"] = collectionz
+                    end
+                end
+            end
+            sample_count += 1
         end
     end
     if rank == 0

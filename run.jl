@@ -30,17 +30,23 @@ const chk_shuffle::Bool = true       # shuffle to make compress more efficient
 const chk_compress_level::Int64 = 1  # checkpoint file compression level 0-9, 0 for no compression
 const restart::String = "none"     # restart use checkpoint, file name "*.h5" or "none"
 
-const average = false                 # if do average
-const avg_step = 10                  # average interval
-const avg_total = 1000                # total number of samples
+const average::Bool = false                 # if do average
+const avg_step::Int64 = 10                  # average interval
+const avg_total::Int64 = 1000               # total number of samples
+
+const sample::Bool = false                             # if do sampling (slice)
+const sample_step::Int64 = 10                          # sampling interval
+const sample_total::Int64 = 10                         # number of samples
+const sample_index::SVector{3, Int64} = [-1, 130, -1]  # slice index in 3 directions, -1 for no slicing
 
 # do not change 
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
 const Nprim::Int64 = 6 # ρ u v w p T
 # scheme constant
+const splitMethod::String = "SW"    # use SW, else LF
 const hybrid_ϕ1::Float32 = 5f-2     # < ϕ1: UP7
 const hybrid_ϕ2::Float32 = 1.f0     # < ϕ2: WENO7 in FP64
-const hybrid_ϕ3::Float32 = 10.f0     # < ϕ3: WENO5, else NND2
+const hybrid_ϕ3::Float32 = 10.f0    # < ϕ3: WENO5, else NND2
 # adjust this to get mixed upwind-central linear scheme
 const UP7::SVector{7, Float32} = SVector(-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420)
 
@@ -68,7 +74,7 @@ nGPU = MPI.Comm_size(comm)
 shmcomm = MPI.Comm_split_type(comm, MPI.COMM_TYPE_SHARED, rank)
 local_rank = MPI.Comm_rank(shmcomm)
 comm_cart = MPI.Cart_create(comm, Nprocs; periodic=Iperiodic)
-if nGPU != Nprocs[1]*Nprocs[2]*Nprocs[3] && rank == 0
+if nGPU != prod(Nprocs) && rank == 0
     error("Oops, nGPU ≠ $Nprocs\n")
 end
 # set device on each MPI rank
