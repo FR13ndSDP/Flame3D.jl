@@ -71,7 +71,7 @@ MPI.Init()
 comm = MPI.COMM_WORLD
 rank = MPI.Comm_rank(comm)
 nGPU = MPI.Comm_size(comm)
-# this is better, but does not work on the dongfang HPC
+# this is better, but does not work on the dongfang HPC after system update
 # shmcomm = MPI.Comm_split_type(comm, MPI.COMM_TYPE_SHARED, rank)
 # local_rank = MPI.Comm_rank(shmcomm)
 local_rank = rank % 4

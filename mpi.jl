@@ -14,13 +14,13 @@ function exchange_ghost(Q, NV, comm_cart,
     # x+
     src, dst = MPI.Cart_shift(comm_cart, 0, 1)
 
-    if src != -1 || dst != -1
-        if dst != -1
+    if src != MPI.PROC_NULL || dst != MPI.PROC_NULL
+        if dst != MPI.PROC_NULL
             @roc groupsize=nthreadsx gridsize=ngroupsx pack_R(sbuf_dx, Q, NV)
             copyto!(sbuf_hx, sbuf_dx)
         end
         MPI.Sendrecv!(sbuf_hx, rbuf_hx, comm_cart; dest=dst, source=src)
-        if src != -1
+        if src != MPI.PROC_NULL
             copyto!(rbuf_dx, rbuf_hx)
             @roc groupsize=nthreadsx gridsize=ngroupsx unpack_L(rbuf_dx, Q, NV)
         end
@@ -29,13 +29,13 @@ function exchange_ghost(Q, NV, comm_cart,
     # x-
     src, dst = MPI.Cart_shift(comm_cart, 0, -1)
 
-    if src != -1 || dst != -1
-        if dst != -1
+    if src != MPI.PROC_NULL || dst != MPI.PROC_NULL
+        if dst != MPI.PROC_NULL
             @roc groupsize=nthreadsx gridsize=ngroupsx pack_L(sbuf_dx, Q, NV)
             copyto!(sbuf_hx, sbuf_dx)
         end
         MPI.Sendrecv!(sbuf_hx, rbuf_hx, comm_cart; dest=dst, source=src)
-        if src != -1
+        if src != MPI.PROC_NULL
             copyto!(rbuf_dx, rbuf_hx)
             @roc groupsize=nthreadsx gridsize=ngroupsx unpack_R(rbuf_dx, Q, NV)
         end
@@ -44,13 +44,13 @@ function exchange_ghost(Q, NV, comm_cart,
     # y+
     src, dst = MPI.Cart_shift(comm_cart, 1, 1)
 
-    if src != -1 || dst != -1
-        if dst != -1
+    if src != MPI.PROC_NULL || dst != MPI.PROC_NULL
+        if dst != MPI.PROC_NULL
             @roc groupsize=nthreadsy gridsize=ngroupsy pack_U(sbuf_dy, Q, NV)
             copyto!(sbuf_hy, sbuf_dy)
         end
         MPI.Sendrecv!(sbuf_hy, rbuf_hy, comm_cart; dest=dst, source=src)
-        if src != -1
+        if src != MPI.PROC_NULL
             copyto!(rbuf_dy, rbuf_hy)
             @roc groupsize=nthreadsy gridsize=ngroupsy unpack_D(rbuf_dy, Q, NV)
         end
@@ -59,13 +59,13 @@ function exchange_ghost(Q, NV, comm_cart,
     # y-
     src, dst = MPI.Cart_shift(comm_cart, 1, -1)
 
-    if src != -1 || dst != -1
-        if dst != -1
+    if src != MPI.PROC_NULL || dst != MPI.PROC_NULL
+        if dst != MPI.PROC_NULL
             @roc groupsize=nthreadsy gridsize=ngroupsy pack_D(sbuf_dy, Q, NV)
             copyto!(sbuf_hy, sbuf_dy)
         end
         MPI.Sendrecv!(sbuf_hy, rbuf_hy, comm_cart; dest=dst, source=src)
-        if src != -1
+        if src != MPI.PROC_NULL
             copyto!(rbuf_dy, rbuf_hy)
             @roc groupsize=nthreadsy gridsize=ngroupsy unpack_U(rbuf_dy, Q, NV)
         end
@@ -74,13 +74,13 @@ function exchange_ghost(Q, NV, comm_cart,
     # z+
     src, dst = MPI.Cart_shift(comm_cart, 2, 1)
 
-    if src != -1 || dst != -1
-        if dst != -1
+    if src != MPI.PROC_NULL || dst != MPI.PROC_NULL
+        if dst != MPI.PROC_NULL
             @roc groupsize=nthreadsz gridsize=ngroupsz pack_F(sbuf_dz, Q, NV)
             copyto!(sbuf_hz, sbuf_dz)
         end
         MPI.Sendrecv!(sbuf_hz, rbuf_hz, comm_cart; dest=dst, source=src)
-        if src != -1
+        if src != MPI.PROC_NULL
             copyto!(rbuf_dz, rbuf_hz)
             @roc groupsize=nthreadsz gridsize=ngroupsz unpack_B(rbuf_dz, Q, NV)
         end
@@ -89,13 +89,13 @@ function exchange_ghost(Q, NV, comm_cart,
     # z-
     src, dst = MPI.Cart_shift(comm_cart, 2, -1)
 
-    if src != -1 || dst != -1
-        if dst != -1
+    if src != MPI.PROC_NULL || dst != MPI.PROC_NULL
+        if dst != MPI.PROC_NULL
             @roc groupsize=nthreadsz gridsize=ngroupsz pack_B(sbuf_dz, Q, NV)
             copyto!(sbuf_hz, sbuf_dz)
         end
         MPI.Sendrecv!(sbuf_hz, rbuf_hz, comm_cart; dest=dst, source=src)
-        if src != -1
+        if src != MPI.PROC_NULL
             copyto!(rbuf_dz, rbuf_hz)
             @roc groupsize=nthreadsz gridsize=ngroupsz unpack_F(rbuf_dz, Q, NV)
         end
