@@ -740,18 +740,11 @@ function advect_xc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
     else
         @inbounds s0::Float32 = 2/(S[i-1, j, k] + S[i, j, k]) 
 
-        # Roe average
-        @inbounds ρ1 = sqrt(Q[i, j, k, 1])
-        @inbounds ρ2 = sqrt(Q[i-1, j, k, 1])
-    
-        @inbounds u = (ρ1 * Q[i, j, k, 2] + ρ2 * Q[i-1, j, k, 2])/(ρ1 + ρ2)
-        @inbounds v = (ρ1 * Q[i, j, k, 3] + ρ2 * Q[i-1, j, k, 3]) / (ρ1 + ρ2)
-        @inbounds w = (ρ1 * Q[i, j, k, 4] + ρ2 * Q[i-1, j, k, 4]) / (ρ1 + ρ2)
-        @inbounds H1 = Q[i, j, k, 5]/Q[i, j, k, 1] * γ / (γ-1) + 0.5f0 * (Q[i, j, k, 2]^2 + Q[i, j, k, 3]^2 + Q[i, j, k, 4]^2)
-        @inbounds H2 = Q[i-1, j, k, 5]/Q[i-1, j, k, 1] * γ / (γ-1) + 0.5f0 * (Q[i-1, j, k, 2]^2 + Q[i-1, j, k, 3]^2 + Q[i-1, j, k, 4]^2)
-    
-        H = (ρ1 * H1 + ρ2 * H2)/(ρ1 + ρ2)
-        c = sqrt((γ-1)*(H-0.5*(u^2+v^2+w^2)))
+        # average
+        @inbounds u = 0.5f0 * (Q[i, j, k, 2] + Q[i-1, j, k, 2])
+        @inbounds v = 0.5f0 * (Q[i, j, k, 3] + Q[i-1, j, k, 3])
+        @inbounds w = 0.5f0 * (Q[i, j, k, 4] + Q[i-1, j, k, 4])
+        @inbounds T = 0.5f0 * (Q[i, j, k, 6] + Q[i-1, j, k, 6])
     
         @inbounds A1 = (Ax[i, j, k] + Ax[i-1, j, k]) * 0.5f0
         @inbounds A2 = (Ay[i, j, k] + Ay[i-1, j, k]) * 0.5f0
@@ -762,34 +755,37 @@ function advect_xc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
         nz = A3*s0
     
         if abs(nz) <= abs(ny)
-            ss=sqrt(nx*nx+ny*ny) 
-            lx=-ny/ss
-            ly=nx/ss
-            lz=0.f0 
+            ss = 1/sqrt(nx*nx+ny*ny) 
+            lx = -ny*ss
+            ly = nx*ss
+            lz = 0.f0 
         else 
-            ss=sqrt(nx*nx+nz*nz)
-            lx=-nz/ss
-            ly=0.f0   
-            lz=nx/ss
+            ss = 1/sqrt(nx*nx+nz*nz)
+            lx = -nz*ss
+            ly = 0.f0   
+            lz = nx*ss
         end 
-        mx=ny*lz-nz*ly 
-        my=nz*lx-nx*lz
-        mz=nx*ly-ny*lx
+        mx = ny*lz-nz*ly 
+        my = nz*lx-nx*lz
+        mz = nx*ly-ny*lx
     
-        qn=u*nx+v*ny+w*nz 
-        ql=u*lx+v*ly+w*lz 
-        qm=u*mx+v*my+w*mz 
-        q2=u^2+v^2+w^2
-    
-        K=(γ-1)/c^2 
+        qn = u*nx+v*ny+w*nz 
+        ql = u*lx+v*ly+w*lz 
+        qm = u*mx+v*my+w*mz 
+        q2 = 0.5f0*(u^2+v^2+w^2)
+        c = sqrt(γ*Rg*T)
+        c2 = 1/(2*c)
+        K = (γ-1)/c^2 
+        K2 = K * 0.5f0
+        H = 1/K+q2
     
         L = MMatrix{Ncons, Ncons, Float32, Ncons*Ncons}(undef)
         R = MMatrix{Ncons, Ncons, Float32, Ncons*Ncons}(undef)
         flux = MVector{Ncons, Float32}(undef)
     
-        L[1,1]=K*q2/4+qn/(2*c); L[1,2]=-(K*u/2+nx/(2*c)); L[1,3]=-(K*v/2+ny/(2*c)); L[1,4]=-(K*w/2+nz/(2*c)); L[1,5]=K/2
-        L[2,1]=1-K*q2/2;        L[2,2]=K*u;               L[2,3]=K*v;               L[2,4]=K*w;               L[2,5]=-K 
-        L[3,1]=K*q2/4-qn/(2*c); L[3,2]=-(K*u/2-nx/(2*c)); L[3,3]=-(K*v/2-ny/(2*c)); L[3,4]=-(K*w/2-nz/(2*c)); L[3,5]=K/2
+        L[1,1]=K2*q2+qn*c2;     L[1,2]=-(K2*u+nx*c2);     L[1,3]=-(K2*v+ny*c2);     L[1,4]=-(K2*w+nz*c2);     L[1,5]=K2
+        L[2,1]=1-K*q2;          L[2,2]=K*u;               L[2,3]=K*v;               L[2,4]=K*w;               L[2,5]=-K 
+        L[3,1]=K2*q2-qn*c2;     L[3,2]=-(K2*u-nx*c2);     L[3,3]=-(K2*v-ny*c2);     L[3,4]=-(K2*w-nz*c2);     L[3,5]=K2
         L[4,1]=-ql;             L[4,2]=lx;                L[4,3]=ly;                L[4,4]=lz;                L[4,5]=0.f0
         L[5,1]=-qm;             L[5,2]=mx;                L[5,3]=my;                L[5,4]=mz;                L[5,5]=0.f0
     
@@ -797,41 +793,41 @@ function advect_xc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
         R[2,1]=u-c*nx;    R[2,2]=u;          R[2,3]=u+c*nx;    R[2,4]=lx;      R[2,5]=mx
         R[3,1]=v-c*ny;    R[3,2]=v;          R[3,3]=v+c*ny;    R[3,4]=ly;      R[3,5]=my		
         R[4,1]=w-c*nz;    R[4,2]=w;          R[4,3]=w+c*nz;    R[4,4]=lz;      R[4,5]=mz		
-        R[5,1]=H-qn*c;    R[5,2]=q2*0.5f0;   R[5,3]=H+qn*c;    R[5,4]=ql;      R[5,5]=qm
+        R[5,1]=H-qn*c;    R[5,2]=q2;         R[5,3]=H+qn*c;    R[5,4]=ql;      R[5,5]=qm
 
         if ϕx < hybrid_ϕ2
-            Fpc = @MMatrix zeros(Float32, 7, Ncons)
-            Fmc = @MMatrix zeros(Float32, 7, Ncons)
+            Fpc = MVector{7, Float32}(undef)
+            Fmc = MVector{7, Float32}(undef)
 
             for n = 1:Ncons
+                Fpc .= 0.f0
+                Fmc .= 0.f0
                 for m = 1:Ncons
                     ll = L[n, m]
-                    Fpc[1, n] += Fp[i-4, j, k, m] * ll
-                    Fpc[2, n] += Fp[i-3, j, k, m] * ll
-                    Fpc[3, n] += Fp[i-2, j, k, m] * ll
-                    Fpc[4, n] += Fp[i-1, j, k, m] * ll
-                    Fpc[5, n] += Fp[i,   j, k, m] * ll
-                    Fpc[6, n] += Fp[i+1, j, k, m] * ll
-                    Fpc[7, n] += Fp[i+2, j, k, m] * ll
+                    @inbounds Fpc[1] += Fp[i-4, j, k, m] * ll
+                    @inbounds Fpc[2] += Fp[i-3, j, k, m] * ll
+                    @inbounds Fpc[3] += Fp[i-2, j, k, m] * ll
+                    @inbounds Fpc[4] += Fp[i-1, j, k, m] * ll
+                    @inbounds Fpc[5] += Fp[i,   j, k, m] * ll
+                    @inbounds Fpc[6] += Fp[i+1, j, k, m] * ll
+                    @inbounds Fpc[7] += Fp[i+2, j, k, m] * ll
         
-                    Fmc[1, n] += Fm[i-3, j, k, m] * ll
-                    Fmc[2, n] += Fm[i-2, j, k, m] * ll
-                    Fmc[3, n] += Fm[i-1, j, k, m] * ll
-                    Fmc[4, n] += Fm[i,   j, k, m] * ll
-                    Fmc[5, n] += Fm[i+1, j, k, m] * ll
-                    Fmc[6, n] += Fm[i+2, j, k, m] * ll
-                    Fmc[7, n] += Fm[i+3, j, k, m] * ll
+                    @inbounds Fmc[1] += Fm[i-3, j, k, m] * ll
+                    @inbounds Fmc[2] += Fm[i-2, j, k, m] * ll
+                    @inbounds Fmc[3] += Fm[i-1, j, k, m] * ll
+                    @inbounds Fmc[4] += Fm[i,   j, k, m] * ll
+                    @inbounds Fmc[5] += Fm[i+1, j, k, m] * ll
+                    @inbounds Fmc[6] += Fm[i+2, j, k, m] * ll
+                    @inbounds Fmc[7] += Fm[i+3, j, k, m] * ll
                 end
-            end
 
-            for n = 1:Ncons
-                @inbounds V1 = Fpc[1, n]
-                @inbounds V2 = Fpc[2, n]
-                @inbounds V3 = Fpc[3, n]
-                @inbounds V4 = Fpc[4, n]
-                @inbounds V5 = Fpc[5, n]
-                @inbounds V6 = Fpc[6, n]
-                @inbounds V7 = Fpc[7, n]
+                @inbounds V1 = Fpc[1]
+                @inbounds V2 = Fpc[2]
+                @inbounds V3 = Fpc[3]
+                @inbounds V4 = Fpc[4]
+                @inbounds V5 = Fpc[5]
+                @inbounds V6 = Fpc[6]
+                @inbounds V7 = Fpc[7]
         
                 # polinomia
                 q1 = -3V1+13V2-23V3+25V4
@@ -867,13 +863,13 @@ function advect_xc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
         
                 fp = invsum*(α1*q1+α2*q2+α3*q3+α4*q4)
         
-                @inbounds V1 = Fmc[1, n]
-                @inbounds V2 = Fmc[2, n]
-                @inbounds V3 = Fmc[3, n]
-                @inbounds V4 = Fmc[4, n]
-                @inbounds V5 = Fmc[5, n]
-                @inbounds V6 = Fmc[6, n]
-                @inbounds V7 = Fmc[7, n]
+                @inbounds V1 = Fmc[1]
+                @inbounds V2 = Fmc[2]
+                @inbounds V3 = Fmc[3]
+                @inbounds V4 = Fmc[4]
+                @inbounds V5 = Fmc[5]
+                @inbounds V6 = Fmc[6]
+                @inbounds V7 = Fmc[7]
         
                 # polinomia
                 q1 = -3V1+13V2-23V3+25V4
@@ -913,35 +909,37 @@ function advect_xc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
             end
 
             for n = 1:Ncons
-                F[i-NG, j-NG, k-NG, n] = flux[1] * R[n, 1] + flux[2] * R[n, 2] + flux[3] * R[n, 3] + flux[4] * R[n, 4] + flux[5] * R[n, 5]
+                @inbounds F[i-NG, j-NG, k-NG, n] = flux[1] * R[n, 1] + flux[2] * R[n, 2] + 
+                                                   flux[3] * R[n, 3] + flux[4] * R[n, 4] + 
+                                                   flux[5] * R[n, 5]
             end
         elseif ϕx < hybrid_ϕ3
-            Fpc = @MMatrix zeros(Float32, 5, Ncons)
-            Fmc = @MMatrix zeros(Float32, 5, Ncons)
+            Fpc = MVector{5, Float32}(undef)
+            Fmc = MVector{5, Float32}(undef)
 
             for n = 1:Ncons
+                Fpc .= 0.f0
+                Fmc .= 0.f0
                 for m = 1:Ncons
                     ll = L[n, m]
-                    Fpc[1, n] += Fp[i-3, j, k, m] * ll
-                    Fpc[2, n] += Fp[i-2, j, k, m] * ll
-                    Fpc[3, n] += Fp[i-1, j, k, m] * ll
-                    Fpc[4, n] += Fp[i,   j, k, m] * ll
-                    Fpc[5, n] += Fp[i+1, j, k, m] * ll
+                    @inbounds Fpc[1] += Fp[i-3, j, k, m] * ll
+                    @inbounds Fpc[2] += Fp[i-2, j, k, m] * ll
+                    @inbounds Fpc[3] += Fp[i-1, j, k, m] * ll
+                    @inbounds Fpc[4] += Fp[i,   j, k, m] * ll
+                    @inbounds Fpc[5] += Fp[i+1, j, k, m] * ll
         
-                    Fmc[1, n] += Fm[i-2, j, k, m] * ll
-                    Fmc[2, n] += Fm[i-1, j, k, m] * ll
-                    Fmc[3, n] += Fm[i,   j, k, m] * ll
-                    Fmc[4, n] += Fm[i+1, j, k, m] * ll
-                    Fmc[5, n] += Fm[i+2, j, k, m] * ll
+                    @inbounds Fmc[1] += Fm[i-2, j, k, m] * ll
+                    @inbounds Fmc[2] += Fm[i-1, j, k, m] * ll
+                    @inbounds Fmc[3] += Fm[i,   j, k, m] * ll
+                    @inbounds Fmc[4] += Fm[i+1, j, k, m] * ll
+                    @inbounds Fmc[5] += Fm[i+2, j, k, m] * ll
                 end
-            end
 
-            for n = 1:Ncons
-                @inbounds V1 = Fpc[1, n]
-                @inbounds V2 = Fpc[2, n]
-                @inbounds V3 = Fpc[3, n]
-                @inbounds V4 = Fpc[4, n]
-                @inbounds V5 = Fpc[5, n]
+                @inbounds V1 = Fpc[1]
+                @inbounds V2 = Fpc[2]
+                @inbounds V3 = Fpc[3]
+                @inbounds V4 = Fpc[4]
+                @inbounds V5 = Fpc[5]
                 # FP
                 s11 = 13*(V1-2*V2+V3)^2 + 3*(V1-4*V2+3*V3)^2
                 s22 = 13*(V2-2*V3+V4)^2 + 3*(V2-V4)^2
@@ -958,11 +956,11 @@ function advect_xc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
                 v3 = 2*V3+5*V4-V5
                 fp = invsum*(s11*v1+s22*v2+s33*v3)
 
-                @inbounds V1 = Fmc[1, n]
-                @inbounds V2 = Fmc[2, n]
-                @inbounds V3 = Fmc[3, n]
-                @inbounds V4 = Fmc[4, n]
-                @inbounds V5 = Fmc[5, n]
+                @inbounds V1 = Fmc[1]
+                @inbounds V2 = Fmc[2]
+                @inbounds V3 = Fmc[3]
+                @inbounds V4 = Fmc[4]
+                @inbounds V5 = Fmc[5]
                 # FM
                 s11 = 13*(V1-2*V2+V3)^2 + 3*(V1-4*V2+3*V3)^2
                 s22 = 13*(V2-2*V3+V4)^2 + 3*(V2-V4)^2
@@ -982,7 +980,7 @@ function advect_xc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
                 @inbounds flux[n] = (fp + fm) * tmp2
             end
             for n = 1:Ncons
-                F[i-NG, j-NG, k-NG, n] = flux[1] * R[n, 1] + flux[2] * R[n, 2] + flux[3] * R[n, 3] + flux[4] * R[n, 4] + flux[5] * R[n, 5]
+                @inbounds F[i-NG, j-NG, k-NG, n] = flux[1] * R[n, 1] + flux[2] * R[n, 2] + flux[3] * R[n, 3] + flux[4] * R[n, 4] + flux[5] * R[n, 5]
             end
         else
             for n = 1:Ncons
@@ -1056,18 +1054,11 @@ function advect_yc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
     else
         @inbounds s0::Float32 = 2/(S[i, j-1, k] + S[i, j, k]) 
 
-        # Roe average
-        @inbounds ρ1 = sqrt(Q[i, j, k, 1])
-        @inbounds ρ2 = sqrt(Q[i, j-1, k, 1])
-    
-        @inbounds u = (ρ1 * Q[i, j, k, 2] + ρ2 * Q[i, j-1, k, 2])/(ρ1 + ρ2)
-        @inbounds v = (ρ1 * Q[i, j, k, 3] + ρ2 * Q[i, j-1, k, 3]) / (ρ1 + ρ2)
-        @inbounds w = (ρ1 * Q[i, j, k, 4] + ρ2 * Q[i, j-1, k, 4]) / (ρ1 + ρ2)
-        @inbounds H1 = Q[i, j, k, 5]/Q[i, j, k, 1] * γ / (γ-1) + 0.5f0 * (Q[i, j, k, 2]^2 + Q[i, j, k, 3]^2 + Q[i, j, k, 4]^2)
-        @inbounds H2 = Q[i, j-1, k, 5]/Q[i, j-1, k, 1] * γ / (γ-1) + 0.5f0 * (Q[i, j-1, k, 2]^2 + Q[i, j-1, k, 3]^2 + Q[i, j-1, k, 4]^2)
-    
-        H = (ρ1 * H1 + ρ2 * H2)/(ρ1 + ρ2)
-        c = sqrt((γ-1)*(H-0.5*(u^2+v^2+w^2)))
+        # average
+        @inbounds u = 0.5f0 * (Q[i, j, k, 2] + Q[i, j-1, k, 2])
+        @inbounds v = 0.5f0 * (Q[i, j, k, 3] + Q[i, j-1, k, 3])
+        @inbounds w = 0.5f0 * (Q[i, j, k, 4] + Q[i, j-1, k, 4])
+        @inbounds T = 0.5f0 * (Q[i, j, k, 6] + Q[i, j-1, k, 6])
     
         @inbounds A1 = (Ax[i, j, k] + Ax[i, j-1, k]) * 0.5f0
         @inbounds A2 = (Ay[i, j, k] + Ay[i, j-1, k]) * 0.5f0
@@ -1078,34 +1069,37 @@ function advect_yc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
         nz = A3*s0
     
         if abs(nz) <= abs(ny)
-            ss=sqrt(nx*nx+ny*ny) 
-            lx=-ny/ss
-            ly=nx/ss
-            lz=0.f0 
+            ss = 1/sqrt(nx*nx+ny*ny) 
+            lx = -ny*ss
+            ly = nx*ss
+            lz = 0.f0 
         else 
-            ss=sqrt(nx*nx+nz*nz)
-            lx=-nz/ss
-            ly=0.f0   
-            lz=nx/ss
+            ss = 1/sqrt(nx*nx+nz*nz)
+            lx = -nz*ss
+            ly = 0.f0   
+            lz = nx*ss
         end 
-        mx=ny*lz-nz*ly 
-        my=nz*lx-nx*lz
-        mz=nx*ly-ny*lx
+        mx = ny*lz-nz*ly 
+        my = nz*lx-nx*lz
+        mz = nx*ly-ny*lx
     
-        qn=u*nx+v*ny+w*nz 
-        ql=u*lx+v*ly+w*lz 
-        qm=u*mx+v*my+w*mz 
-        q2=u^2+v^2+w^2
-    
-        K=(γ-1)/c^2 
+        qn = u*nx+v*ny+w*nz 
+        ql = u*lx+v*ly+w*lz 
+        qm = u*mx+v*my+w*mz 
+        q2 = 0.5f0*(u^2+v^2+w^2)
+        c = sqrt(γ*Rg*T)
+        c2 = 1/(2*c)
+        K = (γ-1)/c^2 
+        K2 = K * 0.5f0
+        H = 1/K+q2
     
         L = MMatrix{Ncons, Ncons, Float32, Ncons*Ncons}(undef)
         R = MMatrix{Ncons, Ncons, Float32, Ncons*Ncons}(undef)
         flux = MVector{Ncons, Float32}(undef)
     
-        L[1,1]=K*q2/4+qn/(2*c); L[1,2]=-(K*u/2+nx/(2*c)); L[1,3]=-(K*v/2+ny/(2*c)); L[1,4]=-(K*w/2+nz/(2*c)); L[1,5]=K/2
-        L[2,1]=1-K*q2/2;        L[2,2]=K*u;               L[2,3]=K*v;               L[2,4]=K*w;               L[2,5]=-K 
-        L[3,1]=K*q2/4-qn/(2*c); L[3,2]=-(K*u/2-nx/(2*c)); L[3,3]=-(K*v/2-ny/(2*c)); L[3,4]=-(K*w/2-nz/(2*c)); L[3,5]=K/2
+        L[1,1]=K2*q2+qn*c2;     L[1,2]=-(K2*u+nx*c2);     L[1,3]=-(K2*v+ny*c2);     L[1,4]=-(K2*w+nz*c2);     L[1,5]=K2
+        L[2,1]=1-K*q2;          L[2,2]=K*u;               L[2,3]=K*v;               L[2,4]=K*w;               L[2,5]=-K 
+        L[3,1]=K2*q2-qn*c2;     L[3,2]=-(K2*u-nx*c2);     L[3,3]=-(K2*v-ny*c2);     L[3,4]=-(K2*w-nz*c2);     L[3,5]=K2
         L[4,1]=-ql;             L[4,2]=lx;                L[4,3]=ly;                L[4,4]=lz;                L[4,5]=0.f0
         L[5,1]=-qm;             L[5,2]=mx;                L[5,3]=my;                L[5,4]=mz;                L[5,5]=0.f0
     
@@ -1113,41 +1107,41 @@ function advect_yc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
         R[2,1]=u-c*nx;    R[2,2]=u;          R[2,3]=u+c*nx;    R[2,4]=lx;      R[2,5]=mx
         R[3,1]=v-c*ny;    R[3,2]=v;          R[3,3]=v+c*ny;    R[3,4]=ly;      R[3,5]=my		
         R[4,1]=w-c*nz;    R[4,2]=w;          R[4,3]=w+c*nz;    R[4,4]=lz;      R[4,5]=mz		
-        R[5,1]=H-qn*c;    R[5,2]=q2*0.5f0;   R[5,3]=H+qn*c;    R[5,4]=ql;      R[5,5]=qm
+        R[5,1]=H-qn*c;    R[5,2]=q2;         R[5,3]=H+qn*c;    R[5,4]=ql;      R[5,5]=qm
 
         if ϕx < hybrid_ϕ2
-            Fpc = @MMatrix zeros(Float32, 7, Ncons)
-            Fmc = @MMatrix zeros(Float32, 7, Ncons)
+            Fpc = MVector{7, Float32}(undef)
+            Fmc = MVector{7, Float32}(undef)
 
             for n = 1:Ncons
+                Fpc .= 0.f0
+                Fmc .= 0.f0
                 for m = 1:Ncons
                     ll = L[n, m]
-                    Fpc[1, n] += Fp[i, j-4, k, m] * ll
-                    Fpc[2, n] += Fp[i, j-3, k, m] * ll
-                    Fpc[3, n] += Fp[i, j-2, k, m] * ll
-                    Fpc[4, n] += Fp[i, j-1, k, m] * ll
-                    Fpc[5, n] += Fp[i, j,   k, m] * ll
-                    Fpc[6, n] += Fp[i, j+1, k, m] * ll
-                    Fpc[7, n] += Fp[i, j+2, k, m] * ll
+                    @inbounds Fpc[1] += Fp[i, j-4, k, m] * ll
+                    @inbounds Fpc[2] += Fp[i, j-3, k, m] * ll
+                    @inbounds Fpc[3] += Fp[i, j-2, k, m] * ll
+                    @inbounds Fpc[4] += Fp[i, j-1, k, m] * ll
+                    @inbounds Fpc[5] += Fp[i, j,   k, m] * ll
+                    @inbounds Fpc[6] += Fp[i, j+1, k, m] * ll
+                    @inbounds Fpc[7] += Fp[i, j+2, k, m] * ll
         
-                    Fmc[1, n] += Fm[i, j-3, k, m] * ll
-                    Fmc[2, n] += Fm[i, j-2, k, m] * ll
-                    Fmc[3, n] += Fm[i, j-1, k, m] * ll
-                    Fmc[4, n] += Fm[i, j,   k, m] * ll
-                    Fmc[5, n] += Fm[i, j+1, k, m] * ll
-                    Fmc[6, n] += Fm[i, j+2, k, m] * ll
-                    Fmc[7, n] += Fm[i, j+3, k, m] * ll
+                    @inbounds Fmc[1] += Fm[i, j-3, k, m] * ll
+                    @inbounds Fmc[2] += Fm[i, j-2, k, m] * ll
+                    @inbounds Fmc[3] += Fm[i, j-1, k, m] * ll
+                    @inbounds Fmc[4] += Fm[i, j,   k, m] * ll
+                    @inbounds Fmc[5] += Fm[i, j+1, k, m] * ll
+                    @inbounds Fmc[6] += Fm[i, j+2, k, m] * ll
+                    @inbounds Fmc[7] += Fm[i, j+3, k, m] * ll
                 end
-            end
 
-            for n = 1:Ncons
-                @inbounds V1 = Fpc[1, n]
-                @inbounds V2 = Fpc[2, n]
-                @inbounds V3 = Fpc[3, n]
-                @inbounds V4 = Fpc[4, n]
-                @inbounds V5 = Fpc[5, n]
-                @inbounds V6 = Fpc[6, n]
-                @inbounds V7 = Fpc[7, n]
+                @inbounds V1 = Fpc[1]
+                @inbounds V2 = Fpc[2]
+                @inbounds V3 = Fpc[3]
+                @inbounds V4 = Fpc[4]
+                @inbounds V5 = Fpc[5]
+                @inbounds V6 = Fpc[6]
+                @inbounds V7 = Fpc[7]
         
                 # polinomia
                 q1 = -3V1+13V2-23V3+25V4
@@ -1183,13 +1177,13 @@ function advect_yc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
         
                 fp = invsum*(α1*q1+α2*q2+α3*q3+α4*q4)
         
-                @inbounds V1 = Fmc[1, n]
-                @inbounds V2 = Fmc[2, n]
-                @inbounds V3 = Fmc[3, n]
-                @inbounds V4 = Fmc[4, n]
-                @inbounds V5 = Fmc[5, n]
-                @inbounds V6 = Fmc[6, n]
-                @inbounds V7 = Fmc[7, n]
+                @inbounds V1 = Fmc[1]
+                @inbounds V2 = Fmc[2]
+                @inbounds V3 = Fmc[3]
+                @inbounds V4 = Fmc[4]
+                @inbounds V5 = Fmc[5]
+                @inbounds V6 = Fmc[6]
+                @inbounds V7 = Fmc[7]
         
                 # polinomia
                 q1 = -3V1+13V2-23V3+25V4
@@ -1229,35 +1223,37 @@ function advect_yc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
             end
 
             for n = 1:Ncons
-                F[i-NG, j-NG, k-NG, n] = flux[1] * R[n, 1] + flux[2] * R[n, 2] + flux[3] * R[n, 3] + flux[4] * R[n, 4] + flux[5] * R[n, 5]
+                @inbounds F[i-NG, j-NG, k-NG, n] = flux[1] * R[n, 1] + flux[2] * R[n, 2] + 
+                                                   flux[3] * R[n, 3] + flux[4] * R[n, 4] + 
+                                                   flux[5] * R[n, 5]
             end
         elseif ϕx < hybrid_ϕ3
-            Fpc = @MMatrix zeros(Float32, 5, Ncons)
-            Fmc = @MMatrix zeros(Float32, 5, Ncons)
+            Fpc = MVector{5, Float32}(undef)
+            Fmc = MVector{5, Float32}(undef)
 
             for n = 1:Ncons
+                Fpc .= 0.f0
+                Fmc .= 0.f0
                 for m = 1:Ncons
                     ll = L[n, m]
-                    Fpc[1, n] += Fp[i, j-3, k, m] * ll
-                    Fpc[2, n] += Fp[i, j-2, k, m] * ll
-                    Fpc[3, n] += Fp[i, j-1, k, m] * ll
-                    Fpc[4, n] += Fp[i, j,   k, m] * ll
-                    Fpc[5, n] += Fp[i, j+1, k, m] * ll
+                    @inbounds Fpc[1] += Fp[i, j-3, k, m] * ll
+                    @inbounds Fpc[2] += Fp[i, j-2, k, m] * ll
+                    @inbounds Fpc[3] += Fp[i, j-1, k, m] * ll
+                    @inbounds Fpc[4] += Fp[i, j,   k, m] * ll
+                    @inbounds Fpc[5] += Fp[i, j+1, k, m] * ll
         
-                    Fmc[1, n] += Fm[i, j-2, k, m] * ll
-                    Fmc[2, n] += Fm[i, j-1, k, m] * ll
-                    Fmc[3, n] += Fm[i, j,   k, m] * ll
-                    Fmc[4, n] += Fm[i, j+1, k, m] * ll
-                    Fmc[5, n] += Fm[i, j+2, k, m] * ll
+                    @inbounds Fmc[1] += Fm[i, j-2, k, m] * ll
+                    @inbounds Fmc[2] += Fm[i, j-1, k, m] * ll
+                    @inbounds Fmc[3] += Fm[i, j,   k, m] * ll
+                    @inbounds Fmc[4] += Fm[i, j+1, k, m] * ll
+                    @inbounds Fmc[5] += Fm[i, j+2, k, m] * ll
                 end
-            end
 
-            for n = 1:Ncons
-                @inbounds V1 = Fpc[1, n]
-                @inbounds V2 = Fpc[2, n]
-                @inbounds V3 = Fpc[3, n]
-                @inbounds V4 = Fpc[4, n]
-                @inbounds V5 = Fpc[5, n]
+                @inbounds V1 = Fpc[1]
+                @inbounds V2 = Fpc[2]
+                @inbounds V3 = Fpc[3]
+                @inbounds V4 = Fpc[4]
+                @inbounds V5 = Fpc[5]
                 # FP
                 s11 = 13*(V1-2*V2+V3)^2 + 3*(V1-4*V2+3*V3)^2
                 s22 = 13*(V2-2*V3+V4)^2 + 3*(V2-V4)^2
@@ -1274,11 +1270,11 @@ function advect_yc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
                 v3 = 2*V3+5*V4-V5
                 fp = invsum*(s11*v1+s22*v2+s33*v3)
 
-                @inbounds V1 = Fmc[1, n]
-                @inbounds V2 = Fmc[2, n]
-                @inbounds V3 = Fmc[3, n]
-                @inbounds V4 = Fmc[4, n]
-                @inbounds V5 = Fmc[5, n]
+                @inbounds V1 = Fmc[1]
+                @inbounds V2 = Fmc[2]
+                @inbounds V3 = Fmc[3]
+                @inbounds V4 = Fmc[4]
+                @inbounds V5 = Fmc[5]
                 # FM
                 s11 = 13*(V1-2*V2+V3)^2 + 3*(V1-4*V2+3*V3)^2
                 s22 = 13*(V2-2*V3+V4)^2 + 3*(V2-V4)^2
@@ -1298,7 +1294,9 @@ function advect_yc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
                 @inbounds flux[n] = (fp + fm) * tmp2
             end
             for n = 1:Ncons
-                F[i-NG, j-NG, k-NG, n] = flux[1] * R[n, 1] + flux[2] * R[n, 2] + flux[3] * R[n, 3] + flux[4] * R[n, 4] + flux[5] * R[n, 5]
+                @inbounds F[i-NG, j-NG, k-NG, n] = flux[1] * R[n, 1] + flux[2] * R[n, 2] + 
+                                                   flux[3] * R[n, 3] + flux[4] * R[n, 4] + 
+                                                   flux[5] * R[n, 5]
             end
         else
             for n = 1:Ncons
@@ -1372,18 +1370,11 @@ function advect_zc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
     else
         @inbounds s0::Float32 = 2/(S[i, j, k-1] + S[i, j, k]) 
 
-        # Roe average
-        @inbounds ρ1 = sqrt(Q[i, j, k, 1])
-        @inbounds ρ2 = sqrt(Q[i, j, k-1, 1])
-    
-        @inbounds u = (ρ1 * Q[i, j, k, 2] + ρ2 * Q[i, j, k-1, 2])/(ρ1 + ρ2)
-        @inbounds v = (ρ1 * Q[i, j, k, 3] + ρ2 * Q[i, j, k-1, 3]) / (ρ1 + ρ2)
-        @inbounds w = (ρ1 * Q[i, j, k, 4] + ρ2 * Q[i, j, k-1, 4]) / (ρ1 + ρ2)
-        @inbounds H1 = Q[i, j, k, 5]/Q[i, j, k, 1] * γ / (γ-1) + 0.5f0 * (Q[i, j, k, 2]^2 + Q[i, j, k, 3]^2 + Q[i, j, k, 4]^2)
-        @inbounds H2 = Q[i, j, k-1, 5]/Q[i, j, k-1, 1] * γ / (γ-1) + 0.5f0 * (Q[i, j, k-1, 2]^2 + Q[i, j, k-1, 3]^2 + Q[i, j, k-1, 4]^2)
-    
-        H = (ρ1 * H1 + ρ2 * H2)/(ρ1 + ρ2)
-        c = sqrt((γ-1)*(H-0.5*(u^2+v^2+w^2)))
+        # average
+        @inbounds u = 0.5f0 * (Q[i, j, k, 2] + Q[i, j, k-1, 2])
+        @inbounds v = 0.5f0 * (Q[i, j, k, 3] + Q[i, j, k-1, 3])
+        @inbounds w = 0.5f0 * (Q[i, j, k, 4] + Q[i, j, k-1, 4])
+        @inbounds T = 0.5f0 * (Q[i, j, k, 6] + Q[i, j, k-1, 6])
     
         @inbounds A1 = (Ax[i, j, k] + Ax[i, j, k-1]) * 0.5f0
         @inbounds A2 = (Ay[i, j, k] + Ay[i, j, k-1]) * 0.5f0
@@ -1394,34 +1385,37 @@ function advect_zc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
         nz = A3*s0
     
         if abs(nz) <= abs(ny)
-            ss=sqrt(nx*nx+ny*ny) 
-            lx=-ny/ss
-            ly=nx/ss
-            lz=0.f0 
+            ss = 1/sqrt(nx*nx+ny*ny) 
+            lx = -ny*ss
+            ly = nx*ss
+            lz = 0.f0 
         else 
-            ss=sqrt(nx*nx+nz*nz)
-            lx=-nz/ss
-            ly=0.f0   
-            lz=nx/ss
+            ss = 1/sqrt(nx*nx+nz*nz)
+            lx = -nz*ss
+            ly = 0.f0   
+            lz = nx*ss
         end 
-        mx=ny*lz-nz*ly 
-        my=nz*lx-nx*lz
-        mz=nx*ly-ny*lx
+        mx = ny*lz-nz*ly 
+        my = nz*lx-nx*lz
+        mz = nx*ly-ny*lx
     
-        qn=u*nx+v*ny+w*nz 
-        ql=u*lx+v*ly+w*lz 
-        qm=u*mx+v*my+w*mz 
-        q2=u^2+v^2+w^2
-    
-        K=(γ-1)/c^2 
+        qn = u*nx+v*ny+w*nz 
+        ql = u*lx+v*ly+w*lz 
+        qm = u*mx+v*my+w*mz 
+        q2 = 0.5f0*(u^2+v^2+w^2)
+        c = sqrt(γ*Rg*T)
+        c2 = 1/(2*c)
+        K = (γ-1)/c^2 
+        K2 = K * 0.5f0
+        H = 1/K+q2
     
         L = MMatrix{Ncons, Ncons, Float32, Ncons*Ncons}(undef)
         R = MMatrix{Ncons, Ncons, Float32, Ncons*Ncons}(undef)
         flux = MVector{Ncons, Float32}(undef)
     
-        L[1,1]=K*q2/4+qn/(2*c); L[1,2]=-(K*u/2+nx/(2*c)); L[1,3]=-(K*v/2+ny/(2*c)); L[1,4]=-(K*w/2+nz/(2*c)); L[1,5]=K/2
-        L[2,1]=1-K*q2/2;        L[2,2]=K*u;               L[2,3]=K*v;               L[2,4]=K*w;               L[2,5]=-K 
-        L[3,1]=K*q2/4-qn/(2*c); L[3,2]=-(K*u/2-nx/(2*c)); L[3,3]=-(K*v/2-ny/(2*c)); L[3,4]=-(K*w/2-nz/(2*c)); L[3,5]=K/2
+        L[1,1]=K2*q2+qn*c2;     L[1,2]=-(K2*u+nx*c2);     L[1,3]=-(K2*v+ny*c2);     L[1,4]=-(K2*w+nz*c2);     L[1,5]=K2
+        L[2,1]=1-K*q2;          L[2,2]=K*u;               L[2,3]=K*v;               L[2,4]=K*w;               L[2,5]=-K 
+        L[3,1]=K2*q2-qn*c2;     L[3,2]=-(K2*u-nx*c2);     L[3,3]=-(K2*v-ny*c2);     L[3,4]=-(K2*w-nz*c2);     L[3,5]=K2
         L[4,1]=-ql;             L[4,2]=lx;                L[4,3]=ly;                L[4,4]=lz;                L[4,5]=0.f0
         L[5,1]=-qm;             L[5,2]=mx;                L[5,3]=my;                L[5,4]=mz;                L[5,5]=0.f0
     
@@ -1429,41 +1423,41 @@ function advect_zc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
         R[2,1]=u-c*nx;    R[2,2]=u;          R[2,3]=u+c*nx;    R[2,4]=lx;      R[2,5]=mx
         R[3,1]=v-c*ny;    R[3,2]=v;          R[3,3]=v+c*ny;    R[3,4]=ly;      R[3,5]=my		
         R[4,1]=w-c*nz;    R[4,2]=w;          R[4,3]=w+c*nz;    R[4,4]=lz;      R[4,5]=mz		
-        R[5,1]=H-qn*c;    R[5,2]=q2*0.5f0;   R[5,3]=H+qn*c;    R[5,4]=ql;      R[5,5]=qm
+        R[5,1]=H-qn*c;    R[5,2]=q2;         R[5,3]=H+qn*c;    R[5,4]=ql;      R[5,5]=qm
 
         if ϕx < hybrid_ϕ2
-            Fpc = @MMatrix zeros(Float32, 7, Ncons)
-            Fmc = @MMatrix zeros(Float32, 7, Ncons)
+            Fpc = MVector{7, Float32}(undef)
+            Fmc = MVector{7, Float32}(undef)
 
             for n = 1:Ncons
+                Fpc .= 0.f0
+                Fmc .= 0.f0
                 for m = 1:Ncons
                     ll = L[n, m]
-                    Fpc[1, n] += Fp[i, j, k-4, m] * ll
-                    Fpc[2, n] += Fp[i, j, k-3, m] * ll
-                    Fpc[3, n] += Fp[i, j, k-2, m] * ll
-                    Fpc[4, n] += Fp[i, j, k-1, m] * ll
-                    Fpc[5, n] += Fp[i, j, k,   m] * ll
-                    Fpc[6, n] += Fp[i, j, k+1, m] * ll
-                    Fpc[7, n] += Fp[i, j, k+2, m] * ll
+                    @inbounds Fpc[1] += Fp[i, j, k-4, m] * ll
+                    @inbounds Fpc[2] += Fp[i, j, k-3, m] * ll
+                    @inbounds Fpc[3] += Fp[i, j, k-2, m] * ll
+                    @inbounds Fpc[4] += Fp[i, j, k-1, m] * ll
+                    @inbounds Fpc[5] += Fp[i, j, k,   m] * ll
+                    @inbounds Fpc[6] += Fp[i, j, k+1, m] * ll
+                    @inbounds Fpc[7] += Fp[i, j, k+2, m] * ll
         
-                    Fmc[1, n] += Fm[i, j, k-3, m] * ll
-                    Fmc[2, n] += Fm[i, j, k-2, m] * ll
-                    Fmc[3, n] += Fm[i, j, k-1, m] * ll
-                    Fmc[4, n] += Fm[i, j, k,   m] * ll
-                    Fmc[5, n] += Fm[i, j, k+1, m] * ll
-                    Fmc[6, n] += Fm[i, j, k+2, m] * ll
-                    Fmc[7, n] += Fm[i, j, k+3, m] * ll
+                    @inbounds Fmc[1] += Fm[i, j, k-3, m] * ll
+                    @inbounds Fmc[2] += Fm[i, j, k-2, m] * ll
+                    @inbounds Fmc[3] += Fm[i, j, k-1, m] * ll
+                    @inbounds Fmc[4] += Fm[i, j, k,   m] * ll
+                    @inbounds Fmc[5] += Fm[i, j, k+1, m] * ll
+                    @inbounds Fmc[6] += Fm[i, j, k+2, m] * ll
+                    @inbounds Fmc[7] += Fm[i, j, k+3, m] * ll
                 end
-            end
 
-            for n = 1:Ncons
-                @inbounds V1 = Fpc[1, n]
-                @inbounds V2 = Fpc[2, n]
-                @inbounds V3 = Fpc[3, n]
-                @inbounds V4 = Fpc[4, n]
-                @inbounds V5 = Fpc[5, n]
-                @inbounds V6 = Fpc[6, n]
-                @inbounds V7 = Fpc[7, n]
+                @inbounds V1 = Fpc[1]
+                @inbounds V2 = Fpc[2]
+                @inbounds V3 = Fpc[3]
+                @inbounds V4 = Fpc[4]
+                @inbounds V5 = Fpc[5]
+                @inbounds V6 = Fpc[6]
+                @inbounds V7 = Fpc[7]
         
                 # polinomia
                 q1 = -3V1+13V2-23V3+25V4
@@ -1499,13 +1493,13 @@ function advect_zc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
         
                 fp = invsum*(α1*q1+α2*q2+α3*q3+α4*q4)
         
-                @inbounds V1 = Fmc[1, n]
-                @inbounds V2 = Fmc[2, n]
-                @inbounds V3 = Fmc[3, n]
-                @inbounds V4 = Fmc[4, n]
-                @inbounds V5 = Fmc[5, n]
-                @inbounds V6 = Fmc[6, n]
-                @inbounds V7 = Fmc[7, n]
+                @inbounds V1 = Fmc[1]
+                @inbounds V2 = Fmc[2]
+                @inbounds V3 = Fmc[3]
+                @inbounds V4 = Fmc[4]
+                @inbounds V5 = Fmc[5]
+                @inbounds V6 = Fmc[6]
+                @inbounds V7 = Fmc[7]
         
                 # polinomia
                 q1 = -3V1+13V2-23V3+25V4
@@ -1545,35 +1539,37 @@ function advect_zc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
             end
 
             for n = 1:Ncons
-                F[i-NG, j-NG, k-NG, n] = flux[1] * R[n, 1] + flux[2] * R[n, 2] + flux[3] * R[n, 3] + flux[4] * R[n, 4] + flux[5] * R[n, 5]
+                @inbounds F[i-NG, j-NG, k-NG, n] = flux[1] * R[n, 1] + flux[2] * R[n, 2] + 
+                                                   flux[3] * R[n, 3] + flux[4] * R[n, 4] + 
+                                                   flux[5] * R[n, 5]
             end
         elseif ϕx < hybrid_ϕ3
-            Fpc = @MMatrix zeros(Float32, 5, Ncons)
-            Fmc = @MMatrix zeros(Float32, 5, Ncons)
+            Fpc = MVector{5, Float32}(undef)
+            Fmc = MVector{5, Float32}(undef)
 
             for n = 1:Ncons
+                Fpc .= 0.f0
+                Fmc .= 0.f0
                 for m = 1:Ncons
                     ll = L[n, m]
-                    Fpc[1, n] += Fp[i, j, k-3, m] * ll
-                    Fpc[2, n] += Fp[i, j, k-2, m] * ll
-                    Fpc[3, n] += Fp[i, j, k-1, m] * ll
-                    Fpc[4, n] += Fp[i, j, k,   m] * ll
-                    Fpc[5, n] += Fp[i, j, k+1, m] * ll
+                    @inbounds Fpc[1] += Fp[i, j, k-3, m] * ll
+                    @inbounds Fpc[2] += Fp[i, j, k-2, m] * ll
+                    @inbounds Fpc[3] += Fp[i, j, k-1, m] * ll
+                    @inbounds Fpc[4] += Fp[i, j, k,   m] * ll
+                    @inbounds Fpc[5] += Fp[i, j, k+1, m] * ll
         
-                    Fmc[1, n] += Fm[i, j, k-2, m] * ll
-                    Fmc[2, n] += Fm[i, j, k-1, m] * ll
-                    Fmc[3, n] += Fm[i, j, k,   m] * ll
-                    Fmc[4, n] += Fm[i, j, k+1, m] * ll
-                    Fmc[5, n] += Fm[i, j, k+2, m] * ll
+                    @inbounds Fmc[1] += Fm[i, j, k-2, m] * ll
+                    @inbounds Fmc[2] += Fm[i, j, k-1, m] * ll
+                    @inbounds Fmc[3] += Fm[i, j, k,   m] * ll
+                    @inbounds Fmc[4] += Fm[i, j, k+1, m] * ll
+                    @inbounds Fmc[5] += Fm[i, j, k+2, m] * ll
                 end
-            end
 
-            for n = 1:Ncons
-                @inbounds V1 = Fpc[1, n]
-                @inbounds V2 = Fpc[2, n]
-                @inbounds V3 = Fpc[3, n]
-                @inbounds V4 = Fpc[4, n]
-                @inbounds V5 = Fpc[5, n]
+                @inbounds V1 = Fpc[1]
+                @inbounds V2 = Fpc[2]
+                @inbounds V3 = Fpc[3]
+                @inbounds V4 = Fpc[4]
+                @inbounds V5 = Fpc[5]
                 # FP
                 s11 = 13*(V1-2*V2+V3)^2 + 3*(V1-4*V2+3*V3)^2
                 s22 = 13*(V2-2*V3+V4)^2 + 3*(V2-V4)^2
@@ -1590,11 +1586,11 @@ function advect_zc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
                 v3 = 2*V3+5*V4-V5
                 fp = invsum*(s11*v1+s22*v2+s33*v3)
 
-                @inbounds V1 = Fmc[1, n]
-                @inbounds V2 = Fmc[2, n]
-                @inbounds V3 = Fmc[3, n]
-                @inbounds V4 = Fmc[4, n]
-                @inbounds V5 = Fmc[5, n]
+                @inbounds V1 = Fmc[1]
+                @inbounds V2 = Fmc[2]
+                @inbounds V3 = Fmc[3]
+                @inbounds V4 = Fmc[4]
+                @inbounds V5 = Fmc[5]
                 # FM
                 s11 = 13*(V1-2*V2+V3)^2 + 3*(V1-4*V2+3*V3)^2
                 s22 = 13*(V2-2*V3+V4)^2 + 3*(V2-V4)^2
@@ -1614,7 +1610,9 @@ function advect_zc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
                 @inbounds flux[n] = (fp + fm) * tmp2
             end
             for n = 1:Ncons
-                F[i-NG, j-NG, k-NG, n] = flux[1] * R[n, 1] + flux[2] * R[n, 2] + flux[3] * R[n, 3] + flux[4] * R[n, 4] + flux[5] * R[n, 5]
+                @inbounds F[i-NG, j-NG, k-NG, n] = flux[1] * R[n, 1] + flux[2] * R[n, 2] + 
+                                                   flux[3] * R[n, 3] + flux[4] * R[n, 4] + 
+                                                   flux[5] * R[n, 5]
             end
         else
             for n = 1:Ncons
