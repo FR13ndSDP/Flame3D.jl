@@ -1,4 +1,3 @@
-# Only 1D-x direction MPI for now
 include("solver.jl")
 
 # LES
@@ -43,12 +42,13 @@ const sample_index::SVector{3, Int64} = [-1, 130, -1]  # slice index in 3 direct
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
 const Nprim::Int64 = 6 # ρ u v w p T
 # scheme constant
+const character::Bool = true        # Characteristic-wise reconstruction or not
 const splitMethod::String = "SW"    # use SW, else LF
 const hybrid_ϕ1::Float32 = 5f-2     # < ϕ1: UP7
 const hybrid_ϕ2::Float32 = 1.f0     # < ϕ2: WENO7 in FP64
 const hybrid_ϕ3::Float32 = 10.f0    # < ϕ3: WENO5, else NND2
 # adjust this to get mixed upwind-central linear scheme
-const UP7::SVector{7, Float32} = SVector(-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420)
+const UP7::SVector{7, Float32} = SVector(-0.00714, 0.05952, -0.24048, 0.75952, 0.50952, -0.09048, 0.00954)
 
 # load mesh info
 const NG::Int64 = h5read("metrics.h5", "NG")
@@ -71,8 +71,10 @@ MPI.Init()
 comm = MPI.COMM_WORLD
 rank = MPI.Comm_rank(comm)
 nGPU = MPI.Comm_size(comm)
-shmcomm = MPI.Comm_split_type(comm, MPI.COMM_TYPE_SHARED, rank)
-local_rank = MPI.Comm_rank(shmcomm)
+# this is better, but does not work on the dongfang HPC
+# shmcomm = MPI.Comm_split_type(comm, MPI.COMM_TYPE_SHARED, rank)
+# local_rank = MPI.Comm_rank(shmcomm)
+local_rank = rank % 4
 comm_cart = MPI.Cart_create(comm, Nprocs; periodic=Iperiodic)
 if nGPU != prod(Nprocs) && rank == 0
     error("Oops, nGPU ≠ $Nprocs\n")

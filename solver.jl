@@ -20,21 +20,33 @@ function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξ
     else
         @roc groupsize=nthreads gridsize=ngroups fluxSplit_LF(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
     end
-    @roc groupsize=nthreads gridsize=ngroups advect_x(Fx, ϕ, s1, Fp, Fm, Ncons)
+    if character
+        @roc groupsize=nthreads gridsize=ngroups advect_xc(Fx, ϕ, s1, Fp, Fm, Q, dξdx, dξdy, dξdz)
+    else
+        @roc groupsize=nthreads gridsize=ngroups advect_x(Fx, ϕ, s1, Fp, Fm, Ncons)
+    end
 
     if splitMethod == "SW"
         @roc groupsize=nthreads gridsize=ngroups fluxSplit_SW(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
     else
         @roc groupsize=nthreads gridsize=ngroups fluxSplit_LF(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
     end
-    @roc groupsize=nthreads gridsize=ngroups advect_y(Fy, ϕ, s2, Fp, Fm, Ncons)
+    if character
+        @roc groupsize=nthreads gridsize=ngroups advect_yc(Fy, ϕ, s2, Fp, Fm, Q, dηdx, dηdy, dηdz)
+    else
+        @roc groupsize=nthreads gridsize=ngroups advect_y(Fy, ϕ, s2, Fp, Fm, Ncons)
+    end
 
     if splitMethod == "SW"
         @roc groupsize=nthreads gridsize=ngroups fluxSplit_SW(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
     else
         @roc groupsize=nthreads gridsize=ngroups fluxSplit_LF(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
     end
-    @roc groupsize=nthreads gridsize=ngroups advect_z(Fz, ϕ, s3, Fp, Fm, Ncons)
+    if character
+        @roc groupsize=nthreads gridsize=ngroups advect_zc(Fz, ϕ, s3, Fp, Fm, Q, dζdx, dζdy, dζdz)
+    else
+        @roc groupsize=nthreads gridsize=ngroups advect_z(Fz, ϕ, s3, Fp, Fm, Ncons)
+    end
 
     @roc groupsize=nthreads gridsize=ngroups viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
 
