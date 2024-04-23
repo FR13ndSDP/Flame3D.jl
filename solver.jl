@@ -207,8 +207,8 @@ function time_step(rank, comm_cart)
     
         # find target ranks
         if sample_index[1] ≠ -1
-            local_rankx::Int64 = sample_index[1] ÷ Nxp
-            local_idx::Int64 = sample_index[1] % Nxp
+            local_rankx::Int64 = (sample_index[1]-1) ÷ Nxp
+            local_idx::Int64 = (sample_index[1]-1) % Nxp + 1
     
             if rankx == local_rankx
                 valid_rankx = rank
@@ -225,8 +225,8 @@ function time_step(rank, comm_cart)
         end
     
         if sample_index[2] ≠ -1
-            local_ranky::Int64 = sample_index[2] ÷ Nyp
-            local_idy::Int64 = sample_index[2] % Nyp
+            local_ranky::Int64 = (sample_index[2]-1) ÷ Nyp
+            local_idy::Int64 = (sample_index[2]-1) % Nyp + 1
     
             if ranky == local_ranky
                 valid_ranky = rank
@@ -243,8 +243,8 @@ function time_step(rank, comm_cart)
         end
     
         if sample_index[3] ≠ -1
-            local_rankz::Int64 = sample_index[3] ÷ Nzp
-            local_idz::Int64 = sample_index[3] % Nzp
+            local_rankz::Int64 = (sample_index[3]-1) ÷ Nzp
+            local_idz::Int64 = (sample_index[3]-1) % Nzp + 1
     
             if rankz == local_rankz
                 valid_rankz = rank
