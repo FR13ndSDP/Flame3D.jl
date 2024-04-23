@@ -84,7 +84,7 @@ function time_step(rank, comm_cart)
         hy = min((js+1)*Nyp+1, Ny)
     
         lz = ks*Nzp+1
-        hz = min((ks+1)*Nzp+Nzp+1, Nz)
+        hz = min((ks+1)*Nzp+1, Nz)
 
         extents[n] = (lx:hx, ly:hy, lz:hz)
     end
