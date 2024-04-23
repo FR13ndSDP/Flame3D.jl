@@ -12,14 +12,14 @@ function fluxSplit_SW(Q, Fp, Fm, S, Ax, Ay, Az)
     @inbounds u = Q[i, j, k, 2]
     @inbounds v = Q[i, j, k, 3]
     @inbounds w = Q[i, j, k, 4]
-    @inbounds p = Q[i, j, k, 5]
+    @inbounds T = Q[i, j, k, 6]
 
     @inbounds A1 = Ax[i, j, k]
     @inbounds A2 = Ay[i, j, k]
     @inbounds A3 = Az[i, j, k]
     @inbounds ss = S[i, j, k]
 
-    @fastmath c = sqrt(γ*p/ρ)
+    @fastmath c = sqrt(γ*Rg*T)
 
     E1 = A1*u + A2*v + A3*w
     E2 = E1 - c*ss
