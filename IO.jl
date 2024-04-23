@@ -97,3 +97,26 @@ function averageFile(tt, Q_avg, Q_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, p
         pvtk["Time", VTKFieldData()] = dt * tt
     end 
 end
+
+# provide debug output with ghost cells
+function debugOutput(Q, Q_h, x_h, y_h, z_h, rank)
+    copyto!(Q_h, Q)
+
+    fname::String = string("debug", "-", rank)
+
+    rho = @view Q_h[:, :, :, 1]
+    u   = @view Q_h[:, :, :, 2]
+    v   = @view Q_h[:, :, :, 3]
+    w   = @view Q_h[:, :, :, 4]
+    p   = @view Q_h[:, :, :, 5]
+    T   = @view Q_h[:, :, :, 6]
+
+    vtk_grid(fname, x_h, y_h, z_h) do vtk
+        vtk["rho"] = rho
+        vtk["u"] = u
+        vtk["v"] = v
+        vtk["w"] = w
+        vtk["p"] = p
+        vtk["T"] = T
+    end 
+end
