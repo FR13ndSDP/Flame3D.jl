@@ -770,15 +770,15 @@ function advect_xc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
         nz = A3*s0
     
         if abs(nz) <= abs(ny)
-            ss = sqrt(nx*nx+ny*ny) 
-            lx = -ny/ss
-            ly = nx/ss
+            ss = 1/sqrt(nx*nx+ny*ny) 
+            lx = -ny*ss
+            ly = nx*ss
             lz = 0.f0 
         else 
-            ss = sqrt(nx*nx+nz*nz)
-            lx = -nz/ss
+            ss = 1/sqrt(nx*nx+nz*nz)
+            lx = -nz*ss
             ly = 0.f0   
-            lz = nx/ss
+            lz = nx*ss
         end 
         mx = ny*lz-nz*ly 
         my = nz*lx-nx*lz
@@ -791,15 +791,16 @@ function advect_xc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
         c = sqrt(γ*Rg*T)
         c2 = 1/(2*c)
         K = (γ-1)/c^2 
+        K2 = K * 0.5f0
         H = 1/K+q2
     
         L = MMatrix{Ncons, Ncons, Float32, Ncons*Ncons}(undef)
         R = MMatrix{Ncons, Ncons, Float32, Ncons*Ncons}(undef)
         flux = MVector{Ncons, Float32}(undef)
     
-        L[1,1]=K*q2*0.5f0+qn*c2;L[1,2]=-(K*u*0.5f0+nx*c2);L[1,3]=-(K*v*0.5f0+ny*c2);L[1,4]=-(K*w*0.5f0+nz*c2);L[1,5]=K*0.5f0
+        L[1,1]=K2*q2+qn*c2;     L[1,2]=-(K2*u+nx*c2);     L[1,3]=-(K2*v+ny*c2);     L[1,4]=-(K2*w+nz*c2);     L[1,5]=K2
         L[2,1]=1-K*q2;          L[2,2]=K*u;               L[2,3]=K*v;               L[2,4]=K*w;               L[2,5]=-K 
-        L[3,1]=K*q2*0.5f0-qn*c2;L[3,2]=-(K*u*0.5f0-nx*c2);L[3,3]=-(K*v*0.5f0-ny*c2);L[3,4]=-(K*w*0.5f0-nz*c2);L[3,5]=K*0.5f0
+        L[3,1]=K2*q2-qn*c2;     L[3,2]=-(K2*u-nx*c2);     L[3,3]=-(K2*v-ny*c2);     L[3,4]=-(K2*w-nz*c2);     L[3,5]=K2
         L[4,1]=-ql;             L[4,2]=lx;                L[4,3]=ly;                L[4,4]=lz;                L[4,5]=0.f0
         L[5,1]=-qm;             L[5,2]=mx;                L[5,3]=my;                L[5,4]=mz;                L[5,5]=0.f0
     
@@ -1083,15 +1084,15 @@ function advect_yc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
         nz = A3*s0
     
         if abs(nz) <= abs(ny)
-            ss = sqrt(nx*nx+ny*ny) 
-            lx = -ny/ss
-            ly = nx/ss
+            ss = 1/sqrt(nx*nx+ny*ny) 
+            lx = -ny*ss
+            ly = nx*ss
             lz = 0.f0 
         else 
-            ss = sqrt(nx*nx+nz*nz)
-            lx = -nz/ss
+            ss = 1/sqrt(nx*nx+nz*nz)
+            lx = -nz*ss
             ly = 0.f0   
-            lz = nx/ss
+            lz = nx*ss
         end 
         mx = ny*lz-nz*ly 
         my = nz*lx-nx*lz
@@ -1104,15 +1105,16 @@ function advect_yc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
         c = sqrt(γ*Rg*T)
         c2 = 1/(2*c)
         K = (γ-1)/c^2 
+        K2 = K * 0.5f0
         H = 1/K+q2
     
         L = MMatrix{Ncons, Ncons, Float32, Ncons*Ncons}(undef)
         R = MMatrix{Ncons, Ncons, Float32, Ncons*Ncons}(undef)
         flux = MVector{Ncons, Float32}(undef)
     
-        L[1,1]=K*q2*0.5f0+qn*c2;L[1,2]=-(K*u*0.5f0+nx*c2);L[1,3]=-(K*v*0.5f0+ny*c2);L[1,4]=-(K*w*0.5f0+nz*c2);L[1,5]=K*0.5f0
+        L[1,1]=K2*q2+qn*c2;     L[1,2]=-(K2*u+nx*c2);     L[1,3]=-(K2*v+ny*c2);     L[1,4]=-(K2*w+nz*c2);     L[1,5]=K2
         L[2,1]=1-K*q2;          L[2,2]=K*u;               L[2,3]=K*v;               L[2,4]=K*w;               L[2,5]=-K 
-        L[3,1]=K*q2*0.5f0-qn*c2;L[3,2]=-(K*u*0.5f0-nx*c2);L[3,3]=-(K*v*0.5f0-ny*c2);L[3,4]=-(K*w*0.5f0-nz*c2);L[3,5]=K*0.5f0
+        L[3,1]=K2*q2-qn*c2;     L[3,2]=-(K2*u-nx*c2);     L[3,3]=-(K2*v-ny*c2);     L[3,4]=-(K2*w-nz*c2);     L[3,5]=K2
         L[4,1]=-ql;             L[4,2]=lx;                L[4,3]=ly;                L[4,4]=lz;                L[4,5]=0.f0
         L[5,1]=-qm;             L[5,2]=mx;                L[5,3]=my;                L[5,4]=mz;                L[5,5]=0.f0
     
@@ -1398,15 +1400,15 @@ function advect_zc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
         nz = A3*s0
     
         if abs(nz) <= abs(ny)
-            ss = sqrt(nx*nx+ny*ny) 
-            lx = -ny/ss
-            ly = nx/ss
+            ss = 1/sqrt(nx*nx+ny*ny) 
+            lx = -ny*ss
+            ly = nx*ss
             lz = 0.f0 
         else 
-            ss = sqrt(nx*nx+nz*nz)
-            lx = -nz/ss
+            ss = 1/sqrt(nx*nx+nz*nz)
+            lx = -nz*ss
             ly = 0.f0   
-            lz = nx/ss
+            lz = nx*ss
         end 
         mx = ny*lz-nz*ly 
         my = nz*lx-nx*lz
@@ -1419,15 +1421,16 @@ function advect_zc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
         c = sqrt(γ*Rg*T)
         c2 = 1/(2*c)
         K = (γ-1)/c^2 
+        K2 = K * 0.5f0
         H = 1/K+q2
     
         L = MMatrix{Ncons, Ncons, Float32, Ncons*Ncons}(undef)
         R = MMatrix{Ncons, Ncons, Float32, Ncons*Ncons}(undef)
         flux = MVector{Ncons, Float32}(undef)
     
-        L[1,1]=K*q2*0.5f0+qn*c2;L[1,2]=-(K*u*0.5f0+nx*c2);L[1,3]=-(K*v*0.5f0+ny*c2);L[1,4]=-(K*w*0.5f0+nz*c2);L[1,5]=K*0.5f0
+        L[1,1]=K2*q2+qn*c2;     L[1,2]=-(K2*u+nx*c2);     L[1,3]=-(K2*v+ny*c2);     L[1,4]=-(K2*w+nz*c2);     L[1,5]=K2
         L[2,1]=1-K*q2;          L[2,2]=K*u;               L[2,3]=K*v;               L[2,4]=K*w;               L[2,5]=-K 
-        L[3,1]=K*q2*0.5f0-qn*c2;L[3,2]=-(K*u*0.5f0-nx*c2);L[3,3]=-(K*v*0.5f0-ny*c2);L[3,4]=-(K*w*0.5f0-nz*c2);L[3,5]=K*0.5f0
+        L[3,1]=K2*q2-qn*c2;     L[3,2]=-(K2*u-nx*c2);     L[3,3]=-(K2*v-ny*c2);     L[3,4]=-(K2*w-nz*c2);     L[3,5]=K2
         L[4,1]=-ql;             L[4,2]=lx;                L[4,3]=ly;                L[4,4]=lz;                L[4,5]=0.f0
         L[5,1]=-qm;             L[5,2]=mx;                L[5,3]=my;                L[5,4]=mz;                L[5,5]=0.f0
     
