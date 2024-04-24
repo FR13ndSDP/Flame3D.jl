@@ -169,6 +169,10 @@ function time_step(rank, comm_cart)
         Q_avg = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
     end
 
+    if filtering && filtering_nonlinear
+        sc = CUDA.zeros(Float32, Nxp, Nyp, Nzp)
+    end
+
     # MPI buffer 
     Qsbuf_hx = zeros(Float32, NG, Ny_tot, Nz_tot, Nprim)
     Qsbuf_hy = zeros(Float32, Nx_tot, NG, Nz_tot, Nprim)
@@ -287,6 +291,32 @@ function time_step(rank, comm_cart)
                            Qsbuf_hy, Qsbuf_dy, Qrbuf_hy, Qrbuf_dy,
                            Qsbuf_hz, Qsbuf_dz, Qrbuf_hz, Qrbuf_dz)
             fillGhost(Q, U, rankx, ranky, inlet)
+        end
+
+        if filtering && tt % filtering_interval == 0
+            copyto!(Un, U)
+            if filtering_nonlinear
+                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock pre_x(Q, sc, filtering_rth)
+                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock filter_x(U, Un, sc, filtering_s0)
+            else
+                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock linearFilter_x(U, Un, filtering_s0)
+            end
+
+            copyto!(Un, U)
+            if filtering_nonlinear
+                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock pre_y(Q, sc, filtering_rth)
+                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock filter_y(U, Un, sc, filtering_s0)
+            else
+                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock linearFilter_y(U, Un, filtering_s0)
+            end
+
+            copyto!(Un, U)
+            if filtering_nonlinear
+                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock pre_z(Q, sc, filtering_rth)
+                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock filter_z(U, Un, sc, filtering_s0)
+            else
+                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock linearFilter_z(U, Un, filtering_s0)
+            end
         end
 
         if tt % 10 == 0 && rank == 0

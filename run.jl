@@ -38,6 +38,13 @@ const sample_step::Int64 = 10                          # sampling interval
 const sample_total::Int64 = 10                         # number of samples
 const sample_index::SVector{3, Int64} = [-1, 130, -1]  # slice index in 3 directions, -1 for no slicing
 
+# filtering
+const filtering::Bool = false              # if do filtering
+const filtering_nonlinear::Bool = false    # if filtering is shock capturing
+const filtering_interval::Int64 = 100      # filtering step interval
+const filtering_rth::Float32 = 1f-5        # filtering threshold for nonlinear
+const filtering_s0::Float32 = 1.f0         # filtering strength
+
 # do not change 
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
 const Nprim::Int64 = 6 # ρ u v w p T
@@ -47,8 +54,11 @@ const splitMethod::String = "SW"    # use SW, else LF
 const hybrid_ϕ1::Float32 = 5f-2     # < ϕ1: UP7
 const hybrid_ϕ2::Float32 = 1.f0     # < ϕ2: WENO7 in FP64
 const hybrid_ϕ3::Float32 = 10.f0    # < ϕ3: WENO5, else NND2
+const Linear_ϕ::Float32 = 0.5f0     # dissipation control for linear scheme
 # adjust this to get mixed upwind-central linear scheme
-const UP7::SVector{7, Float32} = SVector(-0.00714, 0.05952, -0.24048, 0.75952, 0.50952, -0.09048, 0.00954)
+const UP7::SVector{7, Float32} = SVector(-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420)
+const CD6::SVector{7, Float32} = SVector(0, 1/60, -2/15, 37/60, 37/60, -2/15, 1/60)
+const Linear::SVector{7, Float32} = UP7 * Linear_ϕ + CD6 * (1.f0 - Linear_ϕ)
 
 # load mesh info
 const NG::Int64 = h5read("metrics.h5", "NG")

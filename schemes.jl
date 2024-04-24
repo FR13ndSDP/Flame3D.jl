@@ -98,13 +98,13 @@ function advect_x(F, ϕ, S, Fp, Fm, NV)
     WENOϵ1::Float64 = 1e-20
     WENOϵ2::Float32 = 1f-16
 
-    c1::Float32 = UP7[1]
-    c2::Float32 = UP7[2]
-    c3::Float32 = UP7[3]
-    c4::Float32 = UP7[4]
-    c5::Float32 = UP7[5]
-    c6::Float32 = UP7[6]
-    c7::Float32 = UP7[7]
+    c1::Float32 = Linear[1]
+    c2::Float32 = Linear[2]
+    c3::Float32 = Linear[3]
+    c4::Float32 = Linear[4]
+    c5::Float32 = Linear[5]
+    c6::Float32 = Linear[6]
+    c7::Float32 = Linear[7]
 
     @inbounds ss::Float32 = 2/(S[i-1, j, k] + S[i, j, k]) 
 
@@ -303,13 +303,13 @@ function advect_y(F, ϕ, S, Fp, Fm, NV)
     WENOϵ1::Float64 = 1e-20
     WENOϵ2::Float32 = 1f-16
 
-    c1::Float32 = UP7[1]
-    c2::Float32 = UP7[2]
-    c3::Float32 = UP7[3]
-    c4::Float32 = UP7[4]
-    c5::Float32 = UP7[5]
-    c6::Float32 = UP7[6]
-    c7::Float32 = UP7[7]
+    c1::Float32 = Linear[1]
+    c2::Float32 = Linear[2]
+    c3::Float32 = Linear[3]
+    c4::Float32 = Linear[4]
+    c5::Float32 = Linear[5]
+    c6::Float32 = Linear[6]
+    c7::Float32 = Linear[7]
 
     @inbounds ss::Float32 = 2/(S[i, j-1, k] + S[i, j, k]) 
 
@@ -508,13 +508,13 @@ function advect_z(F, ϕ, S, Fp, Fm, NV)
     WENOϵ1::Float64 = 1e-20
     WENOϵ2::Float32 = 1f-16
 
-    c1::Float32 = UP7[1]
-    c2::Float32 = UP7[2]
-    c3::Float32 = UP7[3]
-    c4::Float32 = UP7[4]
-    c5::Float32 = UP7[5]
-    c6::Float32 = UP7[6]
-    c7::Float32 = UP7[7]
+    c1::Float32 = Linear[1]
+    c2::Float32 = Linear[2]
+    c3::Float32 = Linear[3]
+    c4::Float32 = Linear[4]
+    c5::Float32 = Linear[5]
+    c6::Float32 = Linear[6]
+    c7::Float32 = Linear[7]
 
     @inbounds ss::Float32 = 2/(S[i, j, k-1] + S[i, j, k]) 
 
@@ -712,13 +712,13 @@ function advect_xc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
     WENOϵ1::Float64 = 1e-20
     WENOϵ2::Float32 = 1f-16
 
-    c1::Float32 = UP7[1]
-    c2::Float32 = UP7[2]
-    c3::Float32 = UP7[3]
-    c4::Float32 = UP7[4]
-    c5::Float32 = UP7[5]
-    c6::Float32 = UP7[6]
-    c7::Float32 = UP7[7]
+    c1::Float32 = Linear[1]
+    c2::Float32 = Linear[2]
+    c3::Float32 = Linear[3]
+    c4::Float32 = Linear[4]
+    c5::Float32 = Linear[5]
+    c6::Float32 = Linear[6]
+    c7::Float32 = Linear[7]
 
     # Jameson sensor
     @inbounds ϕx = max(ϕ[i-3, j, k], 
@@ -1026,13 +1026,13 @@ function advect_yc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
     WENOϵ1::Float64 = 1e-20
     WENOϵ2::Float32 = 1f-16
 
-    c1::Float32 = UP7[1]
-    c2::Float32 = UP7[2]
-    c3::Float32 = UP7[3]
-    c4::Float32 = UP7[4]
-    c5::Float32 = UP7[5]
-    c6::Float32 = UP7[6]
-    c7::Float32 = UP7[7]
+    c1::Float32 = Linear[1]
+    c2::Float32 = Linear[2]
+    c3::Float32 = Linear[3]
+    c4::Float32 = Linear[4]
+    c5::Float32 = Linear[5]
+    c6::Float32 = Linear[6]
+    c7::Float32 = Linear[7]
 
     # Jameson sensor
     @inbounds ϕx = max(ϕ[i, j-3, k], 
@@ -1342,13 +1342,13 @@ function advect_zc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
     WENOϵ1::Float64 = 1e-20
     WENOϵ2::Float32 = 1f-16
 
-    c1::Float32 = UP7[1]
-    c2::Float32 = UP7[2]
-    c3::Float32 = UP7[3]
-    c4::Float32 = UP7[4]
-    c5::Float32 = UP7[5]
-    c6::Float32 = UP7[6]
-    c7::Float32 = UP7[7]
+    c1::Float32 = Linear[1]
+    c2::Float32 = Linear[2]
+    c3::Float32 = Linear[3]
+    c4::Float32 = Linear[4]
+    c5::Float32 = Linear[5]
+    c6::Float32 = Linear[6]
+    c7::Float32 = Linear[7]
 
     # Jameson sensor
     @inbounds ϕx = max(ϕ[i, j, k-3], 
