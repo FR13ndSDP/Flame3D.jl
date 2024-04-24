@@ -166,6 +166,10 @@ function time_step(rank, comm_cart)
         Q_avg = AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
     end
 
+    if filtering && filtering_nonlinear
+        sc = AMDGPU.zeros(Float32, Nxp, Nyp, Nzp)
+    end
+
     # MPI buffer 
     Qsbuf_hx = zeros(Float32, NG, Ny_tot, Nz_tot, Nprim)
     Qsbuf_hy = zeros(Float32, Nx_tot, NG, Nz_tot, Nprim)
@@ -278,6 +282,32 @@ function time_step(rank, comm_cart)
                            Qsbuf_hy, Qsbuf_dy, Qrbuf_hy, Qrbuf_dy,
                            Qsbuf_hz, Qsbuf_dz, Qrbuf_hz, Qrbuf_dz)
             fillGhost(Q, U, rankx, ranky, inlet)
+        end
+
+        if filtering && tt % filtering_interval == 0
+            copyto!(Un, U)
+            if filtering_nonlinear
+                @roc groupsize=nthreads gridsize=ngroups pre_x(Q, sc, filtering_rth)
+                @roc groupsize=nthreads gridsize=ngroups filter_x(U, Un, sc, filtering_s0)
+            else
+                @roc groupsize=nthreads gridsize=ngroups linearFilter_x(U, Un, filtering_s0)
+            end
+
+            copyto!(Un, U)
+            if filtering_nonlinear
+                @roc groupsize=nthreads gridsize=ngroups pre_y(Q, sc, filtering_rth)
+                @roc groupsize=nthreads gridsize=ngroups filter_y(U, Un, sc, filtering_s0)
+            else
+                @roc groupsize=nthreads gridsize=ngroups linearFilter_y(U, Un, filtering_s0)
+            end
+
+            copyto!(Un, U)
+            if filtering_nonlinear
+                @roc groupsize=nthreads gridsize=ngroups pre_z(Q, sc, filtering_rth)
+                @roc groupsize=nthreads gridsize=ngroups filter_z(U, Un, sc, filtering_s0)
+            else
+                @roc groupsize=nthreads gridsize=ngroups linearFilter_z(U, Un, filtering_s0)
+            end
         end
 
         if tt % 100 == 0 && rank == 0
