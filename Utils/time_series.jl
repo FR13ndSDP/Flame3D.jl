@@ -5,8 +5,8 @@ fname = "./SAMPLE/collection-z.h5"
 data = h5read(fname, "collection")
 
 const time_step = 1.5f-8
-const interval = 100
-const total = 1000
+const sample_step = 100
+const sample_total = 100
 
 # mesh cordinate
 # x,y,z = get_coordinates(vtk)
@@ -21,7 +21,7 @@ y = fid["y"][1+NG:Nx+NG, 1+NG:Ny+NG, 50+NG]
 z = fid["z"][1+NG:Nx+NG, 1+NG:Ny+NG, 50+NG]
 close(fid)
 
-times = range(time_step, time_step*total; step=time_step*interval)
+times = range(time_step, time_step*sample_step*sample_total; step=time_step*sample_step)
 
 saved_files = paraview_collection("./SAMPLE/full_simulation") do pvd
     for (n, time) ∈ enumerate(times)
