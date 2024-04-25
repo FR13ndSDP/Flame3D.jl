@@ -7,7 +7,6 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --ntasks-per-socket=1
 #SBATCH -p blcy
-#SBATCH --mem=64G
 #SBATCH -o slurm-out
 #SBATCH -e slurm-err
 

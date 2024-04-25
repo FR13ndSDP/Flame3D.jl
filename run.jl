@@ -81,10 +81,8 @@ MPI.Init()
 comm = MPI.COMM_WORLD
 rank = MPI.Comm_rank(comm)
 nGPU = MPI.Comm_size(comm)
-# this is better, but does not work on the dongfang HPC after system update
-# shmcomm = MPI.Comm_split_type(comm, MPI.COMM_TYPE_SHARED, rank)
-# local_rank = MPI.Comm_rank(shmcomm)
-local_rank = rank % 4
+shmcomm = MPI.Comm_split_type(comm, MPI.COMM_TYPE_SHARED, rank)
+local_rank = MPI.Comm_rank(shmcomm)
 comm_cart = MPI.Cart_create(comm, Nprocs; periodic=Iperiodic)
 if nGPU != prod(Nprocs) && rank == 0
     error("Oops, nGPU ≠ $Nprocs\n")
