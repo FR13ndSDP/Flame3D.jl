@@ -212,10 +212,10 @@ function time_step(rank, comm_cart)
             # collect on rank 0
             if rank == 0
                 collectionx = zeros(Ny, Nz, Nprim, sample_total)
-                rank_listx = MPI.gather(valid_rankx, comm_cart)
+                rank_listx = MPI.Gather(valid_rankx, comm_cart)
                 rank_listx = filter!(x->x!=-1, rank_listx)
             else
-                MPI.gather(valid_rankx, comm_cart)
+                MPI.Gather(valid_rankx, comm_cart)
             end
         end
 
@@ -230,10 +230,10 @@ function time_step(rank, comm_cart)
             # collect on rank 0
             if rank == 0
                 collectiony = zeros(Nx, Nz, Nprim, sample_total)
-                rank_listy = MPI.gather(valid_ranky, comm_cart)
+                rank_listy = MPI.Gather(valid_ranky, comm_cart)
                 rank_listy = filter!(x->x!=-1, rank_listy)
             else
-                MPI.gather(valid_ranky, comm_cart)
+                MPI.Gather(valid_ranky, comm_cart)
             end
         end
 
@@ -248,10 +248,10 @@ function time_step(rank, comm_cart)
             # collect on rank 0
             if rank == 0
                 collectionz = zeros(Nx, Ny, Nprim, sample_total)
-                rank_listz = MPI.gather(valid_rankz, comm_cart)
+                rank_listz = MPI.Gather(valid_rankz, comm_cart)
                 rank_listz = filter!(x->x!=-1, rank_listz)
             else
-                MPI.gather(valid_rankz, comm_cart)
+                MPI.Gather(valid_rankz, comm_cart)
             end
         end
     end
