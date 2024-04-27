@@ -351,7 +351,7 @@ function time_step(rank, comm_cart)
                     printstyled("average done\n", color=:green)
                 end
 
-                averageFile(tt, Q_avg, Q_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, plt_files, extents)                
+                averageFile(tt, Q_avg, Q_h, comm_cart, rankx, ranky, rankz)                
             end
         end
 

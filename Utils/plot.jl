@@ -1,12 +1,10 @@
-using ReadVTK
 using PyCall
-using DelimitedFiles
+using HDF5
 
-# using HDF5
-
-# const NG::Int64 = h5read("../metrics.h5", "NG")
-
-fname = "./avg-50000.pvts"
+const NG::Int64 = h5read("./metrics.h5", "NG")
+const Nx::Int64 = h5read("./metrics.h5", "Nx")
+const Ny::Int64 = h5read("./metrics.h5", "Ny")
+const Nz::Int64 = h5read("./metrics.h5", "Nz")
 
 plt = pyimport("matplotlib.pyplot")
 plt.rc("text", usetex= false)
@@ -14,22 +12,20 @@ plt.rc("font", family= "sans-serif")
 # plt.rc("font", sans-serif = "Helvetica")
 plt.rc("font", size=15)
 
-vtk = PVTKFile(fname)
+fid = h5open("metrics.h5", "r")
+x = fid["x"][1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+y = fid["y"][1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+z = fid["z"][1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+close(fid)
 
-# point data
-p_data = get_point_data(vtk)
-
-# mesh cordinate
-x,y,z = get_coordinates(vtk)
-Nx, Ny, Nz = size(x)
-
+Q = h5read("avg-100.h5", "avg")
 
 # variables
-p = get_data_reshaped(p_data["p"])
-u = get_data_reshaped(p_data["u"])
-v = get_data_reshaped(p_data["v"])
-T = get_data_reshaped(p_data["T"])
-ρ = get_data_reshaped(p_data["rho"])
+p = @view Q[:, :, :, 5]
+u = @view Q[:, :, :, 2]
+v = @view Q[:, :, :, 3]
+T = @view Q[:, :, :, 6]
+ρ = @view Q[:, :, :, 1]
 
 pw = p[:, 1, :]
 p∞ = sum(p[1, Ny, :])/Nz
@@ -55,11 +51,9 @@ id2 = partialsortperm(abs.(uy.-u∞*0.99), 1)
 δ = y[id, id2, 1]
 
 # pw plot
-dns = readdlm("./SCU-benchmark/dns-p.dat", ',', Float32)
 plt.figure(figsize=(20,10))
 plt.subplot(2, 2, 1)
 plt.plot(x1d[1:Nx-50]./δ, pw1d[1:Nx-50])
-plt.plot(dns[:, 1], dns[:, 2], "+")
 plt.xlim([-10, 6])
 plt.xlabel(raw"$x/\delta$")
 plt.ylabel(raw"$p_w/p_{\infty}$")
@@ -67,11 +61,9 @@ plt.title("pw")
 # plt.show()
 
 # u plot at -30mm
-dns = readdlm("./SCU-benchmark/dns-u.dat", ',', Float32)
 plt.subplot(2,2,2)
 yy = y[id, :, 1]./δ
 plt.plot(yy, uy/u∞)
-plt.plot(dns[:, 1], dns[:, 2], "+")
 plt.xlim([0, 1])
 plt.xlabel(raw"$y/\delta$")
 plt.ylabel(raw"$U/U_{\infty}$")
@@ -118,10 +110,8 @@ for i = idcorner+1:Nx
     cf[i] = μ*(u1d[i]*cos(24/180*π) + v1d[i]*sin(24/180*π))/((y[i, 2, 1]-y[i, 1, 1])/cos(24/180*π))/(0.5*ρ∞*u∞^2)
 end
 
-dns = readdlm("./SCU-benchmark/dns-cf.dat", ',', Float32)
 plt.subplot(2,2,3)
 plt.plot(x1d[1:Nx-50]*1000, cf[1:Nx-50])
-plt.plot(dns[:, 1], dns[:, 2], "+")
 plt.xlabel(raw"$x/mm$")
 plt.ylabel(raw"$C_f$")
 # plt.show()
