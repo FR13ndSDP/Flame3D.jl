@@ -349,6 +349,7 @@ function time_step(rank, comm_cart)
             if tt == avg_step*avg_total
                 if rank == 0
                     printstyled("average done\n", color=:green)
+                    mkpath("./AVG")
                 end
 
                 averageFile(tt, Q_avg, Q_h, comm_cart, rankx, ranky, rankz)                

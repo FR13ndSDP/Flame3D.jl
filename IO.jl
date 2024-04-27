@@ -4,9 +4,7 @@ function plotFile(tt,  Q, ϕ, Q_h, ϕ_h, x_h, y_h, z_h, rank, rankx, ranky, rank
         copyto!(Q_h, Q)
         copyto!(ϕ_h, ϕ)
 
-        # visualization file, in Float32
-        # mkpath("./PLT")
-        fname::String = string("./plt", "-", tt)
+        fname::String = string("./plt-", tt)
         
         xindex = ifelse(rankx == Nprocs[1]-1, 1+NG:Nxp+NG, 1+NG:Nxp+NG+1)
         yindex = ifelse(ranky == Nprocs[2]-1, 1+NG:Nyp+NG, 1+NG:Nyp+NG+1)
@@ -49,7 +47,7 @@ function checkpointFile(tt, Q_h, Q, comm_cart, rank)
         if rank == 0
             mkpath("./CHK")
         end
-        chkname::String = string("./CHK/chk", tt, ".h5")
+        chkname::String = string("./CHK/chk-", tt, ".h5")
         h5open(chkname, "w", comm_cart) do f
             dset1 = create_dataset(
                 f,
@@ -81,7 +79,7 @@ function averageFile(tt, Q_avg, Q_h, comm_cart, rankx, ranky, rankz)
     loz = rankz*Nzp+1
     hiz = (rankz+1)*Nzp
 
-    chkname::String = string("./avg-", tt, ".h5")
+    chkname::String = string("./AVG/avg-", tt, ".h5")
     h5open(chkname, "w", comm_cart) do f
         dset1 = create_dataset(
             f,
