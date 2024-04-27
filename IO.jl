@@ -4,9 +4,7 @@ function plotFile(tt, Q, ϕ, Q_h, ϕ_h, x_h, y_h, z_h, rank, rankx, ranky, rankz
         copyto!(Q_h, Q)
         copyto!(ϕ_h, ϕ)
 
-        # visualization file, in Float32
-        # mkpath("./PLT")
-        fname::String = string("./plt", "-", tt)
+        fname::String = string("./plt-", tt)
         
         xindex = ifelse(rankx == Nprocs[1]-1, 1+NG:Nxp+NG, 1+NG:Nxp+NG+1)
         yindex = ifelse(ranky == Nprocs[2]-1, 1+NG:Nyp+NG, 1+NG:Nyp+NG+1)
@@ -47,10 +45,9 @@ function checkpointFile(tt, Q_h, Q, comm_cart, rank)
         copyto!(Q_h, Q)
 
         if rank == 0
-            mkpath("./CHK/")
+            mkpath("./CHK")
         end
- 
-        chkname::String = string("./CHK/chk", tt, ".h5")
+        chkname::String = string("./CHK/chk-", tt, ".h5")
         h5open(chkname, "w", comm_cart) do f
             dset1 = create_dataset(
                 f,
@@ -67,36 +64,35 @@ function checkpointFile(tt, Q_h, Q, comm_cart, rank)
     end
 end
 
-function averageFile(tt, Q_avg, Q_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, plt_files, extents)
-    # mkpath("./PLT")
-    avgname::String = string("./avg", "-", tt)
-
+function averageFile(tt, Q_avg, Q_h, comm_cart, rankx, ranky, rankz)
     copyto!(Q_h, Q_avg)
 
-    xindex = ifelse(rankx == Nprocs[1]-1, 1+NG:Nxp+NG, 1+NG:Nxp+NG+1)
-    yindex = ifelse(ranky == Nprocs[2]-1, 1+NG:Nyp+NG, 1+NG:Nyp+NG+1)
-    zindex = ifelse(rankz == Nprocs[3]-1, 1+NG:Nzp+NG, 1+NG:Nzp+NG+1)
+    avg = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, :]
 
-    x_ng = @view x_h[xindex, yindex, zindex]
-    y_ng = @view y_h[xindex, yindex, zindex]
-    z_ng = @view z_h[xindex, yindex, zindex]
-    
-    rho = @view Q_h[xindex, yindex, zindex, 1]
-    u   = @view Q_h[xindex, yindex, zindex, 2]
-    v   = @view Q_h[xindex, yindex, zindex, 3]
-    w   = @view Q_h[xindex, yindex, zindex, 4]
-    p =   @view Q_h[xindex, yindex, zindex, 5]
-    T =   @view Q_h[xindex, yindex, zindex, 6]
+    # global indices no ghost
+    lox = rankx*Nxp+1
+    hix = (rankx+1)*Nxp
 
-    plt_files[rank+1] = pvtk_grid(avgname, x_ng, y_ng, z_ng; part=rank+1, extents=extents, compress=plt_compress_level) do pvtk
-        pvtk["rho"] = rho
-        pvtk["u"] = u
-        pvtk["v"] = v
-        pvtk["w"] = w
-        pvtk["p"] = p
-        pvtk["T"] = T
-        pvtk["Time", VTKFieldData()] = dt * tt
-    end 
+    loy = ranky*Nyp+1
+    hiy = (ranky+1)*Nyp
+
+    loz = rankz*Nzp+1
+    hiz = (rankz+1)*Nzp
+
+    chkname::String = string("./AVG/avg-", tt, ".h5")
+    h5open(chkname, "w", comm_cart) do f
+        dset1 = create_dataset(
+            f,
+            "avg",
+            datatype(Float32),
+            dataspace(Nx, Ny, Nz, Nprim);
+            chunk=(Nxp, Nyp, Nzp, Nprim),
+            shuffle=chk_shuffle,
+            compress=chk_compress_level,
+            dxpl_mpio=:collective
+        )
+        dset1[lox:hix, loy:hiy, loz:hiz, :] = avg
+    end
 end
 
 # provide debug output with ghost cells

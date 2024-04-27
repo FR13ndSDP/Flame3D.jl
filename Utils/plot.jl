@@ -1,12 +1,13 @@
-using ReadVTK
 using PyCall
 using DelimitedFiles
+using HDF5
 
-# using HDF5
+const NG::Int64 = h5read("./metrics.h5", "NG")
+const Nx::Int64 = h5read("./metrics.h5", "Nx")
+const Ny::Int64 = h5read("./metrics.h5", "Ny")
+const Nz::Int64 = h5read("./metrics.h5", "Nz")
 
-# const NG::Int64 = h5read("../metrics.h5", "NG")
-
-fname = "./avg-50000.pvts"
+fname = "./avg-50000.h5"
 
 plt = pyimport("matplotlib.pyplot")
 plt.rc("text", usetex= false)
@@ -14,22 +15,18 @@ plt.rc("font", family= "sans-serif")
 # plt.rc("font", sans-serif = "Helvetica")
 plt.rc("font", size=15)
 
-vtk = PVTKFile(fname)
+fid = h5open("./metrics.h5", "r")
+x = fid["x"][1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+y = fid["y"][1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+z = fid["z"][1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+close(fid)
 
-# point data
-p_data = get_point_data(vtk)
-
-# mesh cordinate
-x,y,z = get_coordinates(vtk)
-Nx, Ny, Nz = size(x)
-
-
-# variables
-p = get_data_reshaped(p_data["p"])
-u = get_data_reshaped(p_data["u"])
-v = get_data_reshaped(p_data["v"])
-T = get_data_reshaped(p_data["T"])
-ρ = get_data_reshaped(p_data["rho"])
+Q = h5read(fname, "avg")
+p = @view Q[:, :, :, 5]
+u = @view Q[:, :, :, 2]
+v = @view Q[:, :, :, 3]
+T = @view Q[:, :, :, 6]
+ρ = @view Q[:, :, :, 1]
 
 pw = p[:, 1, :]
 p∞ = sum(p[1, Ny, :])/Nz
