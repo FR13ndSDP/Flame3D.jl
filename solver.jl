@@ -1,5 +1,4 @@
 using MPI
-using WriteVTK
 using StaticArrays, AMDGPU
 using HDF5, DelimitedFiles
 using Dates, Printf
