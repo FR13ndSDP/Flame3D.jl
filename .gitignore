@@ -3,6 +3,7 @@
 *.log
 *.jld2
 *.xdmf
+*.xmf
 *.txt
 *.h5
 *.so
