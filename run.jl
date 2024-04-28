@@ -13,7 +13,7 @@ const T_s::Float32 = 110.4
 const Pr::Float32 = 0.72
 
 # flow control
-const Nprocs::SVector{3, Int64} = [2,2,1] # number of GPUs
+const Nprocs::SVector{3, Int64} = [1,1,1] # number of GPUs
 const Iperiodic = (false, false, false)
 const dt::Float32 = 1.5f-8             # dt for simulation, make CFL < 1
 const Time::Float32 = 1f-3           # total simulation time
@@ -27,8 +27,8 @@ const plt_compress_level::Int64 = 1  # output file compression level 0-9, 0 for 
 
 const chk_out::Bool = false           # if checkpoint is made on save
 const step_chk::Int64 = 2000          # how many steps to save chk
-const chk_compress_level::Int64 = 1  # checkpoint file compression level 0-9, 0 for no compression
 const chk_shuffle::Bool = true       # shuffle to make compress more efficient
+const chk_compress_level::Int64 = 1  # checkpoint file compression level 0-9, 0 for no compression
 const restart::String = "none"     # restart use checkpoint, file name "*.h5" or "none"
 
 const average::Bool = false                 # if do average
@@ -58,7 +58,7 @@ const splitMethod::String = "SW"    # use SW, else LF
 const hybrid_ϕ1::Float32 = 5f-2     # < ϕ1: UP7
 const hybrid_ϕ2::Float32 = 1.f0     # < ϕ2: WENO7 in FP64
 const hybrid_ϕ3::Float32 = 10.f0    # < ϕ3: WENO5, else NND2
-const Linear_ϕ::Float32 = 0.5f0     # dissipation control for linear scheme
+const Linear_ϕ::Float32 = 1.f0     # dissipation control for linear scheme
 # adjust this to get mixed upwind-central linear scheme
 const UP7::SVector{7, Float32} = SVector(-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420)
 const CD6::SVector{7, Float32} = SVector(0, 1/60, -2/15, 37/60, 37/60, -2/15, 1/60)
