@@ -73,23 +73,25 @@ function time_step(rank, comm_cart)
     loz = rankz*Nzp+1
     hiz = (rankz+1)*Nzp+2*NG
 
-    # prepare pvtk metadata, kind of ugly
-    total_ranks = prod(Nprocs)
-    plt_files = Vector{Vector{String}}(undef, total_ranks)  # files saved by each process
-    extents = Vector{Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}}(undef, total_ranks)
-    for n = 1:total_ranks
-        (is, js, ks) = MPI.Cart_coords(comm_cart, n-1)
+    if plt_vtk
+        # prepare pvtk metadata, kind of ugly
+        total_ranks = prod(Nprocs)
+        plt_files = Vector{Vector{String}}(undef, total_ranks)  # files saved by each process
+        extents = Vector{Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}}(undef, total_ranks)
+        for n = 1:total_ranks
+            (is, js, ks) = MPI.Cart_coords(comm_cart, n-1)
 
-        lx = is*Nxp+1
-        hx = min((is+1)*Nxp+1, Nx)
-    
-        ly = js*Nyp+1
-        hy = min((js+1)*Nyp+1, Ny)
-    
-        lz = ks*Nzp+1
-        hz = min((ks+1)*Nzp+1, Nz)
+            lx = is*Nxp+1
+            hx = min((is+1)*Nxp+1, Nx)
+        
+            ly = js*Nyp+1
+            hy = min((js+1)*Nyp+1, Ny)
+        
+            lz = ks*Nzp+1
+            hz = min((ks+1)*Nzp+1, Nz)
 
-        extents[n] = (lx:hx, ly:hy, lz:hz)
+            extents[n] = (lx:hx, ly:hy, lz:hz)
+        end
     end
 
     if restart[end-2:end] == ".h5"
@@ -336,7 +338,11 @@ function time_step(rank, comm_cart)
             end
         end
 
-        plotFile(tt, Q, ϕ, Q_h, ϕ_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, plt_files, extents)
+        if plt_vtk
+            plotFile(tt, Q, ϕ, Q_h, ϕ_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, plt_files, extents)
+        else
+            plotFile_h5(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankx)
+        end
 
         checkpointFile(tt, Q_h, Q, comm_cart, rank)
 

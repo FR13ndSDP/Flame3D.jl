@@ -19,6 +19,7 @@ const dt::Float32 = 1.5f-8             # dt for simulation, make CFL < 1
 const Time::Float32 = 1f-3           # total simulation time
 const maxStep::Int64 = 100         # max steps to run
 
+const plt_vtk::Bool = true           # if use vtk for plt output
 const plt_out::Bool = true           # if output plt file
 const step_plt::Int64 = 1000          # how many steps to save plt
 const plt_compress_level::Int64 = 1  # output file compression level 0-9, 0 for no compression

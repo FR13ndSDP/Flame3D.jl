@@ -35,6 +35,59 @@ function plotFile(tt, Q, ϕ, Q_h, ϕ_h, x_h, y_h, z_h, rank, rankx, ranky, rankz
     end
 end
 
+function plotFile_h5(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
+    # Output
+    if plt_out && (tt % step_plt == 0 || abs(Time-dt*tt) < dt || tt == maxStep)
+        copyto!(Q_h, Q)
+        copyto!(ϕ_h, ϕ)
+
+        if rank == 0
+            mkpath("./PLT")
+        end
+
+        primitives = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, :]
+
+        ϕ_ng = @view ϕ_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
+
+        # global indices no ghost
+        lox = rankx*Nxp+1
+        hix = (rankx+1)*Nxp
+
+        loy = ranky*Nyp+1
+        hiy = (ranky+1)*Nyp
+
+        loz = rankz*Nzp+1
+        hiz = (rankz+1)*Nzp
+
+        fname::String = string("./PLT/plt-", tt, ".h5")
+        h5open(fname, "w", comm_cart) do f
+            dset1 = create_dataset(
+                f,
+                "Q",
+                datatype(Float32),
+                dataspace(Nx, Ny, Nz, Nprim);
+                chunk=(Nxp, Nyp, Nzp, Nprim),
+                shuffle=chk_shuffle,
+                compress=chk_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset1[lox:hix, loy:hiy, loz:hiz, :] = primitives
+            dset2 = create_dataset(
+                f,
+                "phi",
+                datatype(Float32),
+                dataspace(Nx, Ny, Nz);
+                chunk=(Nxp, Nyp, Nzp),
+                shuffle=chk_shuffle,
+                compress=chk_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset2[lox:hix, loy:hiy, loz:hiz] = ϕ_ng
+            f["Time"] = dt * tt
+        end
+    end
+end
+
 function checkpointFile(tt, Q_h, Q, comm_cart, rank)
     # restart file, in Float32
     if chk_out && (tt % step_chk == 0 || abs(Time-dt*tt) < dt || tt == maxStep)
@@ -79,8 +132,8 @@ function averageFile(tt, Q_avg, Q_h, comm_cart, rankx, ranky, rankz)
     loz = rankz*Nzp+1
     hiz = (rankz+1)*Nzp
 
-    chkname::String = string("./AVG/avg-", tt, ".h5")
-    h5open(chkname, "w", comm_cart) do f
+    fname::String = string("./AVG/avg-", tt, ".h5")
+    h5open(fname, "w", comm_cart) do f
         dset1 = create_dataset(
             f,
             "avg",
