@@ -341,7 +341,7 @@ function time_step(rank, comm_cart)
         if plt_vtk
             plotFile(tt, Q, ϕ, Q_h, ϕ_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, plt_files, extents)
         else
-            plotFile_h5(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankx)
+            plotFile_h5(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
         end
 
         checkpointFile(tt, Q_h, Q, comm_cart, rank)
