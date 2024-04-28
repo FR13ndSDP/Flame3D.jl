@@ -83,7 +83,6 @@ function plotFile_h5(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
                 dxpl_mpio=:collective
             )
             dset2[lox:hix, loy:hiy, loz:hiz] = ϕ_ng
-            f["Time"] = dt * tt
         end
     end
 end
