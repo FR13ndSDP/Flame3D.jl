@@ -250,7 +250,7 @@ end
 
 # XDMF metadata, note that julia in column major
 function write_XDMF(tt)
-    fname = string("./PLT/plt-", tt, ".xdmf")
+    fname = string("./PLT/plt-", tt, ".xmf")
     h5name = string("plt-", tt, ".h5")
     time = tt*dt
 
@@ -259,8 +259,8 @@ function write_XDMF(tt)
         write(f, "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n")
         write(f, "<Xdmf xmlns:xi=\"http://www.w3.org/2003/XInclude\" Version=\"2.2\">\n")
         write(f, " <Domain>\n")
-        write(f, " <Time Value=\"$time\" />\n")
         write(f, "  <Grid Name=\"Grid\" GridType=\"Uniform\">\n")
+        write(f, "  <Time Value=\"$time\" />\n")
         write(f, "   <Topology TopologyType=\"3DSMesh\" NumberOfElements=\"$Nz $Ny $Nx\" />\n")
         write(f, "   <Geometry GeometryType=\"XYZ\">\n")
         write(f, "   <DataItem Name=\"coords\" Dimensions=\"$Nz $Ny $Nx 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
