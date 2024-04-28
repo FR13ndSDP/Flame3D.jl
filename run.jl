@@ -19,6 +19,7 @@ const dt::Float32 = 1.5f-8             # dt for simulation, make CFL < 1
 const Time::Float32 = 1f-3           # total simulation time
 const maxStep::Int64 = 100         # max steps to run
 
+const plt_vtk::Bool = false          # if use vtk for plt output
 const plt_out::Bool = true           # if output plt file
 const step_plt::Int64 = 1000          # how many steps to save plt
 const plt_compress_level::Int64 = 1  # output file compression level 0-9, 0 for no compression
@@ -54,7 +55,7 @@ const splitMethod::String = "SW"    # use SW, else LF
 const hybrid_ϕ1::Float32 = 5f-2     # < ϕ1: UP7
 const hybrid_ϕ2::Float32 = 1.f0     # < ϕ2: WENO7 in FP64
 const hybrid_ϕ3::Float32 = 10.f0    # < ϕ3: WENO5, else NND2
-const Linear_ϕ::Float32 = 0.5f0     # dissipation control for linear scheme
+const Linear_ϕ::Float32 = 1.f0     # dissipation control for linear scheme
 # adjust this to get mixed upwind-central linear scheme
 const UP7::SVector{7, Float32} = SVector(-3/420, 25/420, -101/420, 319/420, 214/420, -38/420, 4/420)
 const CD6::SVector{7, Float32} = SVector(0, 1/60, -2/15, 37/60, 37/60, -2/15, 1/60)
