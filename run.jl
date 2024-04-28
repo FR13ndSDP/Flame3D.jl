@@ -13,15 +13,16 @@ const T_s::Float32 = 110.4
 const Pr::Float32 = 0.72
 
 # flow control
-const Nprocs::SVector{3, Int64} = [1,1,1] # number of GPUs
+const Nprocs::SVector{3, Int64} = [2,2,1] # number of GPUs
 const Iperiodic = (false, false, false)
 const dt::Float32 = 1.5f-8             # dt for simulation, make CFL < 1
 const Time::Float32 = 1f-3           # total simulation time
 const maxStep::Int64 = 100         # max steps to run
 
-const plt_vtk::Bool = true           # if use vtk for plt output
+const plt_xdmf::Bool = true         # if use HDF5+XDMF for plt output
 const plt_out::Bool = true           # if output plt file
-const step_plt::Int64 = 1000          # how many steps to save plt
+const step_plt::Int64 = 10          # how many steps to save plt
+const plt_shuffle::Bool = true       # shuffle to make compress more efficient
 const plt_compress_level::Int64 = 1  # output file compression level 0-9, 0 for no compression
 
 const chk_out::Bool = false           # if checkpoint is made on save
@@ -33,6 +34,8 @@ const restart::String = "none"     # restart use checkpoint, file name "*.h5" or
 const average::Bool = false                 # if do average
 const avg_step::Int64 = 10                  # average interval
 const avg_total::Int64 = 1000               # total number of samples
+const avg_shuffle::Bool = true       # shuffle to make compress more efficient
+const avg_compress_level::Int64 = 1  # output file compression level 0-9, 0 for no compression
 
 const sample::Bool = false                             # if do sampling (slice)
 const sample_step::Int64 = 10                          # sampling interval

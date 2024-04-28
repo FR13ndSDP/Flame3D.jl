@@ -2,6 +2,7 @@
 *.pvts
 *.log
 *.jld2
+*.xdmf
 *.txt
 *.h5
 *.so
