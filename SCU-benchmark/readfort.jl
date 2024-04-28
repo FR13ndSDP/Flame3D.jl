@@ -138,6 +138,10 @@ function computeMetrics(x,y,z)
     dηdz = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
     dζdz = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
     J  = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    coords = zeros(Float32, 3, Nx_tot, Ny_tot, Nz_tot)
+    coords[1, :, :, :] = x
+    coords[2, :, :, :] = y
+    coords[3, :, :, :] = z
 
     @inbounds for k ∈ 1:Nz_tot, j ∈ 1:Ny_tot, i ∈ 4:Nx_tot-3
         dxdξ[i, j, k] = CD6(@view x[i-3:i+3, j, k])
@@ -222,9 +226,7 @@ function computeMetrics(x,y,z)
         file["dζdy", compress=compress_level] = dζdy
         file["dζdz", compress=compress_level] = dζdz
         file["J", compress=compress_level] = J
-        file["x", compress=compress_level] = x
-        file["y", compress=compress_level] = y
-        file["z", compress=compress_level] = z
+        file["coords", compress=compress_level] = coords
     end
 
     if vis

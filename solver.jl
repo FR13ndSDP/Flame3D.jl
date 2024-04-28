@@ -70,27 +70,6 @@ function time_step(rank, comm_cart)
     loz = rankz*Nzp+1
     hiz = (rankz+1)*Nzp+2*NG
 
-    if plt_vtk
-        # prepare pvtk metadata, kind of ugly
-        total_ranks = prod(Nprocs)
-        plt_files = Vector{Vector{String}}(undef, total_ranks)  # files saved by each process
-        extents = Vector{Tuple{UnitRange{Int64}, UnitRange{Int64}, UnitRange{Int64}}}(undef, total_ranks)
-        for n = 1:total_ranks
-            (is, js, ks) = MPI.Cart_coords(comm_cart, n-1)
-
-            lx = is*Nxp+1
-            hx = min((is+1)*Nxp+1, Nx)
-        
-            ly = js*Nyp+1
-            hy = min((js+1)*Nyp+1, Ny)
-        
-            lz = ks*Nzp+1
-            hz = min((ks+1)*Nzp+1, Nz)
-
-            extents[n] = (lx:hx, ly:hy, lz:hz)
-        end
-    end
-
     if restart[end-2:end] == ".h5"
         if rank == 0
             printstyled("Restart\n", color=:yellow)
@@ -130,9 +109,7 @@ function time_step(rank, comm_cart)
     dζdz_h = fid["dζdz"][lox:hix, loy:hiy, loz:hiz]
 
     J_h = fid["J"][lox:hix, loy:hiy, loz:hiz] 
-    x_h = fid["x"][lox:hix, loy:hiy, loz:hiz] 
-    y_h = fid["y"][lox:hix, loy:hiy, loz:hiz] 
-    z_h = fid["z"][lox:hix, loy:hiy, loz:hiz]
+    coords_h = fid["coords"][:, lox:hix, loy:hiy, loz:hiz] 
     close(fid)
 
     # move to device memory
@@ -329,8 +306,8 @@ function time_step(rank, comm_cart)
             end
         end
 
-        if plt_vtk
-            plotFile(tt, Q, ϕ, Q_h, ϕ_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, plt_files, extents)
+        if plt_xdmf
+            plotFile_xdmf(tt, Q, ϕ, Q_h, ϕ_h, coords_h, comm_cart, rank, rankx, ranky, rankz)
         else
             plotFile_h5(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
         end

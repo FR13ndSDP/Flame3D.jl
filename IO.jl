@@ -1,37 +1,126 @@
-function plotFile(tt, Q, ϕ, Q_h, ϕ_h, x_h, y_h, z_h, rank, rankx, ranky, rankz, plt_files, extents)
+function plotFile_xdmf(tt, Q, ϕ, Q_h, ϕ_h, coords_h, comm_cart, rank, rankx, ranky, rankz)
     # Output
     if plt_out && (tt % step_plt == 0 || abs(Time-dt*tt) < dt || tt == maxStep)
         copyto!(Q_h, Q)
         copyto!(ϕ_h, ϕ)
 
-        fname::String = string("./plt-", tt)
-        
-        xindex = ifelse(rankx == Nprocs[1]-1, 1+NG:Nxp+NG, 1+NG:Nxp+NG+1)
-        yindex = ifelse(ranky == Nprocs[2]-1, 1+NG:Nyp+NG, 1+NG:Nyp+NG+1)
-        zindex = ifelse(rankz == Nprocs[3]-1, 1+NG:Nzp+NG, 1+NG:Nzp+NG+1)
+        if rank == 0
+            mkpath("./PLT")
+            write_XDMF(tt)
+        end
 
-        rho = @view Q_h[xindex, yindex, zindex, 1]
-        u   = @view Q_h[xindex, yindex, zindex, 2]
-        v   = @view Q_h[xindex, yindex, zindex, 3]
-        w   = @view Q_h[xindex, yindex, zindex, 4]
-        p   = @view Q_h[xindex, yindex, zindex, 5]
-        T   = @view Q_h[xindex, yindex, zindex, 6]
+        ρ = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 1]
+        u = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 2]
+        v = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 3]
+        w = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 4]
+        p = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 5]
+        T = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 6]
 
-        ϕ_ng = @view ϕ_h[xindex, yindex, zindex]
-        x_ng = @view x_h[xindex, yindex, zindex]
-        y_ng = @view y_h[xindex, yindex, zindex]
-        z_ng = @view z_h[xindex, yindex, zindex]
+        ϕ_ng = @view ϕ_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
 
-        plt_files[rank+1] = pvtk_grid(fname, x_ng, y_ng, z_ng; part=rank+1, extents=extents, compress=plt_compress_level) do pvtk
-            pvtk["rho"] = rho
-            pvtk["u"] = u
-            pvtk["v"] = v
-            pvtk["w"] = w
-            pvtk["p"] = p
-            pvtk["T"] = T
-            pvtk["phi"] = ϕ_ng
-            pvtk["Time", VTKFieldData()] = dt * tt
-        end 
+        coords_ng = @view coords_h[:, 1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
+
+        # global indices no ghost
+        lox = rankx*Nxp+1
+        hix = (rankx+1)*Nxp
+
+        loy = ranky*Nyp+1
+        hiy = (ranky+1)*Nyp
+
+        loz = rankz*Nzp+1
+        hiz = (rankz+1)*Nzp
+
+        fname::String = string("./PLT/plt-", tt, ".h5")
+        h5open(fname, "w", comm_cart) do f
+            dset1 = create_dataset(
+                f,
+                "rho",
+                datatype(Float32),
+                dataspace(Nx, Ny, Nz);
+                chunk=(Nxp, Nyp, Nzp),
+                shuffle=plt_shuffle,
+                compress=plt_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset1[lox:hix, loy:hiy, loz:hiz] = ρ
+            dset2 = create_dataset(
+                f,
+                "u",
+                datatype(Float32),
+                dataspace(Nx, Ny, Nz);
+                chunk=(Nxp, Nyp, Nzp),
+                shuffle=plt_shuffle,
+                compress=plt_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset2[lox:hix, loy:hiy, loz:hiz] = u
+            dset3 = create_dataset(
+                f,
+                "v",
+                datatype(Float32),
+                dataspace(Nx, Ny, Nz);
+                chunk=(Nxp, Nyp, Nzp),
+                shuffle=plt_shuffle,
+                compress=plt_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset3[lox:hix, loy:hiy, loz:hiz] = v
+            dset4 = create_dataset(
+                f,
+                "w",
+                datatype(Float32),
+                dataspace(Nx, Ny, Nz);
+                chunk=(Nxp, Nyp, Nzp),
+                shuffle=plt_shuffle,
+                compress=plt_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset4[lox:hix, loy:hiy, loz:hiz] = w
+            dset5 = create_dataset(
+                f,
+                "p",
+                datatype(Float32),
+                dataspace(Nx, Ny, Nz);
+                chunk=(Nxp, Nyp, Nzp),
+                shuffle=plt_shuffle,
+                compress=plt_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset5[lox:hix, loy:hiy, loz:hiz] = p
+            dset6 = create_dataset(
+                f,
+                "T",
+                datatype(Float32),
+                dataspace(Nx, Ny, Nz);
+                chunk=(Nxp, Nyp, Nzp),
+                shuffle=plt_shuffle,
+                compress=plt_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset6[lox:hix, loy:hiy, loz:hiz] = T
+            dset7 = create_dataset(
+                f,
+                "phi",
+                datatype(Float32),
+                dataspace(Nx, Ny, Nz);
+                chunk=(Nxp, Nyp, Nzp),
+                shuffle=plt_shuffle,
+                compress=plt_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset7[lox:hix, loy:hiy, loz:hiz] = ϕ_ng
+            dset8 = create_dataset(
+                f,
+                "coords",
+                datatype(Float32),
+                dataspace(3, Nx, Ny, Nz);
+                chunk=(3, Nxp, Nyp, Nzp),
+                shuffle=plt_shuffle,
+                compress=plt_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset8[:, lox:hix, loy:hiy, loz:hiz] = coords_ng
+        end
     end
 end
 
@@ -67,22 +156,11 @@ function plotFile_h5(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
                 datatype(Float32),
                 dataspace(Nx, Ny, Nz, Nprim);
                 chunk=(Nxp, Nyp, Nzp, Nprim),
-                shuffle=chk_shuffle,
-                compress=chk_compress_level,
+                shuffle=plt_shuffle,
+                compress=plt_compress_level,
                 dxpl_mpio=:collective
             )
             dset1[lox:hix, loy:hiy, loz:hiz, :] = primitives
-            dset2 = create_dataset(
-                f,
-                "phi",
-                datatype(Float32),
-                dataspace(Nx, Ny, Nz);
-                chunk=(Nxp, Nyp, Nzp),
-                shuffle=chk_shuffle,
-                compress=chk_compress_level,
-                dxpl_mpio=:collective
-            )
-            dset2[lox:hix, loy:hiy, loz:hiz] = ϕ_ng
         end
     end
 end
@@ -131,16 +209,16 @@ function averageFile(tt, Q_avg, Q_h, comm_cart, rankx, ranky, rankz)
     loz = rankz*Nzp+1
     hiz = (rankz+1)*Nzp
 
-    chkname::String = string("./AVG/avg-", tt, ".h5")
-    h5open(chkname, "w", comm_cart) do f
+    fname::String = string("./AVG/avg-", tt, ".h5")
+    h5open(fname, "w", comm_cart) do f
         dset1 = create_dataset(
             f,
             "avg",
             datatype(Float32),
             dataspace(Nx, Ny, Nz, Nprim);
             chunk=(Nxp, Nyp, Nzp, Nprim),
-            shuffle=chk_shuffle,
-            compress=chk_compress_level,
+            shuffle=avg_shuffle,
+            compress=avg_compress_level,
             dxpl_mpio=:collective
         )
         dset1[lox:hix, loy:hiy, loz:hiz, :] = avg
@@ -168,4 +246,64 @@ function debugOutput(Q, Q_h, x_h, y_h, z_h, rank)
         vtk["p"] = p
         vtk["T"] = T
     end 
+end
+
+# XDMF metadata, note that julia in column major
+function write_XDMF(tt)
+    fname = string("./PLT/plt-", tt, ".xmf")
+    h5name = string("plt-", tt, ".h5")
+    time = tt*dt
+
+    open(fname, "w") do f
+        write(f, "<?xml version=\"1.0\" ?>")
+        write(f, "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\" []>\n")
+        write(f, "<Xdmf xmlns:xi=\"http://www.w3.org/2003/XInclude\" Version=\"2.2\">\n")
+        write(f, " <Domain>\n")
+        write(f, "  <Grid Name=\"Grid\" GridType=\"Uniform\">\n")
+        write(f, "  <Time Value=\"$time\" />\n")
+        write(f, "   <Topology TopologyType=\"3DSMesh\" NumberOfElements=\"$Nz $Ny $Nx\" />\n")
+        write(f, "   <Geometry GeometryType=\"XYZ\">\n")
+        write(f, "   <DataItem Name=\"coords\" Dimensions=\"$Nz $Ny $Nx 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
+        write(f, "    $h5name:/coords\n")
+        write(f, "   </DataItem>\n")
+        write(f, "   </Geometry>\n")
+        write(f, "   <Attribute Name=\"rho\" AttributeType=\"Scalar\" Center=\"Node\">\n")
+        write(f, "    <DataItem Dimensions=\"$Nz $Ny $Nx\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
+        write(f, "    $h5name:/rho\n")
+        write(f, "   </DataItem>\n")
+        write(f, "   </Attribute>\n")
+        write(f, "   <Attribute Name=\"u\" AttributeType=\"Scalar\" Center=\"Node\">\n")
+        write(f, "    <DataItem Dimensions=\"$Nz $Ny $Nx\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
+        write(f, "    $h5name:/u\n")
+        write(f, "   </DataItem>\n")
+        write(f, "   </Attribute>\n")
+        write(f, "   <Attribute Name=\"v\" AttributeType=\"Scalar\" Center=\"Node\">\n")
+        write(f, "    <DataItem Dimensions=\"$Nz $Ny $Nx\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
+        write(f, "    $h5name:/v\n")
+        write(f, "   </DataItem>\n")
+        write(f, "   </Attribute>\n")
+        write(f, "   <Attribute Name=\"w\" AttributeType=\"Scalar\" Center=\"Node\">\n")
+        write(f, "    <DataItem Dimensions=\"$Nz $Ny $Nx\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
+        write(f, "    $h5name:/w\n")
+        write(f, "   </DataItem>\n")
+        write(f, "   </Attribute>\n")
+        write(f, "   <Attribute Name=\"p\" AttributeType=\"Scalar\" Center=\"Node\">\n")
+        write(f, "    <DataItem Dimensions=\"$Nz $Ny $Nx\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
+        write(f, "    $h5name:/p\n")
+        write(f, "   </DataItem>\n")
+        write(f, "   </Attribute>\n")
+        write(f, "   <Attribute Name=\"T\" AttributeType=\"Scalar\" Center=\"Node\">\n")
+        write(f, "    <DataItem Dimensions=\"$Nz $Ny $Nx\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
+        write(f, "    $h5name:/T\n")
+        write(f, "   </DataItem>\n")
+        write(f, "   </Attribute>\n")
+        write(f, "   <Attribute Name=\"phi\" AttributeType=\"Scalar\" Center=\"Node\">\n")
+        write(f, "    <DataItem Dimensions=\"$Nz $Ny $Nx\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
+        write(f, "    $h5name:/phi\n")
+        write(f, "   </DataItem>\n")
+        write(f, "   </Attribute>\n")
+        write(f, "  </Grid>\n")
+        write(f, " </Domain>\n")
+        write(f, "</Xdmf>\n")
+    end
 end
