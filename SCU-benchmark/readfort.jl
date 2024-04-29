@@ -139,12 +139,6 @@ function computeMetrics(x,y,z)
     dζdz = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
     J  = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
 
-    # coords without ghost
-    coords = zeros(Float32, 3, Nx, Ny, Nz)
-    coords[1, :, :, :] = x[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
-    coords[2, :, :, :] = y[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
-    coords[3, :, :, :] = z[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
-
     @inbounds for k ∈ 1:Nz_tot, j ∈ 1:Ny_tot, i ∈ 4:Nx_tot-3
         dxdξ[i, j, k] = CD6(@view x[i-3:i+3, j, k])
         dydξ[i, j, k] = CD6(@view y[i-3:i+3, j, k])
@@ -214,10 +208,6 @@ function computeMetrics(x,y,z)
     @. dζdz = dxdξ*dydη - dxdη*dydξ
 
     h5open("metrics.h5", "w") do file
-        file["NG"] = NG
-        file["Nx"] = Nx
-        file["Ny"] = Ny
-        file["Nz"] = Nz
         file["dξdx", compress=compress_level] = dξdx
         file["dξdy", compress=compress_level] = dξdy
         file["dξdz", compress=compress_level] = dξdz
@@ -228,6 +218,18 @@ function computeMetrics(x,y,z)
         file["dζdy", compress=compress_level] = dζdy
         file["dζdz", compress=compress_level] = dζdz
         file["J", compress=compress_level] = J
+    end
+
+    # coords without ghost
+    coords = zeros(Float32, 3, Nx, Ny, Nz)
+    coords[1, :, :, :] = x[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+    coords[2, :, :, :] = y[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+    coords[3, :, :, :] = z[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+    h5open("mesh.h5", "w") do file
+        file["NG"] = NG
+        file["Nx"] = Nx
+        file["Ny"] = Ny
+        file["Nz"] = Nz
         file["coords", compress=compress_level] = coords
     end
 

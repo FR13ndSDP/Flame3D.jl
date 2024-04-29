@@ -5,24 +5,19 @@ GLMakie.activate!()
 
 fname = "../PLT/plt0-1.vts"
 
-vtk = VTKFile(fname)
+const NG::Int64 = h5read("mesh.h5", "NG")
+const Nx::Int64 = h5read("mesh.h5", "Nx")
+const Ny::Int64 = h5read("mesh.h5", "Ny")
+const Nz::Int64 = h5read("mesh.h5", "Nz")
 
-# point data
-p_data = get_point_data(vtk)
+coords = h5read("./mesh.h5", "coords")
 
-# mesh cordinate
-x,y,z = get_coordinates(vtk)
-Nx, Ny, Nz = size(x)
+x = @view coords[1, :, :, :]
+y = @view coords[2, :, :, :]
+z = @view coords[3, :, :, :]
 
 # variables
-T = get_data(p_data["T"])
-rho = get_data(p_data["rho"])
-H2 = get_data(p_data["YH2"])
-YH2 = H2./rho
-
-T = reshape(T, (Nx, Ny, Nz))
-rho = reshape(rho, (Nx, Ny, Nz))
-YH2 = reshape(YH2, (Nx, Ny, Nz))
+p = h5read(fname, "p")
 
 
 # Make a colormap, with the first value being transparent

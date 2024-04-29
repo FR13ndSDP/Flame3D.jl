@@ -1,6 +1,7 @@
 using WriteVTK, HDF5
 
 fname = "./SAMPLE/collection-z.h5"
+mesh = "./mesh.h5"
 
 data = h5read(fname, "collection")
 
@@ -10,16 +11,16 @@ const sample_total = 100
 
 # mesh cordinate
 # x,y,z = get_coordinates(vtk)
-const NG::Int64 = h5read("metrics.h5", "NG")
-const Nx::Int64 = h5read("metrics.h5", "Nx")
-const Ny::Int64 = h5read("metrics.h5", "Ny")
-const Nz::Int64 = h5read("metrics.h5", "Nz")
+const NG::Int64 = h5read(mesh, "NG")
+const Nx::Int64 = h5read(mesh, "Nx")
+const Ny::Int64 = h5read(mesh, "Ny")
+const Nz::Int64 = h5read(mesh, "Nz")
 
-fid = h5open("metrics.h5", "r")
-x = fid["x"][1+NG:Nx+NG, 1+NG:Ny+NG, 50+NG] 
-y = fid["y"][1+NG:Nx+NG, 1+NG:Ny+NG, 50+NG] 
-z = fid["z"][1+NG:Nx+NG, 1+NG:Ny+NG, 50+NG]
-close(fid)
+coords = h5read(mesh, "coords")
+
+x = @view coords[1, :, :, 50]
+y = @view coords[2, :, :, 50]
+z = @view coords[3, :, :, 50]
 
 times = range(time_step, time_step*sample_step*sample_total; step=time_step*sample_step)
 

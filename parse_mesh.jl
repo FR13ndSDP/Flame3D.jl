@@ -225,10 +225,6 @@ end
 @. dζdz = dxdξ*dydη - dxdη*dydξ
 
 h5open("metrics.h5", "w") do file
-    file["NG"] = NG
-    file["Nx"] = Nx
-    file["Ny"] = Ny
-    file["Nz"] = Nz
     file["dξdx", compress=compress_level] = dξdx
     file["dξdy", compress=compress_level] = dξdy
     file["dξdz", compress=compress_level] = dξdz
@@ -239,6 +235,18 @@ h5open("metrics.h5", "w") do file
     file["dζdy", compress=compress_level] = dζdy
     file["dζdz", compress=compress_level] = dζdz
     file["J", compress=compress_level] = J
+end
+
+# coords without ghost
+coords = zeros(Float32, 3, Nx, Ny, Nz)
+coords[1, :, :, :] = x[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+coords[2, :, :, :] = y[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+coords[3, :, :, :] = z[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+h5open("mesh.h5", "w") do file
+    file["NG"] = NG
+    file["Nx"] = Nx
+    file["Ny"] = Ny
+    file["Nz"] = Nz
     file["coords", compress=compress_level] = coords
 end
 

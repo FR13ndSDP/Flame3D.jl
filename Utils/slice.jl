@@ -1,27 +1,22 @@
 using ReadVTK, WriteVTK, HDF5
 
-fname = "./plt-500.pvts"
-
-vtk = PVTKFile(fname)
-
-# point data
-p_data = get_point_data(vtk)
+fname = "./PLT/plt-200.h5"
 
 # mesh cordinate
 # x,y,z = get_coordinates(vtk)
-const NG::Int64 = h5read("metrics.h5", "NG")
-const Nx::Int64 = h5read("metrics.h5", "Nx")
-const Ny::Int64 = h5read("metrics.h5", "Ny")
-const Nz::Int64 = h5read("metrics.h5", "Nz")
+const NG::Int64 = h5read("mesh.h5", "NG")
+const Nx::Int64 = h5read("mesh.h5", "Nx")
+const Ny::Int64 = h5read("mesh.h5", "Ny")
+const Nz::Int64 = h5read("mesh.h5", "Nz")
 
-fid = h5open("metrics.h5", "r")
-x = fid["x"][NG+1:Nx+NG, NG+1:Ny+NG, NG+1] 
-y = fid["y"][NG+1:Nx+NG, NG+1:Ny+NG, NG+1] 
-z = fid["z"][NG+1:Nx+NG, NG+1:Ny+NG, NG+1]
-close(fid)
+coords = h5read("./mesh.h5", "coords")
+
+x = @view coords[1, :, :, 1]
+y = @view coords[2, :, :, 1]
+z = @view coords[3, :, :, 1]
 
 # variables
-p = get_data_reshaped(p_data["p"])
+p = h5read(fname, "p")
 
 p_slice = @view p[:, :, 1]
 

@@ -1,10 +1,13 @@
 using PyCall
 using HDF5
 
-const NG::Int64 = h5read("./metrics.h5", "NG")
-const Nx::Int64 = h5read("./metrics.h5", "Nx")
-const Ny::Int64 = h5read("./metrics.h5", "Ny")
-const Nz::Int64 = h5read("./metrics.h5", "Nz")
+fname = "./PLT/plt-100.h5"
+mesh = "./mesh.h5"
+
+const NG::Int64 = h5read(mesh, "NG")
+const Nx::Int64 = h5read(mesh, "Nx")
+const Ny::Int64 = h5read(mesh, "Ny")
+const Nz::Int64 = h5read(mesh, "Nz")
 
 plt = pyimport("matplotlib.pyplot")
 plt.rc("text", usetex= false)
@@ -12,20 +15,16 @@ plt.rc("font", family= "sans-serif")
 # plt.rc("font", sans-serif = "Helvetica")
 plt.rc("font", size=15)
 
-fid = h5open("metrics.h5", "r")
-x = fid["x"][1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
-y = fid["y"][1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
-z = fid["z"][1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
-close(fid)
+coords = h5read(mesh, "coords")
+x = @view coords[1, :, :, :]
+y = @view coords[2, :, :, :]
+z = @view coords[3, :, :, :]
 
-Q = h5read("avg-100.h5", "avg")
-
-# variables
-p = @view Q[:, :, :, 5]
-u = @view Q[:, :, :, 2]
-v = @view Q[:, :, :, 3]
-T = @view Q[:, :, :, 6]
-ρ = @view Q[:, :, :, 1]
+p = h5read(fname, "p")
+ρ = h5read(fname, "rho")
+u = h5read(fname, "u")
+v = h5read(fname, "v")
+T = h5read(fname, "T")
 
 pw = p[:, 1, :]
 p∞ = sum(p[1, Ny, :])/Nz
