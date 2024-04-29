@@ -13,6 +13,7 @@ const T_s::Float32 = 110.4
 const Pr::Float32 = 0.7
 
 # flow control
+const metrics::String = "metrics.h5"
 const Nprocs::SVector{3, Int64} = [1,1,1] # number of GPUs
 const Iperiodic = (false, false, true)
 const dt::Float32 = 1.5f-8             # dt for simulation, make CFL < 1
@@ -65,10 +66,10 @@ const CD6::SVector{7, Float32} = SVector(0, 1/60, -2/15, 37/60, 37/60, -2/15, 1/
 const Linear::SVector{7, Float32} = UP7 * Linear_ϕ + CD6 * (1.f0 - Linear_ϕ)
 
 # load mesh info
-const NG::Int64 = h5read("metrics.h5", "NG")
-const Nx::Int64 = h5read("metrics.h5", "Nx")
-const Ny::Int64 = h5read("metrics.h5", "Ny")
-const Nz::Int64 = h5read("metrics.h5", "Nz")
+const NG::Int64 = h5read(metrics, "NG")
+const Nx::Int64 = h5read(metrics, "Nx")
+const Ny::Int64 = h5read(metrics, "Ny")
+const Nz::Int64 = h5read(metrics, "Nz")
 const Nxp::Int64 = Nx ÷ Nprocs[1] # make sure it is integer
 const Nyp::Int64 = Ny ÷ Nprocs[2] # make sure it is integer
 const Nzp::Int64 = Nz ÷ Nprocs[3] # make sure it is integer

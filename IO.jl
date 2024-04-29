@@ -1,4 +1,4 @@
-function plotFile_xdmf(tt, Q, ϕ, Q_h, ϕ_h, coords_h, comm_cart, rank, rankx, ranky, rankz)
+function plotFile_xdmf(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
     # Output
     if plt_out && (tt % step_plt == 0 || abs(Time-dt*tt) < dt || tt == maxStep)
         copyto!(Q_h, Q)
@@ -17,8 +17,6 @@ function plotFile_xdmf(tt, Q, ϕ, Q_h, ϕ_h, coords_h, comm_cart, rank, rankx, r
         T = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 6]
 
         ϕ_ng = @view ϕ_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
-
-        coords_ng = @view coords_h[:, 1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
 
         # global indices no ghost
         lox = rankx*Nxp+1
@@ -109,17 +107,6 @@ function plotFile_xdmf(tt, Q, ϕ, Q_h, ϕ_h, coords_h, comm_cart, rank, rankx, r
                 dxpl_mpio=:collective
             )
             dset7[lox:hix, loy:hiy, loz:hiz] = ϕ_ng
-            dset8 = create_dataset(
-                f,
-                "coords",
-                datatype(Float32),
-                dataspace(3, Nx, Ny, Nz);
-                chunk=(3, Nxp, Nyp, Nzp),
-                shuffle=plt_shuffle,
-                compress=plt_compress_level,
-                dxpl_mpio=:collective
-            )
-            dset8[:, lox:hix, loy:hiy, loz:hiz] = coords_ng
         end
     end
 end
@@ -135,8 +122,6 @@ function plotFile_h5(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
         end
 
         primitives = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, :]
-
-        ϕ_ng = @view ϕ_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
 
         # global indices no ghost
         lox = rankx*Nxp+1
@@ -264,7 +249,7 @@ function write_XDMF(tt)
         write(f, "   <Topology TopologyType=\"3DSMesh\" NumberOfElements=\"$Nz $Ny $Nx\" />\n")
         write(f, "   <Geometry GeometryType=\"XYZ\">\n")
         write(f, "   <DataItem Name=\"coords\" Dimensions=\"$Nz $Ny $Nx 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
-        write(f, "    $h5name:/coords\n")
+        write(f, "    mesh.h5:/coords\n")
         write(f, "   </DataItem>\n")
         write(f, "   </Geometry>\n")
         write(f, "   <Attribute Name=\"rho\" AttributeType=\"Scalar\" Center=\"Node\">\n")
