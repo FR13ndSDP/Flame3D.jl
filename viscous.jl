@@ -71,7 +71,7 @@ function viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dη
         @fastmath Sijmag = sqrt(2*(dudx^2 + dvdy^2 + dwdz^2 + 
                                2*((0.5f0*(dudy+dvdx))^2 + (0.5f0*(dudz+dwdx))^2 +(0.5f0*(dvdz+dwdy))^2))) # √2|sij|
       
-        @fastmath μt = min(ρ * (Cs/Jac^(1/3f0))^2 * Sijmag, 6*μi) #ρ(csΔ)^2 * Sijmag
+        @fastmath μt = min(ρ * (Cs/Jac^(1/3f0))^2 * Sijmag, 2*μi) #ρ(csΔ)^2 * Sijmag
 
         λt = Cp * μt / Prt # cp = Rg*γ/(γ-1)
 
@@ -97,7 +97,7 @@ function viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dη
         Sd23 = 0.5f0*(dudy*dwdx + dvdy*dwdy + dwdy*dwdz + dudz*dvdx + dvdz*dvdy + dwdz*dvdz)
         @fastmath Sd = sqrt(Sd11^2 + Sd22^2 + Sd33^2 + 2 * (Sd12^2 + Sd13^2 + Sd23^2))
         @fastmath D = Sd^3/(S^5 + Sd^2.5f0)
-        @fastmath μt = min(ρ * (Cw/Jac^(1/3f0))^2 * D, 6*μi)
+        @fastmath μt = min(ρ * (Cw/Jac^(1/3f0))^2 * D, 2*μi)
       
         λt = Cp * μt / Prt # cp = Rg*γ/(γ-1)
 
