@@ -99,7 +99,7 @@ function time_step(rank, comm_cart)
     ϕ_h = zeros(Float32, Nx_tot, Ny_tot, Nz_tot) # shock sensor
 
     # load mesh metrics
-    fid = h5open("metrics.h5", "r", comm_cart)
+    fid = h5open(metrics, "r", comm_cart)
     dξdx_h = fid["dξdx"][lox:hix, loy:hiy, loz:hiz]
     dξdy_h = fid["dξdy"][lox:hix, loy:hiy, loz:hiz]
     dξdz_h = fid["dξdz"][lox:hix, loy:hiy, loz:hiz]
@@ -111,7 +111,6 @@ function time_step(rank, comm_cart)
     dζdz_h = fid["dζdz"][lox:hix, loy:hiy, loz:hiz]
 
     J_h = fid["J"][lox:hix, loy:hiy, loz:hiz] 
-    coords_h = fid["coords"][:, lox:hix, loy:hiy, loz:hiz] 
     close(fid)
 
     # move to device memory
@@ -315,7 +314,7 @@ function time_step(rank, comm_cart)
         end
 
         if plt_xdmf
-            plotFile_xdmf(tt, Q, ϕ, Q_h, ϕ_h, coords_h, comm_cart, rank, rankx, ranky, rankz)
+            plotFile_xdmf(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
         else
             plotFile_h5(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
         end

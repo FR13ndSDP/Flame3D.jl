@@ -149,10 +149,12 @@ dξdz = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
 dηdz = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
 dζdz = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
 J  = zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
-coords = zeros(Float32, 3, Nx_tot, Ny_tot, Nz_tot)
-coords[1, :, :, :] = x
-coords[2, :, :, :] = y
-coords[3, :, :, :] = z
+
+# coords without ghost
+coords = zeros(Float32, 3, Nx, Ny, Nz)
+coords[1, :, :, :] = x[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+coords[2, :, :, :] = y[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
+coords[3, :, :, :] = z[1+NG:Nx+NG, 1+NG:Ny+NG, 1+NG:Nz+NG]
 
 @inbounds for k ∈ 1:Nz_tot, j ∈ 1:Ny_tot, i ∈ 4:Nx_tot-3
     dxdξ[i, j, k] = CD6(x[i-3:i+3, j, k])
