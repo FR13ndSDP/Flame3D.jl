@@ -108,9 +108,9 @@ function fill_y(Q, U, rankx, ranky)
             u = -Q[i, 2*NG+2-l, k, 2]
             v = -Q[i, 2*NG+2-l, k, 3] + 2*v_turb
             w = -Q[i, 2*NG+2-l, k, 4]
-            T = Q[i, 2*NG+2-l, k, 6]
+            T = max(2*Q[i, l+1, k, 6]-Q[i, l+2, k, 6], Tw*0.5f0)
             p = Q[i, 2*NG+2-l, k, 5]
-            ρ = Q[i, 2*NG+2-l, k, 1]
+            ρ = p/(Rg*T)
 
             @inbounds Q[i, l, k, 5] = p
             @inbounds Q[i, l, k, 1] = ρ
