@@ -69,6 +69,36 @@ function linComb(U, Un, NV, a::Float32, b::Float32)
     return
 end
 
+# Range: 1+NG -> N+NG
+function compute_dt(dt, Q, J, S1, S2, S3)
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+
+    if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
+        return
+    end
+
+    @inbounds u = Q[i, j, k, 2]
+    @inbounds v = Q[i, j, k, 3]
+    @inbounds w = Q[i, j, k, 4]
+    @inbounds T = Q[i, j, k, 6]
+
+    @inbounds V = 1/J[i, j, k]
+    c = sqrt(γ*Rg*T)
+    @inbounds dx = V/S1[i, j, k]
+    @inbounds dy = V/S2[i, j, k]
+    @inbounds dz = V/S3[i, j, k]
+
+    dtx = dx/(u+c)
+    dty = dy/(v+c)
+    dtz = dz/(w+c)
+
+    @inbounds dt[i, j, k] = min(dtx, dty, dtz) * LTS_CFL
+
+    return
+end
+
 function pre_x(Q, sc, rth)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y

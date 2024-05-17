@@ -16,7 +16,10 @@ const Pr::Float32 = 0.72
 const mesh::String = "mesh.h5"
 const metrics::String = "metrics.h5"
 const Nprocs::SVector{3, Int64} = [1,1,1] # number of GPUs
-const Iperiodic = (false, false, false)
+const Iperiodic = (false, false, false)   # periodic direction
+
+const LTS::Bool = false              # if use LTS (local time stepping)
+const LTS_CFL::Float32 = 0.5f0       # LTS auto Δt CFL
 const dt::Float32 = 3f-8             # dt for simulation, make CFL < 1
 const Time::Float32 = 1f-3           # total simulation time
 const maxStep::Int64 = 1000         # max steps to run
@@ -56,7 +59,7 @@ const Ncons::Int64 = 5 # ρ ρu ρv ρw E
 const Nprim::Int64 = 6 # ρ u v w p T
 # scheme constant
 const character::Bool = true        # Characteristic-wise reconstruction or not
-const splitMethod::String = "SW"    # use SW, else LF
+const splitMethod::String = "SW"    # options are: SW, LF, VL, AUSM
 const hybrid_ϕ1::Float32 = 5f-2     # < ϕ1: UP7
 const hybrid_ϕ2::Float32 = 1.f0     # < ϕ2: WENO7 in FP64
 const hybrid_ϕ3::Float32 = 10.f0    # < ϕ3: WENO5, else NND2

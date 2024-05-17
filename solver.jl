@@ -15,12 +15,18 @@ include("div.jl")
 include("mpi.jl")
 include("IO.jl")
 
-function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
+function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, ϕ)
 
     if splitMethod == "SW"
         @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_SW(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
-    else
+    elseif splitMethod == "LF"
         @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_LF(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
+    elseif splitMethod == "VL"
+        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_VL(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
+    elseif splitMethod == "AUSM"
+        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_AUSM(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
+    else
+        error("Not valid split method")
     end
     if character
         @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_xc(Fx, ϕ, s1, Fp, Fm, Q, dξdx, dξdy, dξdz)
@@ -30,8 +36,14 @@ function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξ
 
     if splitMethod == "SW"
         @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_SW(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
-    else
+    elseif splitMethod == "LF"
         @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_LF(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
+    elseif splitMethod == "VL"
+        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_VL(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
+    elseif splitMethod == "AUSM"
+        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_AUSM(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
+    else
+        error("Not valid split method")
     end
     if character
         @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_yc(Fy, ϕ, s2, Fp, Fm, Q, dηdx, dηdy, dηdz)
@@ -41,8 +53,14 @@ function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξ
 
     if splitMethod == "SW"
         @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_SW(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
-    else
+    elseif splitMethod == "LF"
         @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_LF(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
+    elseif splitMethod == "VL"
+        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_VL(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
+    elseif splitMethod == "AUSM"
+        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_AUSM(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
+    else
+        error("Not valid split method")
     end
     if character
         @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_zc(Fz, ϕ, s3, Fp, Fm, Q, dζdx, dζdy, dζdz)
@@ -51,8 +69,6 @@ function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξ
     end
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J)
-
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J)
 end
 
 function time_step(rank, comm_cart)
@@ -139,6 +155,9 @@ function time_step(rank, comm_cart)
     Fv_x = CUDA.zeros(Float32, Nxp+NG, Nyp+NG, Nzp+NG, 4)
     Fv_y = CUDA.zeros(Float32, Nxp+NG, Nyp+NG, Nzp+NG, 4)
     Fv_z = CUDA.zeros(Float32, Nxp+NG, Nyp+NG, Nzp+NG, 4)
+    if LTS
+        LTS_dt = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    end
 
     Un = similar(U)
 
@@ -251,10 +270,18 @@ function time_step(rank, comm_cart)
         for KRK = 1:3
             if KRK == 1
                 copyto!(Un, U)
+                if LTS
+                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock compute_dt(LTS_dt, Q, J, s1, s2, s3)
+                end
             end
 
             @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q)
-            flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ)
+            flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, ϕ)
+            if LTS
+                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock div_LTS(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, LTS_dt, J)
+            else
+                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J)
+            end
 
             if KRK == 2
                 @cuda maxregs=maxreg fastmath=true threads=nthreads2 blocks=nblock2 linComb(U, Un, Ncons, 0.25f0, 0.75f0)
