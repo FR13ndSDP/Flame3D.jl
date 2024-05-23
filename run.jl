@@ -44,7 +44,6 @@ const avg_compress_level::Int64 = 1  # output file compression level 0-9, 0 for 
 
 const sample::Bool = false                             # if do sampling (slice)
 const sample_step::Int64 = 10                          # sampling interval
-const sample_total::Int64 = 10                         # number of samples
 const sample_index::SVector{3, Int64} = [-1, 130, -1]  # slice index in 3 directions, -1 for no slicing
 
 # filtering

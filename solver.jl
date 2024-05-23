@@ -190,7 +190,7 @@ function time_step(rank, comm_cart)
     Qrbuf_dy = cu(Qrbuf_hy)
     Qrbuf_dz = cu(Qrbuf_hz)
 
-    # # initial
+    # initial
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock prim2c(U, Q)
     exchange_ghost(Q, Nprim, comm_cart, 
                    Qsbuf_hx, Qsbuf_dx, Qrbuf_hx, Qrbuf_dx,
@@ -216,7 +216,7 @@ function time_step(rank, comm_cart)
     
             # collect on rank 0
             if rank == 0
-                collectionx = zeros(Float32, Ny, Nz, Nprim, sample_total)
+                collectionx = zeros(Float32, Ny, Nz, Nprim)
                 rank_listx = MPI.Gather(valid_rankx, comm_cart)
                 rank_listx = filter!(x->x!=-1, rank_listx)
             else
@@ -234,7 +234,7 @@ function time_step(rank, comm_cart)
     
             # collect on rank 0
             if rank == 0
-                collectiony = zeros(Float32, Nx, Nz, Nprim, sample_total)
+                collectiony = zeros(Float32, Nx, Nz, Nprim)
                 rank_listy = MPI.Gather(valid_ranky, comm_cart)
                 rank_listy = filter!(x->x!=-1, rank_listy)
             else
@@ -252,7 +252,7 @@ function time_step(rank, comm_cart)
     
             # collect on rank 0
             if rank == 0
-                collectionz = zeros(Float32, Nx, Ny, Nprim, sample_total)
+                collectionz = zeros(Float32, Nx, Ny, Nprim)
                 rank_listz = MPI.Gather(valid_rankz, comm_cart)
                 rank_listz = filter!(x->x!=-1, rank_listz)
             else
@@ -365,7 +365,11 @@ function time_step(rank, comm_cart)
         end
 
         # collection of slice
-        if sample && (tt % sample_step == 0) && sample_count <= sample_total
+        if sample && (tt % sample_step == 0)
+
+            if rank == 0
+                mkpath("./SAMPLE")
+            end
 
             if sample_index[1] ≠ -1
                 if rankx == local_rankx && rank ≠ 0
@@ -391,7 +395,29 @@ function time_step(rank, comm_cart)
                         lz = rz*Nzp+1
                         hz = (rz+1)*Nzp
             
-                        collectionx[ly:hy, lz:hz, :, sample_count] = part
+                        collectionx[ly:hy, lz:hz, :] = part
+                    end
+
+                    # write and append HDF5 dataset
+                    if sample_count == 1
+                        h5open("./SAMPLE/collection-x.h5", "w") do file
+                            dset = create_dataset(
+                                file,
+                                "collection",
+                                datatype(Float32),
+                                dataspace((Ny, Nz, Nprim, 1), (-1,-1,-1,-1));
+                                chunk=(Ny, Nz, Nprim, 1),
+                                shuffle=plt_shuffle,
+                                compress=plt_compress_level
+                            )
+                            dset[:, :, :, 1] = collectionx
+                        end
+                    else
+                        h5open("./SAMPLE/collection-x.h5", "r+") do file
+                            dset = file["collection"]
+                            HDF5.set_extent_dims(dset, (Ny, Nz, Nprim, sample_count))
+                            dset[:, :, :, end] = collectionx
+                        end
                     end
                 end
             end
@@ -420,7 +446,28 @@ function time_step(rank, comm_cart)
                         lz = rz*Nzp+1
                         hz = (rz+1)*Nzp
             
-                        collectiony[lx:hx, lz:hz, :, sample_count] = part
+                        collectiony[lx:hx, lz:hz, :] = part
+                    end
+
+                    if sample_count == 1
+                        h5open("./SAMPLE/collection-y.h5", "w") do file
+                            dset = create_dataset(
+                                file,
+                                "collection",
+                                datatype(Float32),
+                                dataspace((Nx, Nz, Nprim, 1), (-1,-1,-1,-1));
+                                chunk=(Nx, Nz, Nprim, 1),
+                                shuffle=plt_shuffle,
+                                compress=plt_compress_level
+                            )
+                            dset[:, :, :, 1] = collectiony
+                        end
+                    else
+                        h5open("./SAMPLE/collection-y.h5", "r+") do file
+                            dset = file["collection"]
+                            HDF5.set_extent_dims(dset, (Nx, Nz, Nprim, sample_count))
+                            dset[:, :, :, end] = collectiony
+                        end
                     end
                 end
             end
@@ -449,32 +496,32 @@ function time_step(rank, comm_cart)
                         ly = ry*Nyp+1
                         hy = (ry+1)*Nyp
             
-                        collectionz[lx:hx, ly:hy, :, sample_count] = part
+                        collectionz[lx:hx, ly:hy, :] = part
+                    end
+
+                    if sample_count == 1
+                        h5open("./SAMPLE/collection-z.h5", "w") do file
+                            dset = create_dataset(
+                                file,
+                                "collection",
+                                datatype(Float32),
+                                dataspace((Nx, Ny, Nprim, 1), (-1,-1,-1,-1));
+                                chunk=(Nx, Ny, Nprim, 1),
+                                shuffle=plt_shuffle,
+                                compress=plt_compress_level
+                            )
+                            dset[:, :, :, 1] = collectionz
+                        end
+                    else
+                        h5open("./SAMPLE/collection-z.h5", "r+") do file
+                            dset = file["collection"]
+                            HDF5.set_extent_dims(dset, (Nx, Ny, Nprim, sample_count))
+                            dset[:, :, :, end] = collectionz
+                        end
                     end
                 end
             end
 
-            if sample_count == sample_total && rank == 0
-                mkpath("./SAMPLE")
-
-                if sample_index[1] ≠ -1
-                    h5open("./SAMPLE/collection-x.h5", "w") do file
-                        file["collection"] = collectionx
-                    end
-                end
-
-                if sample_index[2] ≠ -1
-                    h5open("./SAMPLE/collection-y.h5", "w") do file
-                        file["collection"] = collectiony
-                    end
-                end
-
-                if sample_index[3] ≠ -1
-                    h5open("./SAMPLE/collection-z.h5", "w") do file
-                        file["collection"] = collectionz
-                    end
-                end
-            end
             sample_count += 1
         end
     end
