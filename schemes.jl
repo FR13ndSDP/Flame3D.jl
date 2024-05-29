@@ -827,13 +827,13 @@ function advect_xc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
                     @inbounds Fpc[6] += Fp[i+1, j, k, m] * ll
                     @inbounds Fpc[7] += Fp[i+2, j, k, m] * ll
         
-                    @inbounds Fmc[1] += Fm[i-3, j, k, m] * ll
-                    @inbounds Fmc[2] += Fm[i-2, j, k, m] * ll
-                    @inbounds Fmc[3] += Fm[i-1, j, k, m] * ll
+                    @inbounds Fmc[1] += Fm[i+3, j, k, m] * ll
+                    @inbounds Fmc[2] += Fm[i+2, j, k, m] * ll
+                    @inbounds Fmc[3] += Fm[i+1, j, k, m] * ll
                     @inbounds Fmc[4] += Fm[i,   j, k, m] * ll
-                    @inbounds Fmc[5] += Fm[i+1, j, k, m] * ll
-                    @inbounds Fmc[6] += Fm[i+2, j, k, m] * ll
-                    @inbounds Fmc[7] += Fm[i+3, j, k, m] * ll
+                    @inbounds Fmc[5] += Fm[i-1, j, k, m] * ll
+                    @inbounds Fmc[6] += Fm[i-2, j, k, m] * ll
+                    @inbounds Fmc[7] += Fm[i-3, j, k, m] * ll
                 end
 
                 @inbounds V1 = Fpc[1]
@@ -943,11 +943,11 @@ function advect_xc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
                     @inbounds Fpc[4] += Fp[i,   j, k, m] * ll
                     @inbounds Fpc[5] += Fp[i+1, j, k, m] * ll
         
-                    @inbounds Fmc[1] += Fm[i-2, j, k, m] * ll
-                    @inbounds Fmc[2] += Fm[i-1, j, k, m] * ll
+                    @inbounds Fmc[1] += Fm[i+2, j, k, m] * ll
+                    @inbounds Fmc[2] += Fm[i+1, j, k, m] * ll
                     @inbounds Fmc[3] += Fm[i,   j, k, m] * ll
-                    @inbounds Fmc[4] += Fm[i+1, j, k, m] * ll
-                    @inbounds Fmc[5] += Fm[i+2, j, k, m] * ll
+                    @inbounds Fmc[4] += Fm[i-1, j, k, m] * ll
+                    @inbounds Fmc[5] += Fm[i-2, j, k, m] * ll
                 end
 
                 @inbounds V1 = Fpc[1]
@@ -1141,13 +1141,13 @@ function advect_yc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
                     @inbounds Fpc[6] += Fp[i, j+1, k, m] * ll
                     @inbounds Fpc[7] += Fp[i, j+2, k, m] * ll
         
-                    @inbounds Fmc[1] += Fm[i, j-3, k, m] * ll
-                    @inbounds Fmc[2] += Fm[i, j-2, k, m] * ll
-                    @inbounds Fmc[3] += Fm[i, j-1, k, m] * ll
+                    @inbounds Fmc[1] += Fm[i, j+3, k, m] * ll
+                    @inbounds Fmc[2] += Fm[i, j+2, k, m] * ll
+                    @inbounds Fmc[3] += Fm[i, j+1, k, m] * ll
                     @inbounds Fmc[4] += Fm[i, j,   k, m] * ll
-                    @inbounds Fmc[5] += Fm[i, j+1, k, m] * ll
-                    @inbounds Fmc[6] += Fm[i, j+2, k, m] * ll
-                    @inbounds Fmc[7] += Fm[i, j+3, k, m] * ll
+                    @inbounds Fmc[5] += Fm[i, j-1, k, m] * ll
+                    @inbounds Fmc[6] += Fm[i, j-2, k, m] * ll
+                    @inbounds Fmc[7] += Fm[i, j-3, k, m] * ll
                 end
 
                 @inbounds V1 = Fpc[1]
@@ -1257,11 +1257,11 @@ function advect_yc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
                     @inbounds Fpc[4] += Fp[i, j,   k, m] * ll
                     @inbounds Fpc[5] += Fp[i, j+1, k, m] * ll
         
-                    @inbounds Fmc[1] += Fm[i, j-2, k, m] * ll
-                    @inbounds Fmc[2] += Fm[i, j-1, k, m] * ll
+                    @inbounds Fmc[1] += Fm[i, j+2, k, m] * ll
+                    @inbounds Fmc[2] += Fm[i, j+1, k, m] * ll
                     @inbounds Fmc[3] += Fm[i, j,   k, m] * ll
-                    @inbounds Fmc[4] += Fm[i, j+1, k, m] * ll
-                    @inbounds Fmc[5] += Fm[i, j+2, k, m] * ll
+                    @inbounds Fmc[4] += Fm[i, j-1, k, m] * ll
+                    @inbounds Fmc[5] += Fm[i, j-2, k, m] * ll
                 end
 
                 @inbounds V1 = Fpc[1]
@@ -1457,13 +1457,13 @@ function advect_zc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
                     @inbounds Fpc[6] += Fp[i, j, k+1, m] * ll
                     @inbounds Fpc[7] += Fp[i, j, k+2, m] * ll
         
-                    @inbounds Fmc[1] += Fm[i, j, k-3, m] * ll
-                    @inbounds Fmc[2] += Fm[i, j, k-2, m] * ll
-                    @inbounds Fmc[3] += Fm[i, j, k-1, m] * ll
+                    @inbounds Fmc[1] += Fm[i, j, k+3, m] * ll
+                    @inbounds Fmc[2] += Fm[i, j, k+2, m] * ll
+                    @inbounds Fmc[3] += Fm[i, j, k+1, m] * ll
                     @inbounds Fmc[4] += Fm[i, j, k,   m] * ll
-                    @inbounds Fmc[5] += Fm[i, j, k+1, m] * ll
-                    @inbounds Fmc[6] += Fm[i, j, k+2, m] * ll
-                    @inbounds Fmc[7] += Fm[i, j, k+3, m] * ll
+                    @inbounds Fmc[5] += Fm[i, j, k-1, m] * ll
+                    @inbounds Fmc[6] += Fm[i, j, k-2, m] * ll
+                    @inbounds Fmc[7] += Fm[i, j, k-3, m] * ll
                 end
 
                 @inbounds V1 = Fpc[1]
@@ -1573,11 +1573,11 @@ function advect_zc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
                     @inbounds Fpc[4] += Fp[i, j, k,   m] * ll
                     @inbounds Fpc[5] += Fp[i, j, k+1, m] * ll
         
-                    @inbounds Fmc[1] += Fm[i, j, k-2, m] * ll
-                    @inbounds Fmc[2] += Fm[i, j, k-1, m] * ll
+                    @inbounds Fmc[1] += Fm[i, j, k+2, m] * ll
+                    @inbounds Fmc[2] += Fm[i, j, k+1, m] * ll
                     @inbounds Fmc[3] += Fm[i, j, k,   m] * ll
-                    @inbounds Fmc[4] += Fm[i, j, k+1, m] * ll
-                    @inbounds Fmc[5] += Fm[i, j, k+2, m] * ll
+                    @inbounds Fmc[4] += Fm[i, j, k-1, m] * ll
+                    @inbounds Fmc[5] += Fm[i, j, k-2, m] * ll
                 end
 
                 @inbounds V1 = Fpc[1]
