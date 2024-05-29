@@ -18,7 +18,7 @@ include("IO.jl")
 include("thermo.jl")
 include("reactions.jl")
 
-function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, ϕ, λ, μ, Fh)
+function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fh)
 
     if splitMethod == "SW"
         @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_SW(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
@@ -352,7 +352,7 @@ function time_step(rank, comm_cart, thermo, react)
             @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock mixture(Q, ρi, Yi, λ, μ, D, thermo)
             @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q)
             specAdvance(ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fh, thermo)
-            flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, ϕ, λ, μ, Fh)
+            flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fh)
 
             if KRK == 2
                 @cuda maxregs=maxreg fastmath=true threads=nthreads2 blocks=nblock2 linComb(U, Un, Ncons, 0.25f0, 0.75f0)
@@ -440,7 +440,7 @@ function time_step(rank, comm_cart, thermo, react)
         end
 
         if plt_xdmf
-            plotFile_xdmf(tt, λ, μ, Q, ρi, ϕ, Q_h, ρi_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
+            plotFile_xdmf(tt, λ, μ, D, Q, ρi, ϕ, Q_h, ρi_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
         else
             plotFile_h5(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
         end

@@ -189,20 +189,20 @@ function init(Q, ρi, ρ, u, v, w, P, T, T_ignite, ρ_ig, thermo)
         @inbounds ρi[i, j, k, n] = 0.f0
     end
 
-    # # ignite area
-    # if (j-68)^2+(k-68)^2 < 225
-    #     rho = ρ_ig
-    #     temp = T_ignite
-    #     @inbounds ρi[i, j, k, 1] = rho * 0.15f0
-    #     @inbounds ρi[i, j, k, 9] = rho * 0.85f0
-    #     uu = 900.f0
-    # else
+    # ignite area
+    if (j-68)^2+(k-68)^2 < 225
+        rho = ρ_ig
+        temp = T_ignite
+        @inbounds ρi[i, j, k, 1] = rho * 0.15f0
+        @inbounds ρi[i, j, k, 9] = rho * 0.85f0
+        uu = 900.f0
+    else
         rho = ρ
         temp = T
         @inbounds ρi[i, j, k, 2] = rho * 0.233f0
         @inbounds ρi[i, j, k, 9] = rho * 0.767f0
         uu = u
-    # end
+    end
 
     # fill H2
     @inbounds rhoi = @view ρi[i, j, k, :]

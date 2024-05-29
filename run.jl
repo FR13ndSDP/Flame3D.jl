@@ -5,7 +5,7 @@ const LES_smag::Bool = false       # if use Smagorinsky model
 const LES_wale::Bool = false        # if use WALE model
 
 # reaction
-const reaction::Bool = true       # if reaction is activated
+const reaction::Bool = false       # if reaction is activated
 const T_criteria::Float32 = 500.0  # reaction temperature criteria 
 const Nspecs::Int64 = 9            # number of species
 const Nreacs::Int64 = 21           # number of reactions, consistent with mech

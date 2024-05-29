@@ -1,4 +1,4 @@
-function plotFile_xdmf(tt, λ, μ, Q, ρi, ϕ, Q_h, ρi_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
+function plotFile_xdmf(tt, λ, μ, D, Q, ρi, ϕ, Q_h, ρi_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
     # Output
     if plt_out && (tt % step_plt == 0 || abs(Time-dt*tt) < dt || tt == maxStep)
         copyto!(Q_h, Q)
@@ -7,8 +7,10 @@ function plotFile_xdmf(tt, λ, μ, Q, ρi, ϕ, Q_h, ρi_h, ϕ_h, comm_cart, rank
 
         λ_h = zeros(Float32, Nxp+2*NG, Nyp+2*NG, Nzp+2*NG)
         μ_h = zeros(Float32, Nxp+2*NG, Nyp+2*NG, Nzp+2*NG)
+        D_h = zeros(Float32, Nxp+2*NG, Nyp+2*NG, Nzp+2*NG, Nspecs)
         copyto!(λ_h, λ)
         copyto!(μ_h, μ)
+        copyto!(D_h, D)
 
         if rank == 0
             mkpath("./PLT")
@@ -26,8 +28,9 @@ function plotFile_xdmf(tt, λ, μ, Q, ρi, ϕ, Q_h, ρi_h, ϕ_h, comm_cart, rank
         O2 = @view ρi_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 2]
         H2O = @view ρi_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 3]
 
-        λ = @view λ_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
-        μ = @view μ_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
+        λ_ng = @view λ_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
+        μ_ng = @view μ_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
+        D_ng = @view D_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 1]
         ϕ_ng = @view ϕ_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
 
         # global indices no ghost
@@ -162,7 +165,7 @@ function plotFile_xdmf(tt, λ, μ, Q, ρi, ϕ, Q_h, ρi_h, ϕ_h, comm_cart, rank
                 compress=plt_compress_level,
                 dxpl_mpio=:collective
             )
-            dset11[lox:hix, loy:hiy, loz:hiz] = λ
+            dset11[lox:hix, loy:hiy, loz:hiz] = λ_ng
             dset12 = create_dataset(
                 f,
                 "mu",
@@ -173,7 +176,18 @@ function plotFile_xdmf(tt, λ, μ, Q, ρi, ϕ, Q_h, ρi_h, ϕ_h, comm_cart, rank
                 compress=plt_compress_level,
                 dxpl_mpio=:collective
             )
-            dset12[lox:hix, loy:hiy, loz:hiz] = μ
+            dset12[lox:hix, loy:hiy, loz:hiz] = μ_ng
+            dset13 = create_dataset(
+                f,
+                "D1",
+                datatype(Float32),
+                dataspace(Nx, Ny, Nz);
+                chunk=(Nxp, Nyp, Nzp),
+                shuffle=plt_shuffle,
+                compress=plt_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset13[lox:hix, loy:hiy, loz:hiz] = D_ng
         end
     end
 end
@@ -377,6 +391,11 @@ function write_XDMF(tt)
         write(f, "   <Attribute Name=\"mu\" AttributeType=\"Scalar\" Center=\"Node\">\n")
         write(f, "    <DataItem Dimensions=\"$Nz $Ny $Nx\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
         write(f, "    $h5name:/mu\n")
+        write(f, "   </DataItem>\n")
+        write(f, "   </Attribute>\n")
+        write(f, "   <Attribute Name=\"D1\" AttributeType=\"Scalar\" Center=\"Node\">\n")
+        write(f, "    <DataItem Dimensions=\"$Nz $Ny $Nx\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
+        write(f, "    $h5name:/D1\n")
         write(f, "   </DataItem>\n")
         write(f, "   </Attribute>\n")
         write(f, "  </Grid>\n")
