@@ -60,6 +60,7 @@ const filtering_s0::Float32 = 1.f0         # filtering strength
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
 const Nprim::Int64 = 7 # ρ u v w p T ei
 # scheme constant
+const character::Bool = true        # Characteristic-wise reconstruction or not
 const splitMethod::String = "SW"    # options are: SW, LF, VL, AUSM
 const hybrid_ϕ1::Float32 = 0.f0     # < ϕ1: UP7
 const hybrid_ϕ2::Float32 = 0.f0     # < ϕ2: WENO7 in FP64
