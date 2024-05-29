@@ -1,5 +1,5 @@
 # Range: 1+NG -> N+NG
-function c2Prim(U, Q)
+function c2Prim(U, Q, ρi, thermo)
     i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
     j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
     k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
@@ -10,15 +10,28 @@ function c2Prim(U, Q)
 
     # correction
     @inbounds ρ = max(U[i, j, k, 1], CUDA.eps(Float32))
+    @inbounds rho = @view ρi[i, j, k, :]
     @inbounds ρinv = 1/ρ 
+    ∑ρ::Float32 = 0.f0
+    for n = 1:Nspecs
+        @inbounds rho[n] = max(rho[n], 0.f0)
+        @inbounds ∑ρ += rho[n]
+    end
+
+    # if there are no irrelevant rich species, use this
+    for n = 1:Nspecs
+        @inbounds rho[n] *= ρ/∑ρ
+    end
+    # if there are irrelevant and rich species, like N₂, use this
+    # @inbounds rho[_index] += ρ - ∑ρ
 
     @inbounds u = U[i, j, k, 2]*ρinv # U
     @inbounds v = U[i, j, k, 3]*ρinv # V
     @inbounds w = U[i, j, k, 4]*ρinv # W
     @inbounds ei = max((U[i, j, k, 5] - 0.5f0*ρ*(u^2 + v^2 + w^2)), CUDA.eps(Float32))
 
-    p::Float32 = (γ-1) * ei
-    T::Float32 = p/(ρ*Rg)
+    T::Float32 = max(GetT(ei, rho, thermo), CUDA.eps(Float32))
+    p::Float32 = max(Pmixture(T, rho, thermo), CUDA.eps(Float32))
 
     @inbounds Q[i, j, k, 1] = ρ
     @inbounds Q[i, j, k, 2] = u
@@ -26,7 +39,23 @@ function c2Prim(U, Q)
     @inbounds Q[i, j, k, 4] = w
     @inbounds Q[i, j, k, 5] = p
     @inbounds Q[i, j, k, 6] = T
+    @inbounds Q[i, j, k, 7] = ei
     return
+end
+
+function getY(Yi, ρi, Q)
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+
+    if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
+        return
+    end
+
+    @inbounds ρinv::Float32 = 1/max(Q[i, j, k, 1], CUDA.eps(Float32))
+    for n = 1:Nspecs
+        @inbounds Yi[i, j, k, n] = max(ρi[i, j, k, n]*ρinv, 0.f0)
+    end
 end
 
 # Range: 1 -> N+2*NG
@@ -43,7 +72,7 @@ function prim2c(U, Q)
     @inbounds u = Q[i, j, k, 2]
     @inbounds v = Q[i, j, k, 3]
     @inbounds w = Q[i, j, k, 4]
-    @inbounds ei = Q[i, j, k, 5]/(γ-1)
+    @inbounds ei = Q[i, j, k, 7]
 
     @inbounds U[i, j, k, 1] = ρ
     @inbounds U[i, j, k, 2] = u * ρ
@@ -66,36 +95,6 @@ function linComb(U, Un, NV, a::Float32, b::Float32)
     for n = 1:NV
         @inbounds U[i, j, k, n] = U[i, j, k, n] * a + Un[i, j, k, n] * b
     end
-    return
-end
-
-# Range: 1+NG -> N+NG
-function compute_dt(dt, Q, J, S1, S2, S3)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
-
-    if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
-        return
-    end
-
-    @inbounds u = Q[i, j, k, 2]
-    @inbounds v = Q[i, j, k, 3]
-    @inbounds w = Q[i, j, k, 4]
-    @inbounds T = Q[i, j, k, 6]
-
-    @inbounds V = 1/J[i, j, k]
-    c = sqrt(γ*Rg*T)
-    @inbounds dx = V/S1[i, j, k]
-    @inbounds dy = V/S2[i, j, k]
-    @inbounds dz = V/S3[i, j, k]
-
-    dtx = dx/(u+c)
-    dty = dy/(v+c)
-    dtz = dz/(w+c)
-
-    @inbounds dt[i, j, k] = min(dtx, dty, dtz) * LTS_CFL
-
     return
 end
 

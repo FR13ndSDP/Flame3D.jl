@@ -4,13 +4,18 @@ include("solver.jl")
 const LES_smag::Bool = false       # if use Smagorinsky model
 const LES_wale::Bool = false        # if use WALE model
 
-# thermal state
-const γ::Float32 = 1.4
-const Rg::Float32 = 287
-const Cp::Float32 = Rg*γ/(γ-1)
-const C_s::Float32 = 1.458f-6
-const T_s::Float32 = 110.4
-const Pr::Float32 = 0.72
+# reaction
+const reaction::Bool = true       # if reaction is activated
+const T_criteria::Float32 = 500.0  # reaction temperature criteria 
+const Nspecs::Int64 = 9            # number of species
+const Nreacs::Int64 = 21           # number of reactions, consistent with mech
+const mech::String = "./Mech/H2/LiDryer.yaml" # reaction mechanism file in cantera format
+
+const Cantera::Bool = false         # if use Cantera
+const nthreads_cantera::Int64 = 24  # Cantera openmp threads
+
+const stiff::Bool = true           # if reaction is stiff
+const sub_step::Int64 = 1          # reaction substep in stiff case
 
 # flow control
 const mesh::String = "mesh.h5"
@@ -18,9 +23,7 @@ const metrics::String = "metrics.h5"
 const Nprocs::SVector{3, Int64} = [1,1,1] # number of GPUs
 const Iperiodic = (false, false, false)   # periodic direction
 
-const LTS::Bool = false              # if use LTS (local time stepping)
-const LTS_CFL::Float32 = 0.5f0       # LTS auto Δt CFL
-const dt::Float32 = 3f-8             # dt for simulation, make CFL < 1
+const dt::Float32 = 1f-8             # dt for simulation, make CFL < 1
 const Time::Float32 = 1f-3           # total simulation time
 const maxStep::Int64 = 1000         # max steps to run
 
@@ -55,12 +58,11 @@ const filtering_s0::Float32 = 1.f0         # filtering strength
 
 # do not change 
 const Ncons::Int64 = 5 # ρ ρu ρv ρw E 
-const Nprim::Int64 = 6 # ρ u v w p T
+const Nprim::Int64 = 7 # ρ u v w p T ei
 # scheme constant
-const character::Bool = true        # Characteristic-wise reconstruction or not
 const splitMethod::String = "SW"    # options are: SW, LF, VL, AUSM
-const hybrid_ϕ1::Float32 = 5f-2     # < ϕ1: UP7
-const hybrid_ϕ2::Float32 = 1.f0     # < ϕ2: WENO7 in FP64
+const hybrid_ϕ1::Float32 = 0.f0     # < ϕ1: UP7
+const hybrid_ϕ2::Float32 = 0.f0     # < ϕ2: WENO7 in FP64
 const hybrid_ϕ3::Float32 = 10.f0    # < ϕ3: WENO5, else NND2
 const Linear_ϕ::Float32 = 1.f0     # dissipation control for linear scheme
 # adjust this to get mixed upwind-central linear scheme
@@ -88,6 +90,35 @@ const nthreads2::Tuple{Int32, Int32, Int32} = (16, 8, 8)
 const nblock2::Tuple{Int32, Int32, Int32} = (cld((Nxp+2*NG), 16), 
                                              cld((Nyp+2*NG), 8),
                                              cld((Nzp+2*NG), 8))
+
+struct thermoProperty{RT, VT, MT, TT}
+    Ru::RT
+    min_temp::RT
+    max_temp::RT
+    mw::VT
+    coeffs_sep::VT
+    coeffs_lo::MT
+    coeffs_hi::MT
+    visc_poly::MT
+    conduct_poly::MT
+    binarydiff_poly::TT
+end
+
+struct reactionProperty{RT, IT, VT, MT}
+    atm::RT
+    reaction_type::IT
+    sgm::IT
+    vf::VT
+    vr::VT
+    Arr::MT
+    ef::MT
+    loP::MT
+    Troe::MT
+end
+
+Adapt.@adapt_structure thermoProperty
+Adapt.@adapt_structure reactionProperty
+
 # Run the simulation
 MPI.Init()
 
@@ -103,6 +134,9 @@ end
 # set device on each MPI rank
 # device!(local_rank)
 
-time_step(rank, comm_cart)
+const thermo = initThermo(mech) # now only NASA7
+const react = initReact(mech)
+
+time_step(rank, comm_cart, thermo, react)
 
 MPI.Finalize()

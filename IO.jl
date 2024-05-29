@@ -1,8 +1,14 @@
-function plotFile_xdmf(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
+function plotFile_xdmf(tt, λ, μ, Q, ρi, ϕ, Q_h, ρi_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
     # Output
     if plt_out && (tt % step_plt == 0 || abs(Time-dt*tt) < dt || tt == maxStep)
         copyto!(Q_h, Q)
         copyto!(ϕ_h, ϕ)
+        copyto!(ρi_h, ρi)
+
+        λ_h = zeros(Float32, Nxp+2*NG, Nyp+2*NG, Nzp+2*NG)
+        μ_h = zeros(Float32, Nxp+2*NG, Nyp+2*NG, Nzp+2*NG)
+        copyto!(λ_h, λ)
+        copyto!(μ_h, μ)
 
         if rank == 0
             mkpath("./PLT")
@@ -16,6 +22,12 @@ function plotFile_xdmf(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rank
         p = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 5]
         T = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 6]
 
+        H2 = @view ρi_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 1]
+        O2 = @view ρi_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 2]
+        H2O = @view ρi_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, 3]
+
+        λ = @view λ_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
+        μ = @view μ_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
         ϕ_ng = @view ϕ_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG]
 
         # global indices no ghost
@@ -107,6 +119,61 @@ function plotFile_xdmf(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rank
                 dxpl_mpio=:collective
             )
             dset7[lox:hix, loy:hiy, loz:hiz] = ϕ_ng
+            dset8 = create_dataset(
+                f,
+                "H2",
+                datatype(Float32),
+                dataspace(Nx, Ny, Nz);
+                chunk=(Nxp, Nyp, Nzp),
+                shuffle=plt_shuffle,
+                compress=plt_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset8[lox:hix, loy:hiy, loz:hiz] = H2
+            dset9 = create_dataset(
+                f,
+                "O2",
+                datatype(Float32),
+                dataspace(Nx, Ny, Nz);
+                chunk=(Nxp, Nyp, Nzp),
+                shuffle=plt_shuffle,
+                compress=plt_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset9[lox:hix, loy:hiy, loz:hiz] = O2
+            dset10 = create_dataset(
+                f,
+                "H2O",
+                datatype(Float32),
+                dataspace(Nx, Ny, Nz);
+                chunk=(Nxp, Nyp, Nzp),
+                shuffle=plt_shuffle,
+                compress=plt_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset10[lox:hix, loy:hiy, loz:hiz] = H2O
+            dset11 = create_dataset(
+                f,
+                "lambda",
+                datatype(Float32),
+                dataspace(Nx, Ny, Nz);
+                chunk=(Nxp, Nyp, Nzp),
+                shuffle=plt_shuffle,
+                compress=plt_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset11[lox:hix, loy:hiy, loz:hiz] = λ
+            dset12 = create_dataset(
+                f,
+                "mu",
+                datatype(Float32),
+                dataspace(Nx, Ny, Nz);
+                chunk=(Nxp, Nyp, Nzp),
+                shuffle=plt_shuffle,
+                compress=plt_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset12[lox:hix, loy:hiy, loz:hiz] = μ
         end
     end
 end
@@ -285,6 +352,31 @@ function write_XDMF(tt)
         write(f, "   <Attribute Name=\"phi\" AttributeType=\"Scalar\" Center=\"Node\">\n")
         write(f, "    <DataItem Dimensions=\"$Nz $Ny $Nx\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
         write(f, "    $h5name:/phi\n")
+        write(f, "   </DataItem>\n")
+        write(f, "   </Attribute>\n")
+        write(f, "   <Attribute Name=\"H2\" AttributeType=\"Scalar\" Center=\"Node\">\n")
+        write(f, "    <DataItem Dimensions=\"$Nz $Ny $Nx\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
+        write(f, "    $h5name:/H2\n")
+        write(f, "   </DataItem>\n")
+        write(f, "   </Attribute>\n")
+        write(f, "   <Attribute Name=\"O2\" AttributeType=\"Scalar\" Center=\"Node\">\n")
+        write(f, "    <DataItem Dimensions=\"$Nz $Ny $Nx\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
+        write(f, "    $h5name:/O2\n")
+        write(f, "   </DataItem>\n")
+        write(f, "   </Attribute>\n")
+        write(f, "   <Attribute Name=\"H2O\" AttributeType=\"Scalar\" Center=\"Node\">\n")
+        write(f, "    <DataItem Dimensions=\"$Nz $Ny $Nx\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
+        write(f, "    $h5name:/H2O\n")
+        write(f, "   </DataItem>\n")
+        write(f, "   </Attribute>\n")
+        write(f, "   <Attribute Name=\"lambda\" AttributeType=\"Scalar\" Center=\"Node\">\n")
+        write(f, "    <DataItem Dimensions=\"$Nz $Ny $Nx\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
+        write(f, "    $h5name:/lambda\n")
+        write(f, "   </DataItem>\n")
+        write(f, "   </Attribute>\n")
+        write(f, "   <Attribute Name=\"mu\" AttributeType=\"Scalar\" Center=\"Node\">\n")
+        write(f, "    <DataItem Dimensions=\"$Nz $Ny $Nx\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n")
+        write(f, "    $h5name:/mu\n")
         write(f, "   </DataItem>\n")
         write(f, "   </Attribute>\n")
         write(f, "  </Grid>\n")

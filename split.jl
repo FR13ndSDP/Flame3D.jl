@@ -12,14 +12,16 @@ function fluxSplit_SW(Q, Fp, Fm, S, Ax, Ay, Az)
     @inbounds u = Q[i, j, k, 2]
     @inbounds v = Q[i, j, k, 3]
     @inbounds w = Q[i, j, k, 4]
-    @inbounds T = Q[i, j, k, 6]
+    @inbounds p = Q[i, j, k, 5]
+    @inbounds ei = Q[i, j, k, 7]
 
     @inbounds A1 = Ax[i, j, k]
     @inbounds A2 = Ay[i, j, k]
     @inbounds A3 = Az[i, j, k]
     @inbounds ss = S[i, j, k]
 
-    @fastmath c = sqrt(γ*Rg*T)
+    γ = p/ei + 1
+    @fastmath c = sqrt(γ*p/ρ)
 
     E1 = A1*u + A2*v + A3*w
     E2 = E1 - c*ss
@@ -81,12 +83,14 @@ function fluxSplit_LF(Q, Fp, Fm, S, Ax, Ay, Az)
     @inbounds v = Q[i, j, k, 3]
     @inbounds w = Q[i, j, k, 4]
     @inbounds p = Q[i, j, k, 5]
+    @inbounds ei = Q[i, j, k, 7]
 
     @inbounds A1 = Ax[i, j, k]
     @inbounds A2 = Ay[i, j, k]
     @inbounds A3 = Az[i, j, k]
     @inbounds ss = S[i, j, k]
 
+    γ = p/ei + 1
     @fastmath c = sqrt(γ*p/ρ)
 
     un = A1*u + A2*v + A3*w
@@ -121,12 +125,14 @@ function fluxSplit_VL(Q, Fp, Fm, S, Ax, Ay, Az)
     @inbounds v = Q[i, j, k, 3]
     @inbounds w = Q[i, j, k, 4]
     @inbounds p = Q[i, j, k, 5]
+    @inbounds ei = Q[i, j, k, 7]
 
     @inbounds A1 = Ax[i, j, k]
     @inbounds A2 = Ay[i, j, k]
     @inbounds A3 = Az[i, j, k]
     @inbounds ss = S[i, j, k]
 
+    γ = p/ei + 1
     @fastmath c = sqrt(γ*p/ρ)
 
     un = A1*u + A2*v + A3*w
@@ -196,12 +202,14 @@ function fluxSplit_AUSM(Q, Fp, Fm, S, Ax, Ay, Az)
     @inbounds v = Q[i, j, k, 3]
     @inbounds w = Q[i, j, k, 4]
     @inbounds p = Q[i, j, k, 5]
+    @inbounds ei = Q[i, j, k, 7]
 
     @inbounds A1 = Ax[i, j, k]
     @inbounds A2 = Ay[i, j, k]
     @inbounds A3 = Az[i, j, k]
     @inbounds ss = S[i, j, k]
 
+    γ = p/ei + 1
     @fastmath c = sqrt(γ*p/ρ)
 
     un = A1*u + A2*v + A3*w
@@ -252,5 +260,43 @@ function fluxSplit_AUSM(Q, Fp, Fm, S, Ax, Ay, Az)
         @inbounds Fm[i, j, k, 4] = fm * w + A3 * Pm
         @inbounds Fm[i, j, k, 5] = fm * h
     end
+    return
+end
+
+"""
+    split(ρi, Q, Fp, Fm, Ax, Ay, Az)
+
+Do flux-vector splitting on grid points for species (include ghosts).
+
+...
+# Notes
+- Species treated as scalar so only advect with velocity, the split is 1/2(U±|U|)
+...
+"""
+function split(ρi, Q, Fp, Fm, Ax, Ay, Az)
+    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
+    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
+    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+
+    if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
+        return
+    end
+
+    @inbounds u = Q[i, j, k, 2]
+    @inbounds v = Q[i, j, k, 3]
+    @inbounds w = Q[i, j, k, 4]
+    @inbounds A1 = Ax[i, j, k]
+    @inbounds A2 = Ay[i, j, k]
+    @inbounds A3 = Az[i, j, k]
+
+    un = A1*u + A2*v + A3*w
+    Ep = 0.5f0 * (un + abs(un))
+    Em = 0.5f0 * (un - abs(un))
+
+    for n = 1:Nspecs
+        @inbounds Fp[i, j, k, n] = Ep * ρi[i, j, k, n]
+        @inbounds Fm[i, j, k, n] = Em * ρi[i, j, k, n]
+    end
+
     return
 end
