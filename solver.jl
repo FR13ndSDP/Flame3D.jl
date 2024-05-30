@@ -18,7 +18,7 @@ include("IO.jl")
 include("thermo.jl")
 include("reactions.jl")
 
-function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fh)
+function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fhx, Fhy, Fhz)
 
     if splitMethod == "SW"
         @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_SW(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
@@ -71,12 +71,14 @@ function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξ
         @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_z(Fz, ϕ, s3, Fp, Fm, Ncons)
     end
 
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux(Fv_x, Fv_y, Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fh)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fhx)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fhy)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fhz)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J)
 end
 
-function specAdvance(ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fh, thermo)
+function specAdvance(ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fhx, Fhy, Fhz, thermo)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock split(ρi, Q, Fp_i, Fm_i, dξdx, dξdy, dξdz)
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_x(Fx_i, ϕ, s1, Fp_i, Fm_i, Nspecs)
@@ -87,7 +89,9 @@ function specAdvance(ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z,
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock split(ρi, Q, Fp_i, Fm_i, dζdx, dζdy, dζdz)
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_z(Fz_i, ϕ, s3, Fp_i, Fm_i, Nspecs)
 
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock specViscousFlux(Fd_x, Fd_y, Fd_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fh, thermo)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock specViscousFlux_x(Fd_x, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fhx, thermo)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock specViscousFlux_y(Fd_y, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fhy, thermo)
+    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock specViscousFlux_z(Fd_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fhz, thermo)
 
     @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock divSpecs(ρi, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dt, J)
 end
@@ -173,19 +177,21 @@ function time_step(rank, comm_cart, thermo, react)
     Fx =   CUDA.zeros(Float32, Nxp+1, Nyp, Nzp, Ncons)
     Fy =   CUDA.zeros(Float32, Nxp, Nyp+1, Nzp, Ncons)
     Fz =   CUDA.zeros(Float32, Nxp, Nyp, Nzp+1, Ncons)
-    Fv_x = CUDA.zeros(Float32, Nxp+NG, Nyp+NG, Nzp+NG, 4)
-    Fv_y = CUDA.zeros(Float32, Nxp+NG, Nyp+NG, Nzp+NG, 4)
-    Fv_z = CUDA.zeros(Float32, Nxp+NG, Nyp+NG, Nzp+NG, 4)
+    Fv_x = CUDA.zeros(Float32, Nxp+1, Nyp, Nzp, 4)
+    Fv_y = CUDA.zeros(Float32, Nxp, Nyp+1, Nzp, 4)
+    Fv_z = CUDA.zeros(Float32, Nxp, Nyp, Nzp+1, 4)
 
     Fp_i = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nspecs)
     Fm_i = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nspecs)
     Fx_i = CUDA.zeros(Float32, Nxp+1, Nyp, Nzp, Nspecs) # species advection
     Fy_i = CUDA.zeros(Float32, Nxp, Nyp+1, Nzp, Nspecs) # species advection
     Fz_i = CUDA.zeros(Float32, Nxp, Nyp, Nzp+1, Nspecs) # species advection
-    Fd_x = CUDA.zeros(Float32, Nxp+NG, Nyp+NG, Nzp+NG, Nspecs) # species diffusion
-    Fd_y = CUDA.zeros(Float32, Nxp+NG, Nyp+NG, Nzp+NG, Nspecs) # species diffusion
-    Fd_z = CUDA.zeros(Float32, Nxp+NG, Nyp+NG, Nzp+NG, Nspecs) # species diffusion
-    Fh = CUDA.zeros(Float32, Nxp+NG, Nyp+NG, Nzp+NG, 3) # enthalpy diffusion
+    Fd_x = CUDA.zeros(Float32, Nxp+1, Nyp, Nzp, Nspecs) # species diffusion
+    Fd_y = CUDA.zeros(Float32, Nxp, Nyp+1, Nzp, Nspecs) # species diffusion
+    Fd_z = CUDA.zeros(Float32, Nxp, Nyp, Nzp+1, Nspecs) # species diffusion
+    Fhx = CUDA.zeros(Float32, Nxp+1, Nyp, Nzp, 3) # enthalpy diffusion
+    Fhy = CUDA.zeros(Float32, Nxp, Nyp+1, Nzp, 3) # enthalpy diffusion
+    Fhz = CUDA.zeros(Float32, Nxp, Nyp, Nzp+1, 3) # enthalpy diffusion
 
     μ = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
     λ = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
@@ -360,8 +366,8 @@ function time_step(rank, comm_cart, thermo, react)
 
             @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock mixture(Q, ρi, Yi, λ, μ, D, thermo)
             @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q)
-            specAdvance(ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fh, thermo)
-            flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fh)
+            specAdvance(ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fhx, Fhy, Fhz, thermo)
+            flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fhx, Fhy, Fhz)
 
             if KRK == 2
                 @cuda maxregs=maxreg fastmath=true threads=nthreads2 blocks=nblock2 linComb(U, Un, Ncons, 0.25f0, 0.75f0)
@@ -449,7 +455,7 @@ function time_step(rank, comm_cart, thermo, react)
         end
 
         if plt_xdmf
-            plotFile_xdmf(tt, λ, μ, D, Q, ρi, ϕ, Q_h, ρi_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
+            plotFile_xdmf(tt, Q, ρi, ϕ, Q_h, ρi_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
         else
             plotFile_h5(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
         end
