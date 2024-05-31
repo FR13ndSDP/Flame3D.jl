@@ -111,11 +111,10 @@ function plotFile_xdmf(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rank
     end
 end
 
-function plotFile_h5(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
+function plotFile_h5(tt, Q, Q_h, comm_cart, rank, rankx, ranky, rankz)
     # Output
     if plt_out && (tt % step_plt == 0 || abs(Time-dt*tt) < dt || tt == maxStep)
         copyto!(Q_h, Q)
-        copyto!(ϕ_h, ϕ)
 
         if rank == 0
             mkpath("./PLT")
