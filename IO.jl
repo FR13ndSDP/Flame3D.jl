@@ -149,17 +149,18 @@ function plotFile_xdmf(tt, Q, ρi, ϕ, Q_h, ρi_h, ϕ_h, comm_cart, rank, rankx,
     end
 end
 
-function plotFile_h5(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
+function plotFile_h5(tt, Q, ρi, Q_h, ρi_h, comm_cart, rank, rankx, ranky, rankz)
     # Output
     if plt_out && (tt % step_plt == 0 || abs(Time-dt*tt) < dt || tt == maxStep)
         copyto!(Q_h, Q)
-        copyto!(ϕ_h, ϕ)
+        copyto!(ρi_h, ρi)
 
         if rank == 0
             mkpath("./PLT")
         end
 
         primitives = @view Q_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, :]
+        specs = @view ρi_h[1+NG:Nxp+NG, 1+NG:Nyp+NG, 1+NG:Nzp+NG, :]
 
         # global indices no ghost
         lox = rankx*Nxp+1
@@ -184,11 +185,22 @@ function plotFile_h5(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
                 dxpl_mpio=:collective
             )
             dset1[lox:hix, loy:hiy, loz:hiz, :] = primitives
+            dset2 = create_dataset(
+                f,
+                "ρi",
+                datatype(Float32),
+                dataspace(Nx, Ny, Nz, Nspecs);
+                chunk=(Nxp, Nyp, Nzp, Nspecs),
+                shuffle=plt_shuffle,
+                compress=plt_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset2[lox:hix, loy:hiy, loz:hiz, :] = specs
         end
     end
 end
 
-function checkpointFile(tt, Q_h, Q, comm_cart, rank)
+function checkpointFile(tt, Q_h, ρi_h, Q, ρi, comm_cart, rank)
     # restart file, in Float32
     if chk_out && (tt % step_chk == 0 || abs(Time-dt*tt) < dt || tt == maxStep)
         Nx_tot = Nxp+2*NG
@@ -196,6 +208,7 @@ function checkpointFile(tt, Q_h, Q, comm_cart, rank)
         Nz_tot = Nzp+2*NG
 
         copyto!(Q_h, Q)
+        copyto!(ρi_h, ρi)
 
         if rank == 0
             mkpath("./CHK")
@@ -213,6 +226,17 @@ function checkpointFile(tt, Q_h, Q, comm_cart, rank)
                 dxpl_mpio=:collective
             )
             dset1[:, :, :, :, rank + 1] = Q_h
+            dset2 = create_dataset(
+                f,
+                "ρi_h",
+                datatype(Float32),
+                dataspace(Nx_tot, Ny_tot, Nz_tot, Nspecs, prod(Nprocs));
+                chunk=(Nx_tot, Ny_tot, Nz_tot, Nspecs, 1),
+                shuffle=chk_shuffle,
+                compress=chk_compress_level,
+                dxpl_mpio=:collective
+            )
+            dset2[:, :, :, :, rank + 1] = ρi_h
         end
     end
 end

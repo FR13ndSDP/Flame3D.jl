@@ -457,10 +457,10 @@ function time_step(rank, comm_cart, thermo, react)
         if plt_xdmf
             plotFile_xdmf(tt, Q, ρi, ϕ, Q_h, ρi_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
         else
-            plotFile_h5(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
+            plotFile_h5(tt, Q, ρi, Q_h, ρi_h, comm_cart, rank, rankx, ranky, rankz)
         end
 
-        checkpointFile(tt, Q_h, Q, comm_cart, rank)
+        checkpointFile(tt, Q_h, ρi_h, Q, ρi, comm_cart, rank)
 
         # Average output
         if average && tt <= avg_step*avg_total
