@@ -1,21 +1,3 @@
-# using CUDA, Adapt, PyCall, StaticArrays
-# struct thermoProperty{RT, VT, MT, TT}
-#     Ru::RT
-#     min_temp::RT
-#     max_temp::RT
-#     mw::VT
-#     coeffs_sep::VT
-#     coeffs_lo::MT
-#     coeffs_hi::MT
-#     visc_poly::MT
-#     conduct_poly::MT
-#     binarydiff_poly::TT
-# end
-# Adapt.@adapt_structure thermoProperty
-
-# CUDA.allowscalar(true)
-# const Nspecs = 20
-
 # get mixture pressure from T and ρi
 @inline function Pmixture(T::Float32, ρi, thermo)
     YOW::Float32 = 0
@@ -369,9 +351,9 @@ end
 end
 
 function mixture(Q, ρi, Yi, λ, μ, D, thermo)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
@@ -384,7 +366,7 @@ function mixture(Q, ρi, Yi, λ, μ, D, thermo)
 
     Y1 = @inbounds @view Yi[i, j, k, :]
 
-    @inbounds ρinv::Float32 = 1/max(Q[i, j, k, 1], CUDA.eps(Float32))
+    @inbounds ρinv::Float32 = 1/max(Q[i, j, k, 1], eps(Float32))
     for n = 1:Nspecs
         @inbounds Y1[n] = max(ρi[i, j, k, n]*ρinv, 0.f0)
     end
@@ -406,12 +388,12 @@ function initThermo(mech)
     min_temp::Float32 = gas.min_temp
     max_temp::Float32 = gas.max_temp
     mw = gas.molecular_weights * 1e-3
-    coeffs_sep = zeros(Float64, Nspecs)
-    coeffs_hi = zeros(Float64, 7, Nspecs)
-    coeffs_lo = zeros(Float64, 7, Nspecs)
-    viscosity_poly = zeros(Float64, 5, Nspecs)
-    conductivity_poly = zeros(Float64, 5, Nspecs)
-    binarydiffusion_poly = zeros(Float64, 5, Nspecs, Nspecs)
+    coeffs_sep = zeros(Float32, Nspecs)
+    coeffs_hi = zeros(Float32, 7, Nspecs)
+    coeffs_lo = zeros(Float32, 7, Nspecs)
+    viscosity_poly = zeros(Float32, 5, Nspecs)
+    conductivity_poly = zeros(Float32, 5, Nspecs)
+    binarydiffusion_poly = zeros(Float32, 5, Nspecs, Nspecs)
 
     for j = 1:Nspecs
         spec_i = gas.species(j-1)
@@ -425,22 +407,8 @@ function initThermo(mech)
         end
     end
 
-    thermo = thermoProperty(Ru, min_temp, max_temp, cu(mw),
-                            cu(coeffs_sep), cu(coeffs_lo), cu(coeffs_hi), 
-                            cu(viscosity_poly), cu(conductivity_poly), cu(binarydiffusion_poly))
+    thermo = thermoProperty(Ru, min_temp, max_temp, ROCArray(mw),
+                            ROCArray(coeffs_sep), ROCArray(coeffs_lo), ROCArray(coeffs_hi), 
+                            ROCArray(viscosity_poly), ROCArray(conductivity_poly), ROCArray(binarydiffusion_poly))
     return thermo
 end
-
-
-# mech = "./drm19.yaml"
-# ct = pyimport("cantera")
-# gas = ct.Solution(mech)
-# T::Float32 = 290.0
-# P::Float32 = 101325.0
-# gas.TPY = T, P, "CH4:1"
-
-# ρi = gas.Y * gas.density
-# ρi_d = cu(ρi)
-# thermo = initThermo(mech)
-# ei = InternalEnergy(T, ρi, thermo)
-# @show ei

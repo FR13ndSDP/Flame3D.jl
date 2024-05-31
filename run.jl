@@ -75,16 +75,9 @@ const Nz::Int64 = h5read(mesh, "Nz")
 const Nxp::Int64 = Nx ÷ Nprocs[1] # make sure it is integer
 const Nyp::Int64 = Ny ÷ Nprocs[2] # make sure it is integer
 const Nzp::Int64 = Nz ÷ Nprocs[3] # make sure it is integer
-# here we use 512 threads/block and limit registers to 128
-const maxreg::Int64 = 128
-const nthreads::Tuple{Int32, Int32, Int32} = (8, 8, 8)
-const nblock::Tuple{Int32, Int32, Int32} = (cld((Nxp+2*NG), 8), 
-                                            cld((Nyp+2*NG), 8),
-                                            cld((Nzp+2*NG), 8))
-
-# For simple kernel without register limit
-const nthreads2::Tuple{Int32, Int32, Int32} = (16, 8, 8)
-const nblock2::Tuple{Int32, Int32, Int32} = (cld((Nxp+2*NG), 16), 
+# here we use 1024 threads/group
+const nthreads::Tuple{Int32, Int32, Int32} = (16, 8, 8)
+const ngroups::Tuple{Int32, Int32, Int32} = (cld((Nxp+2*NG), 16), 
                                              cld((Nyp+2*NG), 8),
                                              cld((Nzp+2*NG), 8))
 
@@ -129,7 +122,7 @@ if nGPU != prod(Nprocs) && rank == 0
     error("Oops, nGPU ≠ $Nprocs\n")
 end
 # set device on each MPI rank
-# device!(local_rank)
+AMDGPU.device!(AMDGPU.devices()[local_rank+1])
 
 const thermo = initThermo(mech) # now only NASA7
 const react = initReact(mech)

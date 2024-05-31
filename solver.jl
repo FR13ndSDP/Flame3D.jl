@@ -1,11 +1,8 @@
 using MPI
-using StaticArrays, CUDA
-using CUDA:i32
+using StaticArrays, AMDGPU
 using HDF5, DelimitedFiles
 using Dates, Printf
 using Adapt, PyCall
-
-CUDA.allowscalar(false)
 
 include("split.jl")
 include("schemes.jl")
@@ -21,79 +18,79 @@ include("reactions.jl")
 function flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fhx, Fhy, Fhz)
 
     if splitMethod == "SW"
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_SW(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_SW(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
     elseif splitMethod == "LF"
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_LF(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_LF(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
     elseif splitMethod == "VL"
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_VL(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_VL(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
     elseif splitMethod == "AUSM"
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_AUSM(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_AUSM(Q, Fp, Fm, s1, dξdx, dξdy, dξdz)
     else
         error("Not valid split method")
     end
     if character
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_xc(Fx, ϕ, s1, Fp, Fm, Q, dξdx, dξdy, dξdz)
+        @roc groupsize=nthreads gridsize=ngroups advect_xc(Fx, ϕ, s1, Fp, Fm, Q, dξdx, dξdy, dξdz)
     else
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_x(Fx, ϕ, s1, Fp, Fm, Ncons)
+        @roc groupsize=nthreads gridsize=ngroups advect_x(Fx, ϕ, s1, Fp, Fm, Ncons)
     end
 
     if splitMethod == "SW"
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_SW(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_SW(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
     elseif splitMethod == "LF"
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_LF(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_LF(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
     elseif splitMethod == "VL"
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_VL(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_VL(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
     elseif splitMethod == "AUSM"
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_AUSM(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_AUSM(Q, Fp, Fm, s2, dηdx, dηdy, dηdz)
     else
         error("Not valid split method")
     end
     if character
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_yc(Fy, ϕ, s2, Fp, Fm, Q, dηdx, dηdy, dηdz)
+        @roc groupsize=nthreads gridsize=ngroups advect_yc(Fy, ϕ, s2, Fp, Fm, Q, dηdx, dηdy, dηdz)
     else
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_y(Fy, ϕ, s2, Fp, Fm, Ncons)
+        @roc groupsize=nthreads gridsize=ngroups advect_y(Fy, ϕ, s2, Fp, Fm, Ncons)
     end
 
     if splitMethod == "SW"
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_SW(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_SW(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
     elseif splitMethod == "LF"
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_LF(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_LF(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
     elseif splitMethod == "VL"
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_VL(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_VL(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
     elseif splitMethod == "AUSM"
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock fluxSplit_AUSM(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
+        @roc groupsize=nthreads gridsize=ngroups fluxSplit_AUSM(Q, Fp, Fm, s3, dζdx, dζdy, dζdz)
     else
         error("Not valid split method")
     end
     if character
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_zc(Fz, ϕ, s3, Fp, Fm, Q, dζdx, dζdy, dζdz)
+        @roc groupsize=nthreads gridsize=ngroups advect_zc(Fz, ϕ, s3, Fp, Fm, Q, dζdx, dζdy, dζdz)
     else
-        @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_z(Fz, ϕ, s3, Fp, Fm, Ncons)
+        @roc groupsize=nthreads gridsize=ngroups advect_z(Fz, ϕ, s3, Fp, Fm, Ncons)
     end
 
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fhx)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fhy)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fhz)
+    @roc groupsize=nthreads gridsize=ngroups viscousFlux_x(Fv_x, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fhx)
+    @roc groupsize=nthreads gridsize=ngroups viscousFlux_y(Fv_y, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fhy)
+    @roc groupsize=nthreads gridsize=ngroups viscousFlux_z(Fv_z, Q, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, λ, μ, Fhz)
 
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J)
+    @roc groupsize=nthreads gridsize=ngroups div(U, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, dt, J)
 end
 
 function specAdvance(ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fhx, Fhy, Fhz, thermo)
 
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock split(ρi, Q, Fp_i, Fm_i, dξdx, dξdy, dξdz)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_x(Fx_i, ϕ, s1, Fp_i, Fm_i, Nspecs)
+    @roc groupsize=nthreads gridsize=ngroups split(ρi, Q, Fp_i, Fm_i, dξdx, dξdy, dξdz)
+    @roc groupsize=nthreads gridsize=ngroups advect_x(Fx_i, ϕ, s1, Fp_i, Fm_i, Nspecs)
 
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock split(ρi, Q, Fp_i, Fm_i, dηdx, dηdy, dηdz)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_y(Fy_i, ϕ, s2, Fp_i, Fm_i, Nspecs)
+    @roc groupsize=nthreads gridsize=ngroups split(ρi, Q, Fp_i, Fm_i, dηdx, dηdy, dηdz)
+    @roc groupsize=nthreads gridsize=ngroups advect_y(Fy_i, ϕ, s2, Fp_i, Fm_i, Nspecs)
 
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock split(ρi, Q, Fp_i, Fm_i, dζdx, dζdy, dζdz)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock advect_z(Fz_i, ϕ, s3, Fp_i, Fm_i, Nspecs)
+    @roc groupsize=nthreads gridsize=ngroups split(ρi, Q, Fp_i, Fm_i, dζdx, dζdy, dζdz)
+    @roc groupsize=nthreads gridsize=ngroups advect_z(Fz_i, ϕ, s3, Fp_i, Fm_i, Nspecs)
 
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock specViscousFlux_x(Fd_x, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fhx, thermo)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock specViscousFlux_y(Fd_y, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fhy, thermo)
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock specViscousFlux_z(Fd_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fhz, thermo)
+    @roc groupsize=nthreads gridsize=ngroups specViscousFlux_x(Fd_x, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fhx, thermo)
+    @roc groupsize=nthreads gridsize=ngroups specViscousFlux_y(Fd_y, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fhy, thermo)
+    @roc groupsize=nthreads gridsize=ngroups specViscousFlux_z(Fd_z, Q, Yi, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, D, Fhz, thermo)
 
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock divSpecs(ρi, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dt, J)
+    @roc groupsize=nthreads gridsize=ngroups divSpecs(ρi, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, dt, J)
 end
 
 function time_step(rank, comm_cart, thermo, react)
@@ -122,13 +119,13 @@ function time_step(rank, comm_cart, thermo, react)
         ρi_h = fid["ρi_h"][lox:hix, loy:hiy, loz:hiz, :, 1]
         close(fid)
 
-        Q = cu(Q_h)
-        ρi = cu(ρi_h)
+        Q = ROCArray(Q_h)
+        ρi = ROCArray(ρi_h)
     else
         Q_h = zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
-        Q = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
+        Q = AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
         ρi_h = zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nspecs)
-        ρi = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nspecs)
+        ρi = AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nspecs)
 
         initialize(Q, ρi, thermo)
 
@@ -154,58 +151,58 @@ function time_step(rank, comm_cart, thermo, react)
     close(fid)
 
     # move to device memory
-    dξdx = cu(dξdx_h)
-    dξdy = cu(dξdy_h)
-    dξdz = cu(dξdz_h)
-    dηdx = cu(dηdx_h)
-    dηdy = cu(dηdy_h)
-    dηdz = cu(dηdz_h)
-    dζdx = cu(dζdx_h)
-    dζdy = cu(dζdy_h)
-    dζdz = cu(dζdz_h)
-    J = cu(J_h)
+    dξdx = ROCArray(convert(Array{Float32, 3}, dξdx_h))
+    dξdy = ROCArray(convert(Array{Float32, 3}, dξdy_h))
+    dξdz = ROCArray(convert(Array{Float32, 3}, dξdz_h))
+    dηdx = ROCArray(convert(Array{Float32, 3}, dηdx_h))
+    dηdy = ROCArray(convert(Array{Float32, 3}, dηdy_h))
+    dηdz = ROCArray(convert(Array{Float32, 3}, dηdz_h))
+    dζdx = ROCArray(convert(Array{Float32, 3}, dζdx_h))
+    dζdy = ROCArray(convert(Array{Float32, 3}, dζdy_h))
+    dζdz = ROCArray(convert(Array{Float32, 3}, dζdz_h))
+    J = ROCArray(convert(Array{Float32, 3}, J_h))
     s1 = @. sqrt(dξdx^2+dξdy^2+dξdz^2)
     s2 = @. sqrt(dηdx^2+dηdy^2+dηdz^2)
     s3 = @. sqrt(dζdx^2+dζdy^2+dζdz^2)
 
     # allocate on device
-    Yi =   CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nspecs)
-    ϕ  =   CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot) # Shock sensor
-    U  =   CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Ncons)
-    Fp =   CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Ncons)
-    Fm =   CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Ncons)
-    Fx =   CUDA.zeros(Float32, Nxp+1, Nyp, Nzp, Ncons)
-    Fy =   CUDA.zeros(Float32, Nxp, Nyp+1, Nzp, Ncons)
-    Fz =   CUDA.zeros(Float32, Nxp, Nyp, Nzp+1, Ncons)
-    Fv_x = CUDA.zeros(Float32, Nxp+1, Nyp, Nzp, 4)
-    Fv_y = CUDA.zeros(Float32, Nxp, Nyp+1, Nzp, 4)
-    Fv_z = CUDA.zeros(Float32, Nxp, Nyp, Nzp+1, 4)
+    Yi =   AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nspecs)
+    ϕ  =   AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot) # Shock sensor
+    U  =   AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Ncons)
+    Fp =   AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Ncons)
+    Fm =   AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Ncons)
+    Fx =   AMDGPU.zeros(Float32, Nxp+1, Nyp, Nzp, Ncons)
+    Fy =   AMDGPU.zeros(Float32, Nxp, Nyp+1, Nzp, Ncons)
+    Fz =   AMDGPU.zeros(Float32, Nxp, Nyp, Nzp+1, Ncons)
+    Fv_x = AMDGPU.zeros(Float32, Nxp+1, Nyp, Nzp, 4)
+    Fv_y = AMDGPU.zeros(Float32, Nxp, Nyp+1, Nzp, 4)
+    Fv_z = AMDGPU.zeros(Float32, Nxp, Nyp, Nzp+1, 4)
 
-    Fp_i = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nspecs)
-    Fm_i = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nspecs)
-    Fx_i = CUDA.zeros(Float32, Nxp+1, Nyp, Nzp, Nspecs) # species advection
-    Fy_i = CUDA.zeros(Float32, Nxp, Nyp+1, Nzp, Nspecs) # species advection
-    Fz_i = CUDA.zeros(Float32, Nxp, Nyp, Nzp+1, Nspecs) # species advection
-    Fd_x = CUDA.zeros(Float32, Nxp+1, Nyp, Nzp, Nspecs) # species diffusion
-    Fd_y = CUDA.zeros(Float32, Nxp, Nyp+1, Nzp, Nspecs) # species diffusion
-    Fd_z = CUDA.zeros(Float32, Nxp, Nyp, Nzp+1, Nspecs) # species diffusion
-    Fhx = CUDA.zeros(Float32, Nxp+1, Nyp, Nzp, 3) # enthalpy diffusion
-    Fhy = CUDA.zeros(Float32, Nxp, Nyp+1, Nzp, 3) # enthalpy diffusion
-    Fhz = CUDA.zeros(Float32, Nxp, Nyp, Nzp+1, 3) # enthalpy diffusion
+    Fp_i = AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nspecs)
+    Fm_i = AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nspecs)
+    Fx_i = AMDGPU.zeros(Float32, Nxp+1, Nyp, Nzp, Nspecs) # species advection
+    Fy_i = AMDGPU.zeros(Float32, Nxp, Nyp+1, Nzp, Nspecs) # species advection
+    Fz_i = AMDGPU.zeros(Float32, Nxp, Nyp, Nzp+1, Nspecs) # species advection
+    Fd_x = AMDGPU.zeros(Float32, Nxp+1, Nyp, Nzp, Nspecs) # species diffusion
+    Fd_y = AMDGPU.zeros(Float32, Nxp, Nyp+1, Nzp, Nspecs) # species diffusion
+    Fd_z = AMDGPU.zeros(Float32, Nxp, Nyp, Nzp+1, Nspecs) # species diffusion
+    Fhx = AMDGPU.zeros(Float32, Nxp+1, Nyp, Nzp, 3) # enthalpy diffusion
+    Fhy = AMDGPU.zeros(Float32, Nxp, Nyp+1, Nzp, 3) # enthalpy diffusion
+    Fhz = AMDGPU.zeros(Float32, Nxp, Nyp, Nzp+1, 3) # enthalpy diffusion
 
-    μ = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
-    λ = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
-    D = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nspecs)
+    μ = AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    λ = AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot)
+    D = AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nspecs)
 
     Un = similar(U)
     ρn = similar(ρi)
 
     if average
-        Q_avg = CUDA.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
+        Q_avg = AMDGPU.zeros(Float32, Nx_tot, Ny_tot, Nz_tot, Nprim)
     end
 
     if filtering && filtering_nonlinear
-        sc = CUDA.zeros(Float32, Nxp, Nyp, Nzp)
+        sc = AMDGPU.zeros(Float32, Nxp, Nyp, Nzp)
     end
 
     # MPI buffer 
@@ -237,22 +234,22 @@ function time_step(rank, comm_cart, thermo, react)
     Mem.pin(drbuf_hy)
     Mem.pin(drbuf_hz)
 
-    Qsbuf_dx = cu(Qsbuf_hx)
-    Qsbuf_dy = cu(Qsbuf_hy)
-    Qsbuf_dz = cu(Qsbuf_hz)
-    Qrbuf_dx = cu(Qrbuf_hx)
-    Qrbuf_dy = cu(Qrbuf_hy)
-    Qrbuf_dz = cu(Qrbuf_hz)
+    Qsbuf_dx = ROCArray(Qsbuf_hx)
+    Qsbuf_dy = ROCArray(Qsbuf_hy)
+    Qsbuf_dz = ROCArray(Qsbuf_hz)
+    Qrbuf_dx = ROCArray(Qrbuf_hx)
+    Qrbuf_dy = ROCArray(Qrbuf_hy)
+    Qrbuf_dz = ROCArray(Qrbuf_hz)
 
-    dsbuf_dx = cu(dsbuf_hx)
-    dsbuf_dy = cu(dsbuf_hy)
-    dsbuf_dz = cu(dsbuf_hz)
-    drbuf_dx = cu(drbuf_hx)
-    drbuf_dy = cu(drbuf_hy)
-    drbuf_dz = cu(drbuf_hz)
+    dsbuf_dx = ROCArray(dsbuf_hx)
+    dsbuf_dy = ROCArray(dsbuf_hy)
+    dsbuf_dz = ROCArray(dsbuf_hz)
+    drbuf_dx = ROCArray(drbuf_hx)
+    drbuf_dy = ROCArray(drbuf_hy)
+    drbuf_dz = ROCArray(drbuf_hz)
 
     # initial
-    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock prim2c(U, Q)
+    @roc groupsize=nthreads gridsize=ngroups prim2c(U, Q)
     exchange_ghost(Q, Nprim, comm_cart, 
                    Qsbuf_hx, Qsbuf_dx, Qrbuf_hx, Qrbuf_dx,
                    Qsbuf_hy, Qsbuf_dy, Qrbuf_hy, Qrbuf_dy,
@@ -340,9 +337,9 @@ function time_step(rank, comm_cart, thermo, react)
             # Reaction Step
             for _ = 1:sub_step
                 if stiff
-                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock eval_gpu_stiff(U, Q, ρi, dt2/sub_step, thermo, react)
+                    @roc groupsize=nthreads gridsize=ngroups eval_gpu_stiff(U, Q, ρi, dt2/sub_step, thermo, react)
                 else
-                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2/sub_step, thermo, react)
+                    @roc groupsize=nthreads gridsize=ngroups eval_gpu(U, Q, ρi, dt2/sub_step, thermo, react)
                 end
             end
             exchange_ghost(Q, Nprim, comm_cart, 
@@ -364,20 +361,20 @@ function time_step(rank, comm_cart, thermo, react)
                 copyto!(ρn, ρi)
             end
 
-            @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock mixture(Q, ρi, Yi, λ, μ, D, thermo)
-            @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock shockSensor(ϕ, Q)
+            @roc groupsize=nthreads gridsize=ngroups mixture(Q, ρi, Yi, λ, μ, D, thermo)
+            @roc groupsize=nthreads gridsize=ngroups shockSensor(ϕ, Q)
             specAdvance(ρi, Q, Yi, Fp_i, Fm_i, Fx_i, Fy_i, Fz_i, Fd_x, Fd_y, Fd_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, D, Fhx, Fhy, Fhz, thermo)
             flowAdvance(U, Q, Fp, Fm, Fx, Fy, Fz, Fv_x, Fv_y, Fv_z, s1, s2, s3, dξdx, dξdy, dξdz, dηdx, dηdy, dηdz, dζdx, dζdy, dζdz, J, dt, ϕ, λ, μ, Fhx, Fhy, Fhz)
 
             if KRK == 2
-                @cuda maxregs=maxreg fastmath=true threads=nthreads2 blocks=nblock2 linComb(U, Un, Ncons, 0.25f0, 0.75f0)
-                @cuda maxregs=maxreg fastmath=true threads=nthreads2 blocks=nblock2 linComb(ρi, ρn, Nspecs, 0.25f0, 0.75f0)
+                @roc groupsize=nthreads gridsize=ngroupslinComb(U, Un, Ncons, 0.25f0, 0.75f0)
+                @roc groupsize=nthreads gridsize=ngroupslinComb(ρi, ρn, Nspecs, 0.25f0, 0.75f0)
             elseif KRK == 3
-                @cuda maxregs=maxreg fastmath=true threads=nthreads2 blocks=nblock2 linComb(U, Un, Ncons, 2/3f0, 1/3f0)
-                @cuda maxregs=maxreg fastmath=true threads=nthreads2 blocks=nblock2 linComb(ρi, ρn, Nspecs, 2/3f0, 1/3f0)
+                @roc groupsize=nthreads gridsize=ngroupslinComb(U, Un, Ncons, 2/3f0, 1/3f0)
+                @roc groupsize=nthreads gridsize=ngroupslinComb(ρi, ρn, Nspecs, 2/3f0, 1/3f0)
             end
 
-            @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock c2Prim(U, Q, ρi, thermo)
+            @roc groupsize=nthreads gridsize=ngroups c2Prim(U, Q, ρi, thermo)
             exchange_ghost(Q, Nprim, comm_cart, 
                 Qsbuf_hx, Qsbuf_dx, Qrbuf_hx, Qrbuf_dx,
                 Qsbuf_hy, Qsbuf_dy, Qrbuf_hy, Qrbuf_dy,
@@ -394,9 +391,9 @@ function time_step(rank, comm_cart, thermo, react)
             # Reaction Step
             for _ = 1:sub_step
                 if stiff
-                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock eval_gpu_stiff(U, Q, ρi, dt2/sub_step, thermo, react)
+                    @roc groupsize=nthreads gridsize=ngroups eval_gpu_stiff(U, Q, ρi, dt2/sub_step, thermo, react)
                 else
-                    @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock eval_gpu(U, Q, ρi, dt2/sub_step, thermo, react)
+                    @roc groupsize=nthreads gridsize=ngroups eval_gpu(U, Q, ρi, dt2/sub_step, thermo, react)
                 end
             end
             exchange_ghost(Q, Nprim, comm_cart, 
@@ -414,26 +411,26 @@ function time_step(rank, comm_cart, thermo, react)
         if filtering && tt % filtering_interval == 0
             copyto!(Un, U)
             if filtering_nonlinear
-                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock pre_x(Q, sc, filtering_rth)
-                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock filter_x(U, Un, sc, filtering_s0)
+                @roc groupsize=nthreads gridsize=ngroups pre_x(Q, sc, filtering_rth)
+                @roc groupsize=nthreads gridsize=ngroups filter_x(U, Un, sc, filtering_s0)
             else
-                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock linearFilter_x(U, Un, filtering_s0)
+                @roc groupsize=nthreads gridsize=ngroups linearFilter_x(U, Un, filtering_s0)
             end
 
             copyto!(Un, U)
             if filtering_nonlinear
-                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock pre_y(Q, sc, filtering_rth)
-                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock filter_y(U, Un, sc, filtering_s0)
+                @roc groupsize=nthreads gridsize=ngroups pre_y(Q, sc, filtering_rth)
+                @roc groupsize=nthreads gridsize=ngroups filter_y(U, Un, sc, filtering_s0)
             else
-                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock linearFilter_y(U, Un, filtering_s0)
+                @roc groupsize=nthreads gridsize=ngroups linearFilter_y(U, Un, filtering_s0)
             end
 
             copyto!(Un, U)
             if filtering_nonlinear
-                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock pre_z(Q, sc, filtering_rth)
-                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock filter_z(U, Un, sc, filtering_s0)
+                @roc groupsize=nthreads gridsize=ngroups pre_z(Q, sc, filtering_rth)
+                @roc groupsize=nthreads gridsize=ngroups filter_z(U, Un, sc, filtering_s0)
             else
-                @cuda maxregs=maxreg fastmath=true threads=nthreads blocks=nblock linearFilter_z(U, Un, filtering_s0)
+                @roc groupsize=nthreads gridsize=ngroups linearFilter_z(U, Un, filtering_s0)
             end
         end
 

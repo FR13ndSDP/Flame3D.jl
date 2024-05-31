@@ -1,15 +1,15 @@
 # Range: 1+NG -> N+NG
 function c2Prim(U, Q, ρi, thermo)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return
     end
 
     # correction
-    @inbounds ρ = max(U[i, j, k, 1], CUDA.eps(Float32))
+    @inbounds ρ = max(U[i, j, k, 1], eps(Float32))
     @inbounds rho = @view ρi[i, j, k, :]
     @inbounds ρinv = 1/ρ 
     ∑ρ::Float32 = 0.f0
@@ -28,10 +28,10 @@ function c2Prim(U, Q, ρi, thermo)
     @inbounds u = U[i, j, k, 2]*ρinv # U
     @inbounds v = U[i, j, k, 3]*ρinv # V
     @inbounds w = U[i, j, k, 4]*ρinv # W
-    @inbounds ei = max((U[i, j, k, 5] - 0.5f0*ρ*(u^2 + v^2 + w^2)), CUDA.eps(Float32))
+    @inbounds ei = max((U[i, j, k, 5] - 0.5f0*ρ*(u^2 + v^2 + w^2)), eps(Float32))
 
-    T::Float32 = max(GetT(ei, rho, thermo), CUDA.eps(Float32))
-    p::Float32 = max(Pmixture(T, rho, thermo), CUDA.eps(Float32))
+    T::Float32 = max(GetT(ei, rho, thermo), eps(Float32))
+    p::Float32 = max(Pmixture(T, rho, thermo), eps(Float32))
 
     @inbounds Q[i, j, k, 1] = ρ
     @inbounds Q[i, j, k, 2] = u
@@ -44,15 +44,15 @@ function c2Prim(U, Q, ρi, thermo)
 end
 
 function getY(Yi, ρi, Q)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
     end
 
-    @inbounds ρinv::Float32 = 1/max(Q[i, j, k, 1], CUDA.eps(Float32))
+    @inbounds ρinv::Float32 = 1/max(Q[i, j, k, 1], eps(Float32))
     for n = 1:Nspecs
         @inbounds Yi[i, j, k, n] = max(ρi[i, j, k, n]*ρinv, 0.f0)
     end
@@ -60,9 +60,9 @@ end
 
 # Range: 1 -> N+2*NG
 function prim2c(U, Q)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
@@ -84,9 +84,9 @@ end
 
 # Range: 1+NG -> N+NG
 function linComb(U, Un, NV, a::Float32, b::Float32)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return
@@ -99,9 +99,9 @@ function linComb(U, Un, NV, a::Float32, b::Float32)
 end
 
 function pre_x(Q, sc, rth)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return
@@ -122,9 +122,9 @@ function pre_x(Q, sc, rth)
 end
 
 function pre_y(Q, sc, rth)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return
@@ -145,9 +145,9 @@ function pre_y(Q, sc, rth)
 end
 
 function pre_z(Q, sc, rth)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return
@@ -168,9 +168,9 @@ function pre_z(Q, sc, rth)
 end
 
 function filter_x(U, Un, sc, s0)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return
@@ -192,9 +192,9 @@ function filter_x(U, Un, sc, s0)
 end
 
 function filter_y(U, Un, sc, s0)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return
@@ -216,9 +216,9 @@ function filter_y(U, Un, sc, s0)
 end
 
 function filter_z(U, Un, sc, s0)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return
@@ -240,9 +240,9 @@ function filter_z(U, Un, sc, s0)
 end
 
 function linearFilter_x(U, Un, s0)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return
@@ -265,9 +265,9 @@ function linearFilter_x(U, Un, s0)
 end
 
 function linearFilter_y(U, Un, s0)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return
@@ -290,9 +290,9 @@ function linearFilter_y(U, Un, s0)
 end
 
 function linearFilter_z(U, Un, s0)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return

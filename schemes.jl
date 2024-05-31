@@ -1,7 +1,7 @@
 function shockSensor(ϕ, Q)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i < 2 || i > Nxp+2*NG-1 || j < 2 || j > Nyp+2*NG-1 || k < 2 || k > Nzp+2*NG-1
         return
@@ -24,14 +24,14 @@ function shockSensor(ϕ, Q)
 end
 
 @inline function minmod(a, b)
-    ifelse(a*b > 0, (abs(a) > abs(b)) ? b : a, zero(a))
+    ifelse(a*b > zero(a), (abs(a) > abs(b)) ? b : a, zero(a))
 end
 
 #Range: 1 -> N+1
 function NND_x(F, Fp, Fm, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG+1 || j > Nyp+NG || k > Nzp+NG || i < 1+NG || j < 1+NG || k < 1+NG
         return
@@ -47,9 +47,9 @@ function NND_x(F, Fp, Fm, NV)
 end
 
 function NND_y(F, Fp, Fm, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG+1 || k > Nzp+NG || i < 1+NG || j < 1+NG || k < 1+NG
         return
@@ -65,9 +65,9 @@ function NND_y(F, Fp, Fm, NV)
 end
 
 function NND_z(F, Fp, Fm, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG+1 || i < 1+NG || j < 1+NG || k < 1+NG
         return
@@ -84,9 +84,9 @@ end
 
 #Range: 1 -> N+1
 function advect_x(F, ϕ, S, Fp, Fm, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG+1 || j > Nyp+NG || k > Nzp+NG || i < 1+NG || j < 1+NG || k < 1+NG
         return
@@ -289,9 +289,9 @@ end
 
 #Range: 1 -> N+1
 function advect_y(F, ϕ, S, Fp, Fm, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG+1 || k > Nzp+NG || i < 1+NG || j < 1+NG || k < 1+NG
         return
@@ -494,9 +494,9 @@ end
 
 #Range: 1 -> N+1
 function advect_z(F, ϕ, S, Fp, Fm, NV)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG+1 || i < 1+NG || j < 1+NG || k < 1+NG
         return
@@ -698,9 +698,9 @@ function advect_z(F, ϕ, S, Fp, Fm, NV)
 end
 
 function advect_xc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG+1 || j > Nyp+NG || k > Nzp+NG || i < 1+NG || j < 1+NG || k < 1+NG
         return
@@ -1015,9 +1015,9 @@ function advect_xc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
 end
 
 function advect_yc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG+1 || k > Nzp+NG || i < 1+NG || j < 1+NG || k < 1+NG
         return
@@ -1334,9 +1334,9 @@ function advect_yc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
 end
 
 function advect_zc(F, ϕ, S, Fp, Fm, Q, Ax, Ay, Az)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG+1 || i < 1+NG || j < 1+NG || k < 1+NG
         return

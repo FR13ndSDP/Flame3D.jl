@@ -1,8 +1,8 @@
 # GPU chemical reaction
 function eval_gpu(U, Q, ρi, dt, thermo, react)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return
@@ -31,7 +31,7 @@ function eval_gpu(U, Q, ρi, dt, thermo, react)
         @inbounds U[i, j, k, 5] += Δei
 
         # update primitives
-        @inbounds ρ = max(Q[i, j, k, 1], CUDA.eps(Float32))
+        @inbounds ρ = max(Q[i, j, k, 1], eps(Float32))
         ∑ρ::Float32 = 0
         for n = 1:Nspecs
             @inbounds rho[n] = max(rho[n], 0.f0)
@@ -44,8 +44,8 @@ function eval_gpu(U, Q, ρi, dt, thermo, react)
 
         @inbounds ein = Q[i, j, k, 7]
         ein += Δei
-        T = max(GetT(ein, rho, thermo), CUDA.eps(Float32))
-        p = max(Pmixture(T, rho, thermo), CUDA.eps(Float32))
+        T = max(GetT(ein, rho, thermo), eps(Float32))
+        p = max(Pmixture(T, rho, thermo), eps(Float32))
         @inbounds Q[i, j, k, 5] = p
         @inbounds Q[i, j, k, 6] = T
         @inbounds Q[i, j, k, 7] = ein
@@ -55,9 +55,9 @@ end
 
 # For stiff reaction, point implicit
 function eval_gpu_stiff(U, Q, ρi, dt, thermo, react)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+NG || j > Nyp+NG || k > Nzp+NG || i < NG+1 || j < NG+1 || k < NG+1
         return
@@ -104,7 +104,7 @@ function eval_gpu_stiff(U, Q, ρi, dt, thermo, react)
         @inbounds U[i, j, k, 5] += Δei
 
         # update primitives
-        @inbounds ρ = max(Q[i, j, k, 1], CUDA.eps(Float32))
+        @inbounds ρ = max(Q[i, j, k, 1], eps(Float32))
         ∑ρ::Float32 = 0
         for n = 1:Nspecs
             @inbounds rho[n] = max(rho[n], 0.f0)
@@ -117,8 +117,8 @@ function eval_gpu_stiff(U, Q, ρi, dt, thermo, react)
 
         @inbounds ein::Float32 = Q[i, j, k, 7]
         ein += Δei
-        T = max(GetT(ein, rho, thermo), CUDA.eps(Float32))
-        p = max(Pmixture(T, rho, thermo), CUDA.eps(Float32))
+        T = max(GetT(ein, rho, thermo), eps(Float32))
+        p = max(Pmixture(T, rho, thermo), eps(Float32))
         @inbounds Q[i, j, k, 5] = p
         @inbounds Q[i, j, k, 6] = T
         @inbounds Q[i, j, k, 7] = ein
@@ -386,9 +386,9 @@ function initReact(mech)
         end
         delta_order[j] = d_order
     end
-    react = reactionProperty(atm, CuArray(reaction_type), CuArray(delta_order), 
-                             CuArray(reactant_stoich), CuArray(product_stoich), 
-                             CuArray(Arrhenius_rate), CuArray(efficiencies), 
-                             CuArray(low_rate), CuArray(Troe_coeffs))
+    react = reactionProperty(atm, ROCArray(reaction_type), ROCArray(delta_order), 
+                             ROCArray(reactant_stoich), ROCArray(product_stoich), 
+                             ROCArray(Arrhenius_rate), ROCArray(efficiencies), 
+                             ROCArray(low_rate), ROCArray(Troe_coeffs))
     return react
 end

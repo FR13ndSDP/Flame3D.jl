@@ -1,7 +1,7 @@
 function fill_x(Q, U, ρi, Yi, thermo, rank)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
     
     if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
@@ -67,9 +67,9 @@ function fill_x(Q, U, ρi, Yi, thermo, rank)
 end
 
 function fill_y(Q, U)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
     
     if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
@@ -94,9 +94,9 @@ function fill_y(Q, U)
 end
 
 function fill_z(Q, U)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
     
     if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
@@ -121,9 +121,9 @@ function fill_z(Q, U)
 end
 
 function fill_y_s(ρi)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
     
     if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
@@ -142,9 +142,9 @@ function fill_y_s(ρi)
 end
 
 function fill_z_s(ρi)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
     
     if i > Nxp+2*NG || j > Nyp+2*NG || k > Nzp+2*NG
         return
@@ -165,21 +165,21 @@ end
 
 # special treatment on wall
 function fillGhost(Q, U, ρi, Yi, thermo, rank)
-    @cuda threads=nthreads blocks=nblock fill_x(Q, U, ρi, Yi, thermo, rank)
-    @cuda threads=nthreads blocks=nblock fill_y(Q, U)
-    @cuda threads=nthreads blocks=nblock fill_z(Q, U)
+    @roc groupsize=nthreads gridsize=ngroups fill_x(Q, U, ρi, Yi, thermo, rank)
+    @roc groupsize=nthreads gridsize=ngroups fill_y(Q, U)
+    @roc groupsize=nthreads gridsize=ngroups fill_z(Q, U)
 end
 
 # only in two trival directions
 function fillSpec(ρi)
-    @cuda threads=nthreads blocks=nblock fill_y_s(ρi)
-    @cuda threads=nthreads blocks=nblock fill_z_s(ρi)
+    @roc groupsize=nthreads gridsize=ngroups fill_y_s(ρi)
+    @roc groupsize=nthreads gridsize=ngroups fill_z_s(ρi)
 end
 
 function init(Q, ρi, ρ, u, v, w, P, T, T_ignite, ρ_ig, thermo)
-    i = (blockIdx().x-1i32)* blockDim().x + threadIdx().x
-    j = (blockIdx().y-1i32)* blockDim().y + threadIdx().y
-    k = (blockIdx().z-1i32)* blockDim().z + threadIdx().z
+    i = workitemIdx().x + (workgroupIdx().x - 0x1) * workgroupDim().x
+    j = workitemIdx().y + (workgroupIdx().y - 0x1) * workgroupDim().y
+    k = workitemIdx().z + (workgroupIdx().z - 0x1) * workgroupDim().z
 
     if i > Nxp+2*NG || j > Ny+2*NG || k > Nz+2*NG
         return
@@ -232,5 +232,5 @@ function initialize(Q, ρi, thermo)
     v::Float32 = 0.f0
     w::Float32 = 0.f0
     
-    @cuda threads=nthreads blocks=nblock init(Q, ρi, ρ, u, v, w, P, T, T_ignite, ρ_ig, thermo)
+    @roc groupsize=nthreads gridsize=ngroups init(Q, ρi, ρ, u, v, w, P, T, T_ignite, ρ_ig, thermo)
 end
