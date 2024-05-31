@@ -407,7 +407,7 @@ function initThermo(mech)
         end
     end
 
-    thermo = thermoProperty(Ru, min_temp, max_temp, ROCArray(mw),
+    thermo = thermoProperty(Ru, min_temp, max_temp, ROCArray(convert(Array{Float32, 1}, mw)),
                             ROCArray(coeffs_sep), ROCArray(coeffs_lo), ROCArray(coeffs_hi), 
                             ROCArray(viscosity_poly), ROCArray(conductivity_poly), ROCArray(binarydiffusion_poly))
     return thermo
