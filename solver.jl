@@ -307,7 +307,7 @@ function time_step(rank, comm_cart)
         if plt_xdmf
             plotFile_xdmf(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
         else
-            plotFile_h5(tt, Q, ϕ, Q_h, ϕ_h, comm_cart, rank, rankx, ranky, rankz)
+            plotFile_h5(tt, Q, Q_h, comm_cart, rank, rankx, ranky, rankz)
         end
 
         checkpointFile(tt, Q_h, Q, comm_cart, rank)
