@@ -69,3 +69,9 @@ $Ma=1.5, T=5000\ \rm{K}, P = 3596\ \rm{Pa}$ air jet, a Neural network model for 
 > Clausen, J. R. (2013). Entropically damped form of artificial compressibility for explicit simulation of incompressible flow. Physical Review E, 87(1), 013309.
 
 ![incomp](./Assets/anim.gif)
+
+### Transonic buffet
+NACA0012 foil at $M = 0.86, Re = 9\times 10^6$
+
+![buffet-pres](./Assets/pressure.gif)
+![buffet-schlieren](./Assets/schlieren.gif)
